@@ -1,6 +1,6 @@
 # ADR-0011: TypeScript, PostgreSQL, React, shared design system
 
-Status: Accepted
+Status: Superseded by ADR-0013, which decides the stack by argument rather than by resemblance and covers runtime, repository shape, database access, validation, HTTP, and migrations.
 
 TypeScript throughout. PostgreSQL for the ledger. React for the interface, consuming the shared
 design system and API contract packages rather than defining a local visual language.

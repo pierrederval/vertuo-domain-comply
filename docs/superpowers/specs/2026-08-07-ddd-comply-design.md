@@ -144,7 +144,9 @@ The Corpus is an append-only ledger behind a single write interface.
 - **Diffs are Fact-level and readable by a non-engineer** — *"this Rule's statement changed; two
   aliases added"* — never textual.
 
-**Store:** PostgreSQL (ADR-0011).
+**Store:** PostgreSQL, reached only through a single database package using Kysely (ADR-0013).
+Append-only is enforced by the database itself: the application role holds no `UPDATE` or `DELETE`
+grant on ledger tables, and a trigger rejects both. LAW-003 is structural, not conventional.
 
 ### Costs this architecture accepts
 
@@ -224,7 +226,7 @@ whose criteria nobody agreed to is gamed or ignored.
 
 ## 10. Interface
 
-A business-facing studio, consuming the shared design system and API contract packages (ADR-0011).
+A business-facing studio, consuming the shared design system and API contract packages (ADR-0013).
 No compiler, schema, or repository vocabulary reaches any surface (LAW-010).
 
 | Surface | Purpose |
