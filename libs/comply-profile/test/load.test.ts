@@ -63,4 +63,13 @@ describe('loadProfile', () => {
     });
     await expect(loadProfile(path)).rejects.toThrow(/definitions/);
   });
+
+  it('rejects a Term facet using the document extractor, which has no name to key a Term on', async () => {
+    const path = await writeProfile({
+      ...valid,
+      facets: [{ name: 'glossary-notes', factKind: 'Term', extractor: 'document', bodyAttribute: 'definition' }],
+    });
+    await expect(loadProfile(path)).rejects.toThrow(/glossary-notes/);
+    await expect(loadProfile(path)).rejects.toThrow(/document/);
+  });
 });

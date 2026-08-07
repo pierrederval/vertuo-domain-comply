@@ -97,6 +97,12 @@ export const profileSchema = z
             });
           }
         }
+      } else if (facet.extractor === 'document') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, 'extractor'],
+          message: `Term facet "${facet.name}" cannot use the document extractor: a whole document has no name to key a Term on, so no Term would ever be extracted; use "table" or "heading" instead`,
+        });
       } else if (facet.bodyAttribute === undefined) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
