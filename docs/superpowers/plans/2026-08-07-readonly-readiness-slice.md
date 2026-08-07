@@ -2349,9 +2349,17 @@ Expected: FAIL — cannot resolve `libs/comply-readiness/src/snapshot.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/snapshot.ts`**
 
+Three properties the first draft lacked, all in the same family: it guarded the failure it imagined
+and not the adjacent one. Reads are per-file fault-tolerant, so one corrupt snapshot costs a single
+data point rather than the whole directory. Writes go to a `.tmp` file in the same directory and are
+renamed into place, so an interrupted run cannot leave the partial file the reader would then have to
+survive — and because the reader filters on `.json`, it never sees a temp file mid-write. Filenames
+disambiguate on collision instead of silently overwriting.
+
 ```ts
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { FactId } from '@vertuo/comply-core';
 import type { ModuleScore } from './score.js';
 
@@ -2366,11 +2374,33 @@ export interface TrendRow {
   approvedDelta: number;
 }
 
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function writeSnapshot(dir: string, snapshot: Snapshot): Promise<string> {
   await mkdir(dir, { recursive: true });
-  const name = `${snapshot.profileId}-${snapshot.takenAt.replace(/[:.]/g, '-')}.json`;
+  const base = `${snapshot.profileId}-${snapshot.takenAt.replace(/[:.]/g, '-')}`;
+
+  let name = `${base}.json`;
+  let suffix = 1;
+  while (await pathExists(join(dir, name))) {
+    name = `${base}-${suffix}.json`;
+    suffix += 1;
+  }
   const path = join(dir, name);
-  await writeFile(path, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+
+  // Write to a temp file in the same directory, then rename into place.
+  // Rename within a directory is atomic, so a concurrent reader sees
+  // either the old contents or the complete new file, never a partial one.
+  const tmpPath = join(dir, `.${name}.${randomUUID()}.tmp`);
+  await writeFile(tmpPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+  await rename(tmpPath, path);
   return path;
 }
 
@@ -2389,7 +2419,14 @@ export async function readPreviousSnapshot(
   const candidates: Snapshot[] = [];
   for (const name of names) {
     if (!name.endsWith('.json')) continue;
-    const snapshot = JSON.parse(await readFile(join(dir, name), 'utf8')) as Snapshot;
+    let snapshot: Snapshot;
+    try {
+      snapshot = JSON.parse(await readFile(join(dir, name), 'utf8')) as Snapshot;
+    } catch {
+      // A single corrupt or partially-written file costs one data point,
+      // not the whole directory's trend history.
+      continue;
+    }
     if (snapshot.profileId === profileId && snapshot.takenAt < excludeAt) candidates.push(snapshot);
   }
 
