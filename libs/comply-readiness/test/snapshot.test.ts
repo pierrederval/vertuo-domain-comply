@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -36,5 +36,26 @@ describe('run snapshots', () => {
 
   it('treats a first run as a zero delta rather than a jump', () => {
     expect(trend(snapshot('a', 2), null)).toEqual([{ moduleId: 'alpha', approvedDelta: 0 }]);
+  });
+
+  it('skips a corrupt snapshot file and still returns a valid earlier one', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'runs-'));
+    await writeSnapshot(dir, snapshot('2026-01-01T00:00:00.000Z', 1));
+    await writeFile(join(dir, 'p-corrupt.json'), '{ not valid json', 'utf8');
+
+    const previous = await readPreviousSnapshot(dir, 'p', '2026-01-02T00:00:00.000Z');
+    expect(previous?.takenAt).toBe('2026-01-01T00:00:00.000Z');
+  });
+
+  it('never returns another profile’s snapshot', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'runs-'));
+    await writeSnapshot(dir, { ...snapshot('2026-01-01T00:00:00.000Z', 1), profileId: 'other' });
+
+    expect(await readPreviousSnapshot(dir, 'p', '2026-01-02T00:00:00.000Z')).toBeNull();
+  });
+
+  it('returns null for a directory that does not exist', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'runs-'));
+    expect(await readPreviousSnapshot(join(dir, 'missing'), 'p', '2026-01-02T00:00:00.000Z')).toBeNull();
   });
 });
