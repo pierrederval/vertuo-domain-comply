@@ -1,0 +1,25 @@
+{
+  "id": "corpus-b",
+  "adapter": {
+    "kind": "markdown-frontmatter",
+    "root": "./corpus-b",
+    "moduleIdKey": "zone",
+    "facetKey": "part",
+    "statusKey": "level"
+  },
+  "facets": [
+    { "name": "definitions", "factKind": "Term", "extractor": "heading", "bodyAttribute": "definition" },
+    { "name": "constraints", "factKind": "Rule", "extractor": "heading", "bodyAttribute": "statement" }
+  ],
+  "maturity": { "levels": ["0", "1", "2"], "approvedAtOrAbove": "2" },
+  "statusMappings": [
+    { "match": "0", "maturity": "0", "sources": [] },
+    { "match": "1", "maturity": "1", "sources": ["import"] },
+    { "match": "2", "maturity": "2", "sources": ["import", "signoff"] }
+  ],
+  "criteria": {
+    "Term": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }],
+    "Rule": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }]
+  },
+  "owners": { "one": "quinn", "two": "quinn" }
+}

@@ -10,7 +10,9 @@ import { parseDocument } from './document.js';
 import { extract } from './extractors.js';
 
 function text(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+  if (typeof value === 'string') return value.trim() === '' ? null : value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return null;
 }
 
 export async function loadSeed(profile: Profile): Promise<SeedResult> {

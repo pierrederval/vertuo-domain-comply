@@ -39,6 +39,9 @@ importers:
         specifier: workspace:*
         version: link:../comply-profile
     devDependencies:
+      '@vertuo/comply-ingestion':
+        specifier: workspace:*
+        version: link:../comply-ingestion
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
