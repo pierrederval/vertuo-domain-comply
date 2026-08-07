@@ -1,3 +1,6 @@
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { discoverDocuments } from '@vertuo/comply-ingestion';
@@ -25,6 +28,15 @@ describe('document discovery and parsing', () => {
 
   it('returns null for a document with no frontmatter', async () => {
     const doc = await parseDocument(fixturePath('profile-a.json'));
+    expect(doc).toBeNull();
+  });
+
+  it('returns null for a document with malformed YAML frontmatter, rather than throwing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'comply-ingestion-'));
+    const path = join(dir, 'broken.md');
+    await writeFile(path, '---\narea: [unterminated\n---\nbody\n', 'utf8');
+
+    const doc = await parseDocument(path);
     expect(doc).toBeNull();
   });
 });

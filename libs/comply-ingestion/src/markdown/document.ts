@@ -13,7 +13,12 @@ export async function parseDocument(file: string): Promise<ParsedDocument | null
   const text = await readFile(file, 'utf8');
   if (!text.startsWith('---')) return null;
 
-  const parsed = matter(text);
+  let parsed: matter.GrayMatterFile<string>;
+  try {
+    parsed = matter(text);
+  } catch {
+    return null;
+  }
   if (Object.keys(parsed.data).length === 0) return null;
 
   const consumed = text.slice(0, text.length - parsed.content.length);
