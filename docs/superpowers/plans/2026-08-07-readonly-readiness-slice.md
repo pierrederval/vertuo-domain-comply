@@ -498,6 +498,30 @@ export const profileSchema = z
         });
       }
     }
+    // A Term facet must map onto the core's semantic slots for a term's canonical name
+    // and its definition, so a language-integrity check can find them without guessing
+    // at corpus-specific attribute names.
+    for (const [index, facet] of profile.facets.entries()) {
+      if (facet.factKind !== 'Term') continue;
+      if (facet.extractor === 'table') {
+        const targets = new Set(Object.values(facet.columns ?? {}));
+        for (const required of ['name', 'definition']) {
+          if (!targets.has(required)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['facets', index, 'columns'],
+              message: `Term facet "${facet.name}" has no column mapped to "${required}"`,
+            });
+          }
+        }
+      } else if (facet.bodyAttribute === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, 'bodyAttribute'],
+          message: `Term facet "${facet.name}" must set bodyAttribute to name the attribute holding its definition`,
+        });
+      }
+    }
   });
 
 export type ExtractorName = z.infer<typeof extractorNameSchema>;
@@ -2519,6 +2543,11 @@ Expected: FAIL — cannot resolve the modules.
 
 - [ ] **Step 3: Write `libs/comply-integrity/src/registry.ts`**
 
+`name` and `definition` are core semantic slots that a Profile is *required* to map onto, and that
+requirement is validated when the Profile loads (Task 2). Without that validation this lookup would
+be coincidentally correct: a schema-valid Profile mapping a column to any other attribute would make
+the registry silently return nothing, in the package whose whole job is language integrity.
+
 ```ts
 import type { Corpus } from '@vertuo/comply-core';
 import type { FactId, SourceLocation } from '@vertuo/comply-core';
@@ -2536,9 +2565,11 @@ export interface TermEntry {
 function termAttributes(profile: Profile): { name: string; definition: string } | null {
   const facet = profile.facets.find((f) => f.factKind === 'Term');
   if (facet === undefined) return null;
-  // 'name' and 'definition' are the core's internal attribute names. A Profile maps its
-  // own column headings onto them (table extractor) or names the body attribute directly
-  // (heading extractor). No corpus vocabulary reaches this file.
+  // 'name' and 'definition' are core semantic slots: every Term facet is *required* to map
+  // onto them (table extractor: a column targets each; otherwise: bodyAttribute names the
+  // definition, and the heading extractor emits 'name' itself). comply-profile's schema
+  // validates this at load time (see profile.ts), so by the time a Profile reaches here the
+  // mapping is guaranteed, not assumed. No corpus vocabulary reaches this file.
   return { name: 'name', definition: facet.bodyAttribute ?? 'definition' };
 }
 
@@ -2563,6 +2594,11 @@ export function buildTermRegistry(corpus: Corpus, profile: Profile): TermEntry[]
 
 - [ ] **Step 4: Write `libs/comply-integrity/src/checks/conflicting-definition.ts`**
 
+Entries with an empty definition are excluded from the comparison. A term that is merely undocumented
+in one place is not a term defined two ways, and reporting absence as contradiction is the kind of
+false positive that teaches people to ignore the tool. The exclusion belongs here, not in
+`buildTermRegistry`, which is separately exported.
+
 ```ts
 import type { Corpus } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
@@ -2572,6 +2608,10 @@ import { buildTermRegistry, type TermEntry } from '../registry.js';
 export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Finding[] {
   const byCanonical = new Map<string, TermEntry[]>();
   for (const entry of buildTermRegistry(corpus, profile)) {
+    // An empty definition means "not yet documented here", not "documented as nothing".
+    // That is a well-formedness concern (requiredAttributes), not a language-integrity one —
+    // comparing it against a real definition elsewhere would report absence as contradiction.
+    if (entry.definition === '') continue;
     const bucket = byCanonical.get(entry.canonical) ?? [];
     bucket.push(entry);
     byCanonical.set(entry.canonical, bucket);
