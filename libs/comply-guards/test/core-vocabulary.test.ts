@@ -1,10 +1,14 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { checkCoreVocabulary } from '../src/index.js';
+import { checkCoreVocabulary, REPO_ROOT } from '../src/index.js';
 
 const CORE_ROOTS = [
   'libs/comply-core/src',
   'libs/comply-readiness/src',
   'libs/comply-integrity/src',
+  'libs/comply-ingestion/src',
 ];
 
 describe('LAW-004: the core knows no business', () => {
@@ -34,5 +38,30 @@ describe('LAW-004: the core knows no business', () => {
     );
     expect(violations[0]!.file).toMatch(/^libs\/comply-profile\/src\//);
     expect(violations[0]!.line).toBeGreaterThan(0);
+  });
+
+  it('detects a forbidden term inside a template literal', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'comply-guards-'));
+    try {
+      await writeFile(
+        join(dir, 'leak.ts'),
+        'export const message = `no ${kind} for sprocket`;\n',
+        'utf8',
+      );
+      const violations = await checkCoreVocabulary([relative(REPO_ROOT, dir)], ['sprocket']);
+      expect(violations.length).toBeGreaterThan(0);
+      expect(violations[0]!.term).toBe('sprocket');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('genuinely scans libs/comply-ingestion/src, not merely lists it', async () => {
+    const violations = await checkCoreVocabulary(
+      ['libs/comply-ingestion/src'],
+      ['unknown-status'],
+    );
+    expect(violations.length).toBeGreaterThan(0);
+    expect(violations[0]!.term).toBe('unknown-status');
   });
 });

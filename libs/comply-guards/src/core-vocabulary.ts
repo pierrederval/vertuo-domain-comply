@@ -24,9 +24,12 @@ async function sourceFiles(root: string): Promise<string[]> {
 }
 
 /**
- * Reports any forbidden term appearing inside a string literal under `roots`.
- * Comments and identifiers are ignored: only literals can leak corpus vocabulary
- * into code. `roots` are repo-relative.
+ * Reports any forbidden term appearing inside a string or template literal
+ * under `roots`. Comments and identifiers are ignored: only literals can leak
+ * corpus vocabulary into code. `roots` are repo-relative.
+ *
+ * Known limitation: scanning is line-based, so a forbidden term split across
+ * lines of a multi-line template literal will not be caught.
  */
 export async function checkCoreVocabulary(
   roots: string[],
@@ -42,8 +45,8 @@ export async function checkCoreVocabulary(
         const trimmed = line.trimStart();
         if (trimmed.startsWith('*') || trimmed.startsWith('//')) continue;
 
-        for (const literal of line.matchAll(/'([^']*)'|"([^"]*)"/g)) {
-          const value = (literal[1] ?? literal[2] ?? '').toLowerCase();
+        for (const literal of line.matchAll(/`([^`]*)`|'([^']*)'|"([^"]*)"/g)) {
+          const value = (literal[1] ?? literal[2] ?? literal[3] ?? '').toLowerCase();
           for (const [position, term] of lowered.entries()) {
             if (value.includes(term)) {
               violations.push({
