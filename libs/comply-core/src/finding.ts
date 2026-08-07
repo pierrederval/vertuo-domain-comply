@@ -7,7 +7,8 @@ export type FindingCode =
   | 'missing-owner'
   | 'split-identity'
   | 'broken-reference'
-  | 'conflicting-definition';
+  | 'conflicting-definition'
+  | 'empty-facet';
 
 export interface Finding {
   code: FindingCode;

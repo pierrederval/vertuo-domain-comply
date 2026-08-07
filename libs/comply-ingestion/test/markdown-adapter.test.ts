@@ -1,7 +1,26 @@
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { loadCorpus } from '@vertuo/comply-ingestion';
 import { loadProfile } from '@vertuo/comply-profile';
+import type { Profile } from '@vertuo/comply-profile';
+
+/** A minimal Profile for tests that need their own temporary corpus rather than the shared fixture. */
+function makeProfile(root: string): Profile {
+  return {
+    id: 'temp-corpus',
+    adapter: { kind: 'markdown-frontmatter', root, moduleIdKey: 'area', facetKey: 'kind', statusKey: 'state' },
+    facets: [
+      { name: 'overview', factKind: 'Module', extractor: 'document', bodyAttribute: 'description' },
+      { name: 'terms', factKind: 'Term', extractor: 'table', columns: { Word: 'name', Meaning: 'definition' } },
+    ],
+    maturity: { levels: ['guessed', 'agreed'], approvedAtOrAbove: 'agreed' },
+    statusMappings: [{ match: 'Agreed', maturity: 'agreed', sources: ['review'] }],
+    criteria: {},
+  };
+}
 
 describe('markdown adapter', () => {
   it('imports every facet into typed Facts with origins', async () => {
@@ -40,5 +59,63 @@ describe('markdown adapter', () => {
     expect(unknown.length).toBeGreaterThan(0);
     expect(unknown[0]!.message).toContain('Guess - From System X');
     expect(unknown[0]!.origin.file).toMatch(/\.md$/);
+  });
+
+  it('reports a document that passes every gate but yields no items as an empty-facet Finding', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'comply-ingestion-empty-'));
+    await mkdir(join(root, 'gamma'), { recursive: true });
+    // Frontmatter only, no body content at all — the document extractor yields zero items.
+    await writeFile(
+      join(root, 'gamma', 'overview.md'),
+      '---\narea: gamma\nkind: overview\nstate: Agreed\n---\n',
+      'utf8',
+    );
+
+    const { corpus, findings } = await loadCorpus(makeProfile(root));
+
+    const emptyFacet = findings.filter((f) => f.code === 'empty-facet');
+    expect(emptyFacet).toHaveLength(1);
+    expect(emptyFacet[0]!.moduleId).toBe('gamma');
+    expect(emptyFacet[0]!.message).toContain('overview');
+    expect(emptyFacet[0]!.origin.file).toMatch(/overview\.md$/);
+    expect(emptyFacet[0]!.origin.line).toBeGreaterThan(0);
+
+    // No Module fact was produced, so the module is invisible to moduleIds() — but it is
+    // NOT silently absent: the Finding above names it, which is the whole point of this fix.
+    expect(corpus.moduleIds()).not.toContain('gamma');
+  });
+
+  it('gives distinct Fact ids to two documents mapping to the same (moduleId, facet) pair', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'comply-ingestion-collide-'));
+    await mkdir(join(root, 'alpha'), { recursive: true });
+    await writeFile(
+      join(root, 'alpha', 'terms-1.md'),
+      '---\narea: alpha\nkind: terms\nstate: Agreed\n---\n\n| Word | Meaning |\n| --- | --- |\n| First | One term. |\n',
+      'utf8',
+    );
+    await writeFile(
+      join(root, 'alpha', 'terms-2.md'),
+      '---\narea: alpha\nkind: terms\nstate: Agreed\n---\n\n| Word | Meaning |\n| --- | --- |\n| Second | Another term. |\n',
+      'utf8',
+    );
+
+    const { corpus, findings } = await loadCorpus(makeProfile(root));
+
+    expect(findings.filter((f) => f.code === 'empty-facet')).toHaveLength(0);
+
+    const terms = corpus.byKind('Term');
+    expect(terms).toHaveLength(2);
+    const ids = terms.map((f) => f.id);
+    expect(new Set(ids).size).toBe(2);
+
+    for (const fact of terms) {
+      expect(corpus.find(fact.id)).toBe(fact);
+    }
+
+    const first = corpus.facts.find((f) => f.attributes.name === 'First');
+    const second = corpus.facts.find((f) => f.attributes.name === 'Second');
+    expect(first?.id).not.toBe(second?.id);
+    expect(corpus.find(first!.id)?.attributes.name).toBe('First');
+    expect(corpus.find(second!.id)?.attributes.name).toBe('Second');
   });
 });
