@@ -948,6 +948,9 @@ git commit -m "test: fixture corpus A with deliberate integrity defects"
 
 `libs/comply-ingestion/test/document.test.ts`:
 ```ts
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { discoverDocuments } from '@vertuo/comply-ingestion';
@@ -976,6 +979,13 @@ describe('document discovery and parsing', () => {
   it('returns null for a document with no frontmatter', async () => {
     const doc = await parseDocument(fixturePath('profile-a.json'));
     expect(doc).toBeNull();
+  });
+
+  it('returns null for malformed frontmatter rather than throwing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'doc-'));
+    const file = join(dir, 'broken.md');
+    await writeFile(file, '---\narea: [unterminated\n---\nbody\n', 'utf8');
+    await expect(parseDocument(file)).resolves.toBeNull();
   });
 });
 ```
@@ -1045,7 +1055,15 @@ export async function parseDocument(file: string): Promise<ParsedDocument | null
   const text = await readFile(file, 'utf8');
   if (!text.startsWith('---')) return null;
 
-  const parsed = matter(text);
+  // Malformed frontmatter degrades to null rather than throwing: this tool scans whole
+  // corpora, and one bad document must be reported, not abort the run. `readFile` stays
+  // outside the catch so genuine I/O errors still propagate.
+  let parsed: matter.GrayMatterFile<string>;
+  try {
+    parsed = matter(text);
+  } catch {
+    return null;
+  }
   if (Object.keys(parsed.data).length === 0) return null;
 
   const consumed = text.slice(0, text.length - parsed.content.length);
@@ -1359,7 +1377,7 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
     if (doc === null) {
       findings.push({
         code: 'unparsable-document', moduleId: null,
-        message: `No frontmatter found; the document could not be interpreted`,
+        message: `The document has no readable frontmatter and could not be interpreted`,
         origin: { file, line: 1 },
       });
       continue;
