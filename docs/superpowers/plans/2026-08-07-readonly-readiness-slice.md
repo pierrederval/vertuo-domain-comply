@@ -319,6 +319,7 @@ export type FindingCode =
   | 'unknown-status'
   | 'missing-module-identity'
   | 'missing-owner'
+  | 'empty-facet'
   | 'split-identity'
   | 'broken-reference'
   | 'conflicting-definition';
@@ -1386,6 +1387,14 @@ Expected: FAIL — cannot resolve `libs/comply-ingestion/src/markdown/index.js`.
 
 - [ ] **Step 3: Write `libs/comply-ingestion/src/markdown/index.ts`**
 
+Two properties the first draft lacked. A document that passes every gate but extracts nothing now
+raises an `empty-facet` Finding instead of vanishing — otherwise an empty Module document is
+indistinguishable from an absent one, and empty placeholders are the commonest defect in a real
+corpus. And non-Module Fact ids derive from the document's relative path rather than a document-local
+index, so two documents sharing a `(moduleId, facet)` pair cannot silently overwrite each other in
+`Corpus.find`. Module ids stay exactly `moduleId` — a later task resolves owners via
+`corpus.find(moduleId)`.
+
 ```ts
 import { relative } from 'node:path';
 import { buildCorpus, type Corpus } from '@vertuo/comply-core';
@@ -1393,7 +1402,7 @@ import type { Fact } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
 import { decomposeStatus } from '@vertuo/comply-profile';
 import type { Profile } from '@vertuo/comply-profile';
-import type { SeedResult } from '../adapter.js';
+import type { SeedAdapter, SeedResult } from '../adapter.js';
 import { discoverDocuments } from './discover.js';
 import { parseDocument } from './document.js';
 import { extract } from './extractors.js';
@@ -1408,7 +1417,8 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
   const findings: Finding[] = [];
 
   for (const file of await discoverDocuments(root)) {
-    const containerId = relative(root, file).split('/').slice(0, -1).join('/') || '.';
+    const relativePath = relative(root, file);
+    const containerId = relativePath.split('/').slice(0, -1).join('/') || '.';
     const doc = await parseDocument(file);
 
     if (doc === null) {
@@ -1460,14 +1470,24 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
 
     const owner = ownerKey === undefined ? null : text(doc.data[ownerKey]);
 
-    for (const [index, item] of extract(doc, facet).entries()) {
+    const items = extract(doc, facet);
+    if (items.length === 0) {
+      findings.push({
+        code: 'empty-facet', moduleId,
+        message: `Facet "${facet.name}" produced no content in this document`,
+        origin: { file, line: doc.bodyStartLine },
+      });
+      continue;
+    }
+
+    for (const [index, item] of items.entries()) {
       const attributes = { ...item.attributes };
       if (facet.factKind === 'Module') {
         attributes.name = moduleId;
         if (owner !== null) attributes.owner = owner;
       }
       facts.push({
-        id: facet.factKind === 'Module' ? moduleId : `${moduleId}/${facet.name}/${index}`,
+        id: facet.factKind === 'Module' ? moduleId : `${relativePath}#${index}`,
         kind: facet.factKind,
         moduleId: facet.factKind === 'Module' ? null : moduleId,
         facet: facet.name,
@@ -1484,7 +1504,7 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
   return { facts, findings };
 }
 
-export const markdownAdapter = { load: loadSeed };
+export const markdownAdapter: SeedAdapter = { load: loadSeed };
 
 export async function loadCorpus(
   profile: Profile,
