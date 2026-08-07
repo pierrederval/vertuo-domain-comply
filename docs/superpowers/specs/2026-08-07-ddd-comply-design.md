@@ -129,8 +129,10 @@ The Corpus is an append-only ledger behind a single write interface.
                              └──────────┘      └──────────────┘        │ agent query iface │
                                   ▲                    │               └───────────────────┘
                                   │                    ▼                    read-only,
-                        Checks + human review     audit trail =              regenerable
-                        (Change Request)          the ledger
+                        Propose: Checks +         audit trail =              regenerable
+                        human review              the ledger
+                        Load: one Genesis
+                        record (ADR-0012)
 ```
 
 - A user edit never mutates the Corpus; it opens a **Change Request** — a set of proposed Fact
@@ -154,7 +156,7 @@ by non-engineers. The resulting work must be budgeted, not discovered:
 | --- | --- |
 | History and attribution | Fact-version history interface |
 | Rollback | Reversal-append operation and its interface |
-| Durability | Backup and recovery for the ledger, with stated objectives |
+| Durability | Backup and recovery for the ledger, with stated objectives. Seed export (§8) is the portable half of this. |
 | Engineer and agent access | The published-output pipeline (§7) |
 
 ## 7. Published outputs
@@ -183,8 +185,19 @@ A **Profile** declares how one Corpus is interpreted:
 - the well-formedness criteria (§9);
 - how any composite imported field decomposes into Maturity and Sources.
 
-A **Seed Adapter** reads an external body of knowledge and **proposes** it as a Change Request. An
-import is a proposal like any other — it does not bypass the Door (ADR-0004).
+A **Seed** is a portable serialisation of a whole Corpus, and a **Seed Adapter** translates
+bidirectionally between one external shape and a Seed. Seeds bootstrap an environment, move a Corpus
+between environments, back it up, and set up tests — one mechanism for testing and production alike.
+
+Loading a Seed passes through the Door but is **not** a Change Request. The Door accepts two
+operations: **Propose**, which records one Fact Version per changed Fact, and **Load**, which records
+exactly one **Genesis** entry carrying the Seed's digest and Fact count. Recording a load as one event
+per Fact would bury every real decision under noise the tooling generated about itself (ADR-0012).
+
+Loading is atomic and idempotent by digest. Loading into a Corpus that has diverged since its last
+Genesis is refused unless explicitly forced, after a preview naming what would be discarded. Scheduled
+loading into a diverged Corpus is never permitted — a machine may not discard human decisions on a
+timer.
 
 Every Adapter emits a **parse-failure report**. Anything that does not parse cleanly is a Finding,
 not an error to suppress: irregular sections, inconsistent identifiers, and unrecognised status values

@@ -25,7 +25,7 @@
 Recorded because they depart from a literal reading of the spec, and a reviewer should be able to reject them:
 
 1. **No PostgreSQL.** ADR-0011 mandates it for the ledger; this slice has no ledger. Runs emit disposable JSON snapshots, which LAW-011 explicitly permits. Postgres arrives with the Door in step 3.
-2. **The Seed Adapter produces a read-only projection, not a Change Request.** Spec §8 describes the adapter proposing a Change Request, but the Door does not exist until step 3. `SeedResult` is shaped as the future Change Request payload so step 3 wires it without reshaping.
+2. **The Seed Adapter produces a read-only Corpus projection.** Per ADR-0012 a Seed is transport, not a change: loading one is the Door's `Load` operation and is recorded as a single Genesis entry, never as one Fact Version per Fact. `SeedResult` is therefore shaped as the future `Load` payload — a whole Corpus state plus its Findings — and step 3 wires it to the Door without reshaping. It is never a Change Request.
 3. **CLI only.** The spec's Studio surfaces are step 3+. This slice renders to a terminal and to JSON.
 
 ## Open questions carried, not resolved
@@ -852,8 +852,10 @@ import type { Finding } from '../core/finding.js';
 import type { Profile } from '../profile/profile.js';
 
 /**
- * The payload a Seed Adapter produces. In this slice it is consumed read-only.
- * Step 3 will submit this same shape through the Door as a Change Request.
+ * The payload a Seed Adapter produces: a whole Corpus state, not a set of changes.
+ * In this slice it is consumed read-only. Step 3 will submit this same shape through
+ * the Door's Load operation, recorded as one Genesis entry (ADR-0012) — never as a
+ * Change Request, and never as one event per Fact.
  */
 export interface SeedResult {
   facts: Fact[];

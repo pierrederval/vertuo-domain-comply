@@ -23,8 +23,10 @@ The five most likely to be broken by accident:
    fixed list of document sections, no hardcoded review-status names. If you are about to write a
    domain word into core source, it belongs in a Profile instead. This includes test fixtures that
    quietly assume one corpus's shape.
-2. **One Door** (LAW-002). Never write to the Corpus outside the committed-Change-Request path. Not
-   for imports, not for migrations, not for fixing something quickly.
+2. **One Door** (LAW-002). Never write to the Corpus outside the Door. The Door has exactly two
+   operations: proposing a Change Request, and loading a Seed. Migrations and quick fixes are neither
+   — express them as one of the two or not at all. A Seed load records one Genesis entry, never one
+   event per Fact (ADR-0012).
 3. **Append-only** (LAW-003). No `UPDATE`, no `DELETE` against Fact versions. Corrections append.
 4. **Business language at the surface** (LAW-010). Never let *commit*, *branch*, *schema*, *parse*,
    *index*, *repository*, *migration*, or *null* reach a business-facing label, error, or empty state.

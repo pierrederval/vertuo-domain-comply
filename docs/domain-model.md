@@ -63,8 +63,12 @@ This is the context most exposed to natural language, and therefore the one most
 
 *Brings knowledge in.*
 
-Owns Profiles and Seed Adapters. Reads an external body of knowledge and proposes it as a Change
-Request. It never writes to the Corpus directly — an import is a proposal like any other.
+Owns Profiles and Seed Adapters. Translates bidirectionally between an external shape and a Seed —
+a portable serialisation of a whole Corpus.
+
+A Seed load is not a proposal. It passes through the Door, but as the `Load` operation, recorded as a
+single Genesis entry rather than one Fact Version per Fact (ADR-0012). Loading is atomic, idempotent
+by digest, and refused against a diverged Corpus unless explicitly forced.
 
 Every business-specific assumption in the system is confined to this context.
 
@@ -82,7 +86,7 @@ Everything here is disposable and rebuildable (LAW-011).
 
 | From | To | Nature |
 | --- | --- | --- |
-| Ingestion | Change Control | Conforms to the Change Request contract; no special privileges for any Adapter |
+| Ingestion | Change Control | Submits Seeds to the Door's `Load` operation; no special privileges for any Adapter |
 | Change Control | Corpus | Sole writer, through the Door |
 | Readiness | Corpus | Read-only consumer |
 | Language Integrity | Corpus | Read-only consumer |
