@@ -64,8 +64,14 @@ export function renderMatrix(
  */
 export function renderFindings(findings: Finding[], corpusRoot: string): string {
   if (findings.length === 0) return 'No findings.';
-  const lines = findings.map(
-    (f) => `  [${f.code}] ${relative(corpusRoot, f.origin.file)}:${f.origin.line}\n      ${f.message}`,
-  );
+  const lines = findings.map((f) => {
+    const related = (f.relatedOrigins ?? [])
+      .map((o) => `        also: ${relative(corpusRoot, o.file)}:${o.line}`)
+      .join('\n');
+    return (
+      `  [${f.code}] ${relative(corpusRoot, f.origin.file)}:${f.origin.line}\n      ${f.message}` +
+      (related === '' ? '' : `\n${related}`)
+    );
+  });
   return [`Findings (${findings.length}):`, ...lines].join('\n');
 }

@@ -15,4 +15,11 @@ export interface Finding {
   message: string;
   moduleId: FactId | null;
   origin: SourceLocation;
+  /**
+   * Further locations this finding concerns, beyond its primary `origin`
+   * (e.g. the other places a conflicting definition appears). A check
+   * reports locations as data; formatting them into text is the renderer's
+   * decision, not the check's (LAW-009 evidence stays structured).
+   */
+  relatedOrigins?: SourceLocation[];
 }

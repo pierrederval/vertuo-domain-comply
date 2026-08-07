@@ -51,7 +51,7 @@ describe('conflicting definition check', () => {
       .toEqual(['Cog', 'Sprocket', 'Widget', 'Widget']);
   });
 
-  it('reports one Term defined two different ways, citing both places', async () => {
+  it('reports one Term defined two different ways, carrying the other location as data, not prose', async () => {
     const profile = await loadProfile(fixturePath('profile-a.json'));
     const { corpus } = await loadCorpus(profile);
     const findings = checkConflictingDefinition(corpus, profile);
@@ -59,8 +59,14 @@ describe('conflicting definition check', () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]!.code).toBe('conflicting-definition');
     expect(findings[0]!.message).toContain('Widget');
-    expect(findings[0]!.message).toContain('beta/terms.md');
+    // The check states the claim only — it must not format a path into the message.
+    // Rendering a location is the renderer's decision (see apps/comply-cli/src/render.ts).
+    expect(findings[0]!.message).not.toContain('/');
     expect(findings[0]!.origin.file).toContain('alpha/terms.md');
+    expect(findings[0]!.relatedOrigins).toBeDefined();
+    expect(findings[0]!.relatedOrigins).toHaveLength(1);
+    expect(findings[0]!.relatedOrigins![0]!.file).toContain('beta/terms.md');
+    expect(findings[0]!.relatedOrigins![0]!.line).toBe(9);
   });
 
   it('reports nothing when every Term is defined once', async () => {
@@ -86,6 +92,7 @@ describe('conflicting definition check', () => {
     const findings = checkConflictingDefinition(corpus, inlineProfile);
     expect(findings).toHaveLength(1);
     expect(findings[0]!.message).toContain('Gear');
-    expect(findings[0]!.message).toContain('gamma/terms.md');
+    expect(findings[0]!.relatedOrigins).toHaveLength(1);
+    expect(findings[0]!.relatedOrigins![0]!.file).toBe('gamma/terms.md');
   });
 });

@@ -35,4 +35,22 @@ describe('rendering', () => {
     expect(out).toContain('[split-identity] beta/terms.md');
     expect(out).not.toContain('[split-identity] /');
   });
+
+  it('renders each related origin on its own line, relative to the corpus root, with no absolute path anywhere', async () => {
+    const profile = await loadProfile(fixturePath('profile-a.json'));
+    const { corpus } = await loadCorpus(profile);
+    const out = renderFindings(runChecks(corpus, profile), profile.adapter.root);
+
+    const conflictLine = out
+      .split('\n')
+      .findIndex((line) => line.includes('[conflicting-definition]'));
+    expect(conflictLine).toBeGreaterThan(-1);
+    // The line after the message must carry the other definition's location,
+    // relativised exactly like the primary origin.
+    const relatedLine = out.split('\n')[conflictLine + 2];
+    expect(relatedLine).toContain('beta/terms.md:9');
+    expect(relatedLine).not.toContain(profile.adapter.root);
+
+    expect(out).not.toContain(profile.adapter.root);
+  });
 });

@@ -24,10 +24,9 @@ export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Fi
     findings.push({
       code: 'conflicting-definition',
       moduleId: first!.moduleId,
-      message:
-        `Term "${canonical}" is defined ${distinct.size} different ways; also defined at ` +
-        rest.map((e) => `${e.origin.file}:${e.origin.line}`).join(', '),
+      message: `Term "${canonical}" is defined ${distinct.size} different ways`,
       origin: first!.origin,
+      relatedOrigins: rest.map((e) => e.origin),
     });
   }
   return findings;
