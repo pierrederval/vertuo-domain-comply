@@ -18,5 +18,6 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0008](./0008-rename-classifies-before-it-applies.md) | Rename classifies every occurrence before applying any |
 | [0009](./0009-no-code-generation-or-code-conformance.md) | No code generation and no application-code conformance |
 | [0010](./0010-findings-route-to-a-named-owner.md) | Every Module has a named Owner and every Finding routes to one |
-| [0011](./0011-toolchain.md) | TypeScript, PostgreSQL, React, shared design system |
+| [0011](./0011-toolchain.md) | ~~TypeScript, PostgreSQL, React, shared design system~~ *(superseded by 0013)* |
 | [0012](./0012-seed-is-transport-not-change.md) | A Seed is transport, not a change *(amends 0004)* |
+| [0013](./0013-technical-stack.md) | Technical stack *(supersedes 0011)* |

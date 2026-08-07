@@ -50,6 +50,19 @@ against one shape, the shape has leaked into the core.
 
 ## Toolchain
 
-TypeScript, PostgreSQL, React, consuming the shared design system and API contract packages
-(ADR-0011). The application is not yet scaffolded; this file gains its build, test, and lint commands
-in the change that scaffolds it.
+TypeScript on Node 24 with `tsx`, a pnpm workspace over `apps/*` and `libs/*` orchestrated by
+Turborepo, PostgreSQL via Kysely, Zod for validation and contracts, Fastify for HTTP, React 19 with
+Vite and the shared design system, Vitest for tests, Docker to deploy (ADR-0013).
+
+Two rules that are easy to break:
+
+- **Only `libs/system-db` may import Kysely or open a connection.** Any other package touching the
+  database directly is a defect.
+- **Ledger tables reject `UPDATE` and `DELETE` at the database** — the application role has no such
+  grant, and a trigger backs it up. Do not attempt to work around this; it is LAW-003 made
+  structural.
+
+One library per bounded context, so the domain model's boundaries are enforced by the package graph.
+
+The application is not yet scaffolded; this file gains its build, test, and lint commands in the
+change that scaffolds it.
