@@ -20,7 +20,8 @@
 - Node `>=24`, `pnpm@10`, `"type": "module"`, TypeScript `strict: true` and `noUncheckedIndexedAccess: true`.
 - **One library per bounded context** (ADR-0013). Cross-context imports use the package name; a package may not reach into another's `src/`. The package graph enforces the domain model.
 - **Every package exposes a barrel `src/index.ts`** re-exporting the symbols its Interfaces block names. Other packages import the barrel only.
-- **A workspace package used only by tests belongs in `devDependencies`,** not `dependencies`. Fixtures and the ingestion adapter are test-only for the readiness and integrity libraries.
+- **A workspace package used only by tests belongs in `devDependencies`,** not `dependencies`.
+- **A test lives in the package whose behaviour it exercises,** not in the package supplying its data. `comply-fixtures` is a leaf: it publishes paths and owns no behaviour, and nothing may depend on it in both directions. Fixtures and the ingestion adapter are test-only for the readiness and integrity libraries.
 - **A task adding a file to an existing package must re-export it from that package's barrel**, in the same commit — and must stage the barrel alongside its other files. Downstream tasks import through the barrel and cannot see your file otherwise. Each task's Files block names the exact export line to add.
 - **Zod is the single definition of a shape.** A hand-written type where a Zod schema exists is duplication.
 - Test command from the repo root: `pnpm test` (Turborepo, every package) and `pnpm typecheck`. Turborepo does **not** forward file arguments, so to run one file use `pnpm --filter @vertuo/<package> test <path-relative-to-that-package>`.
@@ -1533,7 +1534,7 @@ git commit -m "feat: assemble markdown adapter with parse-failure findings"
 **Files:**
 - Create: `libs/comply-fixtures/corpus/corpus-b/one.md`, `libs/comply-fixtures/corpus/corpus-b/two.md`, `libs/comply-fixtures/corpus/corpus-b/three.md`
 - Create: `libs/comply-fixtures/corpus/profile-b.json`
-- Test: `libs/comply-fixtures/test/two-corpus.test.ts`
+- Test: `libs/comply-ingestion/test/two-corpus.test.ts`
 
 **Interfaces:**
 - Consumes: `loadProfile`, `loadCorpus`.
@@ -1620,7 +1621,7 @@ Note: corpus B has no `Module` facet at all, so `moduleIds()` will be empty. Tas
 
 - [ ] **Step 3: Write the test**
 
-`libs/comply-fixtures/test/two-corpus.test.ts`:
+`libs/comply-ingestion/test/two-corpus.test.ts`:
 ```ts
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
@@ -1650,7 +1651,7 @@ describe('two-corpus rule (ADR-0001)', () => {
 
 - [ ] **Step 4: Run test to verify it fails**
 
-Run: `pnpm --filter @vertuo/comply-fixtures test test/two-corpus.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/two-corpus.test.ts`
 Expected: FAIL — `level: 2` parses as a number, so `text()` returns null and the status is never decomposed.
 
 - [ ] **Step 5: Fix the leak in `libs/comply-ingestion/src/markdown/index.ts`**
@@ -1673,7 +1674,7 @@ Expected: all PASS, both corpora.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add libs/comply-fixtures pnpm-lock.yaml/corpus/corpus-b libs/comply-fixtures/corpus/profile-b.json libs/comply-fixtures/test/two-corpus.test.ts libs/comply-ingestion/src/markdown/index.ts
+git add libs/comply-fixtures pnpm-lock.yaml/corpus/corpus-b libs/comply-fixtures/corpus/profile-b.json libs/comply-ingestion/test/two-corpus.test.ts libs/comply-ingestion/src/markdown/index.ts
 git commit -m "test: dissimilar fixture corpus B, enforcing the two-corpus rule"
 ```
 
