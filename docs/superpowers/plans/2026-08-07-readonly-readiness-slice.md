@@ -21,7 +21,7 @@
 - **One library per bounded context** (ADR-0013). Cross-context imports use the package name; a package may not reach into another's `src/`. The package graph enforces the domain model.
 - **Every package exposes a barrel `src/index.ts`** re-exporting the symbols its Interfaces block names. Other packages import the barrel only.
 - **A workspace package used only by tests belongs in `devDependencies`,** not `dependencies`. Fixtures and the ingestion adapter are test-only for the readiness and integrity libraries.
-- **A task adding a file to an existing package must re-export it from that package's barrel**, in the same commit. Downstream tasks import through the barrel and cannot see your file otherwise. Each task's Files block names the exact export line to add.
+- **A task adding a file to an existing package must re-export it from that package's barrel**, in the same commit — and must stage the barrel alongside its other files. Downstream tasks import through the barrel and cannot see your file otherwise. Each task's Files block names the exact export line to add.
 - **Zod is the single definition of a shape.** A hand-written type where a Zod schema exists is duplication.
 - Test command from the repo root: `pnpm test` (Turborepo, every package) and `pnpm typecheck`. Turborepo does **not** forward file arguments, so to run one file use `pnpm --filter @vertuo/<package> test <path-relative-to-that-package>`.
 - A task that creates a new package commits that package's manifest and the updated `pnpm-lock.yaml` alongside its source, or the package is not a workspace member.
@@ -748,7 +748,7 @@ Expected: 4 tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-core/src/corpus.ts libs/comply-core/test/corpus.test.ts
+git add libs/comply-core/src/corpus.ts libs/comply-core/test/corpus.test.ts libs/comply-core/src/index.ts
 git commit -m "feat: read-only Corpus projection with lookups"
 ```
 
@@ -1310,7 +1310,7 @@ Expected: 3 tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-ingestion/src/markdown/extractors.ts libs/comply-ingestion/test/extractors.test.ts
+git add libs/comply-ingestion/src/markdown/extractors.ts libs/comply-ingestion/test/extractors.test.ts libs/comply-ingestion/src/index.ts
 git commit -m "feat: document, table, and heading body extractors"
 ```
 
@@ -1502,7 +1502,7 @@ Expected: all PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-ingestion/src/markdown/index.ts libs/comply-ingestion/test/markdown-adapter.test.ts
+git add libs/comply-ingestion/src/markdown/index.ts libs/comply-ingestion/test/markdown-adapter.test.ts libs/comply-ingestion/src/index.ts
 git commit -m "feat: assemble markdown adapter with parse-failure findings"
 ```
 
@@ -1971,7 +1971,7 @@ Expected: 3 tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-readiness/src/owner.ts libs/comply-readiness/test/owner.test.ts
+git add libs/comply-readiness/src/owner.ts libs/comply-readiness/test/owner.test.ts libs/comply-readiness/src/index.ts
 git commit -m "feat: Module Owner resolution with missing-owner findings"
 ```
 
@@ -2158,7 +2158,7 @@ Expected: all PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add libs/comply-readiness/src/matrix.ts libs/comply-readiness/src/score.ts libs/comply-readiness/test/matrix.test.ts
+git add libs/comply-readiness/src/matrix.ts libs/comply-readiness/src/score.ts libs/comply-readiness/test/matrix.test.ts libs/comply-readiness/src/index.ts
 git commit -m "feat: Readiness Matrix and per-module scoring with denominators"
 ```
 
@@ -2297,7 +2297,7 @@ Expected: 4 tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-readiness/src/snapshot.ts libs/comply-readiness/test/snapshot.test.ts
+git add libs/comply-readiness/src/snapshot.ts libs/comply-readiness/test/snapshot.test.ts libs/comply-readiness/src/index.ts
 git commit -m "feat: disposable run snapshots and per-module trend"
 ```
 
@@ -2555,7 +2555,7 @@ Expected: 2 tests PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-integrity/src/checks/split-identity.ts libs/comply-integrity/test/split-identity.test.ts
+git add libs/comply-integrity/src/checks/split-identity.ts libs/comply-integrity/test/split-identity.test.ts libs/comply-integrity/src/index.ts
 git commit -m "feat: split-identity check over adapter-reported containers"
 ```
 
@@ -2704,7 +2704,7 @@ Expected: all PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add libs/comply-integrity/src/checks/broken-reference.ts libs/comply-integrity/src/run.ts libs/comply-integrity/test
+git add libs/comply-integrity/src/checks/broken-reference.ts libs/comply-integrity/src/run.ts libs/comply-integrity/test libs/comply-integrity/src/index.ts
 git commit -m "feat: broken-reference check and integrity check runner"
 ```
 
