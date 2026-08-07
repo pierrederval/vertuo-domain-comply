@@ -33,7 +33,12 @@ checks.
 **Why.** Every guarantee in this document is enforced at the door. A second entrance does not weaken
 the guarantees by half; it removes them, because no reader can any longer assume they held.
 
-**Broken when.** A row appears in the ledger that no Change Request produced.
+**Broken when.** A row appears in the ledger that no operation of the Door produced.
+
+**Scope note.** The Door governs *which path may write*, not *at what granularity a write is
+recorded*. It accepts two operations: proposing a Change Request, which records one Fact Version per
+changed Fact, and loading a Seed, which records exactly one Genesis entry for the whole Corpus. Both
+pass through the Door. Neither is a second path. See ADR-0012.
 
 ---
 

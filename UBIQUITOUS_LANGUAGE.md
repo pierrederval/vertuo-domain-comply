@@ -130,10 +130,25 @@ The declaration of how one Corpus is to be interpreted: its Facets, its Maturity
 and word-formation rules, its well-formedness criteria. Everything business-specific lives here, so
 that none of it lives in the core (LAW-004).
 
+### Seed
+
+A portable serialisation of a whole Corpus. Loading one establishes or replaces Corpus state;
+exporting one writes that state back out. Seeds bootstrap an environment, move a Corpus between
+environments, back it up, and set up tests — the same mechanism in every case.
+
+A Seed is a technical artifact, never a business-facing surface. It is not a Change Request and does
+not represent anyone's decision (ADR-0012).
+
 ### Seed Adapter
 
-An importer that reads an existing body of knowledge and proposes it as Facts. One Adapter per source
-shape. No Adapter is privileged; the first is not the model for the rest.
+A bidirectional translator between one external shape and a Seed. It imports and it exports. One
+Adapter per shape. No Adapter is privileged; the first is not the model for the rest.
+
+### Genesis
+
+The single record written when a Seed is loaded, carrying the Seed's digest, the Fact count, the
+actor, and the time. One Genesis per load — never one event per Fact, which would drown the audit
+trail in noise the tooling generated about itself.
 
 ### Published Output
 
