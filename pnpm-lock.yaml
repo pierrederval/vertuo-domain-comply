@@ -33,6 +33,19 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@24.13.3)
 
+  libs/comply-fixtures:
+    dependencies:
+      '@vertuo/comply-profile':
+        specifier: workspace:*
+        version: link:../comply-profile
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@24.13.3)
+
   libs/comply-profile:
     dependencies:
       '@vertuo/comply-core':
