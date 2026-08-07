@@ -20,6 +20,7 @@
 - Node `>=24`, `pnpm@10`, `"type": "module"`, TypeScript `strict: true` and `noUncheckedIndexedAccess: true`.
 - **One library per bounded context** (ADR-0013). Cross-context imports use the package name; a package may not reach into another's `src/`. The package graph enforces the domain model.
 - **Every package exposes a barrel `src/index.ts`** re-exporting the symbols its Interfaces block names. Other packages import the barrel only.
+- **A task adding a file to an existing package must re-export it from that package's barrel**, in the same commit. Downstream tasks import through the barrel and cannot see your file otherwise. Each task's Files block names the exact export line to add.
 - **Zod is the single definition of a shape.** A hand-written type where a Zod schema exists is duplication.
 - Test command from the repo root: `pnpm test` (Turborepo, every package) and `pnpm typecheck`. Turborepo does **not** forward file arguments, so to run one file use `pnpm --filter @vertuo/<package> test <path-relative-to-that-package>`.
 - A task that creates a new package commits that package's manifest and the updated `pnpm-lock.yaml` alongside its source, or the package is not a workspace member.
@@ -645,6 +646,7 @@ git commit -m "feat: Profile model, loader, and maturity/source decomposition"
 
 **Files:**
 - Create: `libs/comply-core/src/corpus.ts`
+- Modify: `libs/comply-core/src/index.ts` — barrel, add `export * from './corpus.js';`
 - Test: `libs/comply-core/test/corpus.test.ts`
 
 **Interfaces:**
@@ -934,6 +936,7 @@ git commit -m "test: fixture corpus A with deliberate integrity defects"
 **Files:**
 - Create: `libs/comply-ingestion/package.json`, `libs/comply-ingestion/tsconfig.json`, `libs/comply-ingestion/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"gray-matter": "^4.0.3"`
 - Create: `libs/comply-ingestion/src/adapter.ts`, `libs/comply-ingestion/src/markdown/discover.ts`, `libs/comply-ingestion/src/markdown/document.ts`
+- Create: `libs/comply-ingestion/src/index.ts` — barrel, containing `export * from './adapter.js'; export * from './markdown/discover.js'; export * from './markdown/document.js';`
 - Test: `libs/comply-ingestion/test/document.test.ts`
 
 **Interfaces:**
@@ -1074,6 +1077,7 @@ git commit -m "feat: markdown document discovery and frontmatter parsing"
 
 **Files:**
 - Create: `libs/comply-ingestion/src/markdown/extractors.ts`
+- Modify: `libs/comply-ingestion/src/index.ts` — barrel, add `export * from './markdown/extractors.js';`
 - Test: `libs/comply-ingestion/test/extractors.test.ts`
 
 **Interfaces:**
@@ -1260,6 +1264,7 @@ git commit -m "feat: document, table, and heading body extractors"
 
 **Files:**
 - Create: `libs/comply-ingestion/src/markdown/index.ts`
+- Modify: `libs/comply-ingestion/src/index.ts` — barrel, add `export * from './markdown/index.js';`
 - Test: `libs/comply-ingestion/test/markdown-adapter.test.ts`
 
 **Interfaces:**
@@ -1603,6 +1608,7 @@ git commit -m "test: dissimilar fixture corpus B, enforcing the two-corpus rule"
 **Files:**
 - Create: `libs/comply-readiness/package.json`, `libs/comply-readiness/tsconfig.json`, `libs/comply-readiness/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`
 - Create: `libs/comply-readiness/src/wellformed.ts`
+- Create: `libs/comply-readiness/src/index.ts` — barrel, containing `export * from './wellformed.js';`
 - Test: `libs/comply-readiness/test/wellformed.test.ts`
 
 **Interfaces:**
@@ -1802,6 +1808,7 @@ git commit -m "feat: profile-driven well-formedness criteria engine"
 
 **Files:**
 - Create: `libs/comply-readiness/src/owner.ts`
+- Modify: `libs/comply-readiness/src/index.ts` — barrel, add `export * from './owner.js';`
 - Test: `libs/comply-readiness/test/owner.test.ts`
 
 **Interfaces:**
@@ -1918,6 +1925,7 @@ git commit -m "feat: Module Owner resolution with missing-owner findings"
 
 **Files:**
 - Create: `libs/comply-readiness/src/matrix.ts`, `libs/comply-readiness/src/score.ts`
+- Modify: `libs/comply-readiness/src/index.ts` — barrel, add `export * from './matrix.js'; export * from './score.js';`
 - Test: `libs/comply-readiness/test/matrix.test.ts`
 
 **Interfaces:**
@@ -2104,6 +2112,7 @@ git commit -m "feat: Readiness Matrix and per-module scoring with denominators"
 
 **Files:**
 - Create: `libs/comply-readiness/src/snapshot.ts`
+- Modify: `libs/comply-readiness/src/index.ts` — barrel, add `export * from './snapshot.js';`
 - Test: `libs/comply-readiness/test/snapshot.test.ts`
 
 **Interfaces:**
@@ -2243,6 +2252,7 @@ git commit -m "feat: disposable run snapshots and per-module trend"
 **Files:**
 - Create: `libs/comply-integrity/package.json`, `libs/comply-integrity/tsconfig.json`, `libs/comply-integrity/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`
 - Create: `libs/comply-integrity/src/registry.ts`, `libs/comply-integrity/src/checks/conflicting-definition.ts`
+- Create: `libs/comply-integrity/src/index.ts` — barrel, containing `export * from './registry.js'; export * from './checks/conflicting-definition.js';`
 - Test: `libs/comply-integrity/test/conflicting-definition.test.ts`
 
 **Interfaces:**
@@ -2392,6 +2402,7 @@ git commit -m "feat: term registry and conflicting-definition check"
 
 **Files:**
 - Create: `libs/comply-integrity/src/checks/split-identity.ts`
+- Modify: `libs/comply-integrity/src/index.ts` — barrel, add `export * from './checks/split-identity.js';`
 - Test: `libs/comply-integrity/test/split-identity.test.ts`
 
 **Interfaces:**
@@ -2498,6 +2509,7 @@ git commit -m "feat: split-identity check over adapter-reported containers"
 
 **Files:**
 - Create: `libs/comply-integrity/src/checks/broken-reference.ts`, `libs/comply-integrity/src/run.ts`
+- Modify: `libs/comply-integrity/src/index.ts` — barrel, add `export * from './checks/broken-reference.js'; export * from './run.js';`
 - Test: `libs/comply-integrity/test/broken-reference.test.ts`, `libs/comply-integrity/test/run.test.ts`
 
 **Interfaces:**
