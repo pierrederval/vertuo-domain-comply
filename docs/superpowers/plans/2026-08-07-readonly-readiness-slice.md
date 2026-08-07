@@ -320,16 +320,23 @@ export type FindingCode =
   | 'unknown-status'
   | 'missing-module-identity'
   | 'missing-owner'
-  | 'empty-facet'
   | 'split-identity'
   | 'broken-reference'
-  | 'conflicting-definition';
+  | 'conflicting-definition'
+  | 'empty-facet';
 
 export interface Finding {
   code: FindingCode;
   message: string;
   moduleId: FactId | null;
   origin: SourceLocation;
+  /**
+   * Further locations this finding concerns, beyond its primary `origin`
+   * (e.g. the other places a conflicting definition appears). A check
+   * reports locations as data; formatting them into text is the renderer's
+   * decision, not the check's (LAW-009 evidence stays structured).
+   */
+  relatedOrigins?: SourceLocation[];
 }
 ```
 
@@ -2626,10 +2633,9 @@ export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Fi
     findings.push({
       code: 'conflicting-definition',
       moduleId: first!.moduleId,
-      message:
-        `Term "${canonical}" is defined ${distinct.size} different ways; also defined at ` +
-        rest.map((e) => `${e.origin.file}:${e.origin.line}`).join(', '),
+      message: `Term "${canonical}" is defined ${distinct.size} different ways`,
       origin: first!.origin,
+      relatedOrigins: rest.map((e) => e.origin),
     });
   }
   return findings;
@@ -3021,7 +3027,13 @@ Expected: FAIL — cannot resolve `apps/comply-cli/src/render.js`.
 
 - [ ] **Step 3: Write `apps/comply-cli/src/render.ts`**
 
+Every displayed path is relative to the corpus root. Absolute paths cannot be shared, diffed between
+machines, or pasted into a ticket, and for a tool whose product *is* a report that is a defect rather
+than a cosmetic. Relatedly, no check formats a path into prose: findings carry `relatedOrigins` as
+locations, and the renderer decides how they appear.
+
 ```ts
+import { relative } from 'node:path';
 import type { Finding } from '@vertuo/comply-core';
 import type { FacetState, Matrix } from '@vertuo/comply-readiness';
 import type { ModuleScore } from '@vertuo/comply-readiness';
@@ -3078,11 +3090,24 @@ export function renderMatrix(
   ].join('\n');
 }
 
-export function renderFindings(findings: Finding[]): string {
+/**
+ * `corpusRoot` is the Profile's resolved adapter root (`profile.adapter.root`).
+ * Origins are stored as absolute paths internally (LAW-009 needs a path a human
+ * can open), but displaying that absolute path bakes the machine it ran on into
+ * the output — it can't be shared, diffed across machines, or pasted into a
+ * ticket. Rendering relativises against the corpus root; nothing upstream changes.
+ */
+export function renderFindings(findings: Finding[], corpusRoot: string): string {
   if (findings.length === 0) return 'No findings.';
-  const lines = findings.map(
-    (f) => `  [${f.code}] ${f.origin.file}:${f.origin.line}\n      ${f.message}`,
-  );
+  const lines = findings.map((f) => {
+    const related = (f.relatedOrigins ?? [])
+      .map((o) => `        also: ${relative(corpusRoot, o.file)}:${o.line}`)
+      .join('\n');
+    return (
+      `  [${f.code}] ${relative(corpusRoot, f.origin.file)}:${f.origin.line}\n      ${f.message}` +
+      (related === '' ? '' : `\n${related}`)
+    );
+  });
   return [`Findings (${findings.length}):`, ...lines].join('\n');
 }
 ```
