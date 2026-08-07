@@ -91,7 +91,7 @@ imports from a context it should not depend on fails to resolve.
 | `libs/comply-integrity` | Term registry and the three exact-match Checks. |
 | `libs/comply-fixtures` | Both fixture corpora and their Profiles, exporting resolved absolute paths so tests work from any package's working directory. |
 | `apps/comply-cli` | Rendering and the entry point. |
-| `scripts/check-core-vocabulary.mjs` | The LAW-004 guard. |
+| `libs/comply-guards` | The LAW-004 guard: a scanner that fails the build when corpus vocabulary appears in core source. A package, so that `turbo test` runs it. |
 
 Files within each package follow the same one-responsibility rule: `fact.ts`, `finding.ts`,
 `corpus.ts` in core; `profile.ts`, `load.ts`, `maturity.ts` in profile; and so on. Each package has a
@@ -2836,24 +2836,28 @@ git commit -m "feat: CLI rendering the Readiness Matrix and findings"
 ### Task 17: LAW-004 guard
 
 **Files:**
-- Create: `scripts/check-core-vocabulary.mjs`
-- Modify: `package.json` (add `lint:law004` script, add it to `test`)
-- Test: `tests/law/core-vocabulary.test.ts`
+- Create: `libs/comply-guards/package.json`, `libs/comply-guards/tsconfig.json`, `libs/comply-guards/vitest.config.ts` — Package template, no dependencies
+- Create: `libs/comply-guards/src/core-vocabulary.ts`, `libs/comply-guards/src/index.ts`
+- Test: `libs/comply-guards/test/core-vocabulary.test.ts`
 
 **Interfaces:**
-- Consumes: nothing at runtime.
-- Produces: `checkCoreVocabulary(roots, forbidden): Violation[]` exported from the script for direct testing.
+- Consumes: nothing. It reads source files from disk and imports no workspace package.
+- Produces: package `@vertuo/comply-guards` exporting `Violation { file, line, term }`, `REPO_ROOT`, and `checkCoreVocabulary(roots, forbidden): Promise<Violation[]>`, where `roots` are repo-relative paths.
 
-This is what turns "the core knows no business" from an intention into something that fails. It scans core directories for any string literal drawn from a fixture corpus's vocabulary.
+This is what turns "the core knows no business" from an intention into something that fails a build. It is a package rather than a loose script for one reason: `turbo test` runs package test scripts, so a guard living outside a package would never execute.
 
 - [ ] **Step 1: Write the failing test**
 
-`tests/law/core-vocabulary.test.ts`:
+`libs/comply-guards/test/core-vocabulary.test.ts`:
 ```ts
 import { describe, expect, it } from 'vitest';
-import { checkCoreVocabulary } from '../../scripts/check-core-vocabulary.mjs';
+import { checkCoreVocabulary } from '../src/index.js';
 
-const CORE_ROOTS = ['libs/comply-core/src', 'libs/comply-readiness/src', 'libs/comply-integrity/src'];
+const CORE_ROOTS = [
+  'libs/comply-core/src',
+  'libs/comply-readiness/src',
+  'libs/comply-integrity/src',
+];
 
 describe('LAW-004: the core knows no business', () => {
   it('finds no fixture vocabulary in core source', async () => {
@@ -2867,28 +2871,52 @@ describe('LAW-004: the core knows no business', () => {
   });
 
   it('detects a planted violation', async () => {
-    const violations = await checkCoreVocabulary(['libs/comply-profile/src'], ['markdown-frontmatter']);
+    const violations = await checkCoreVocabulary(
+      ['libs/comply-profile/src'],
+      ['markdown-frontmatter'],
+    );
     expect(violations.length).toBeGreaterThan(0);
     expect(violations[0]!.term).toBe('markdown-frontmatter');
+  });
+
+  it('reports the offending location so a human can open it', async () => {
+    const violations = await checkCoreVocabulary(
+      ['libs/comply-profile/src'],
+      ['markdown-frontmatter'],
+    );
+    expect(violations[0]!.file).toMatch(/^libs\/comply-profile\/src\//);
+    expect(violations[0]!.line).toBeGreaterThan(0);
   });
 });
 ```
 
-The second test uses `libs/comply-profile/src` deliberately: adapter-kind names legitimately live there, which proves the scanner detects real matches rather than always returning empty.
+The second and third tests scan `libs/comply-profile/src` deliberately: adapter-kind names legitimately live there, which proves the scanner detects real matches rather than vacuously returning empty.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test`  (root-level guard test; no package filter applies)
-Expected: FAIL — cannot resolve the script.
+Run: `pnpm --filter @vertuo/comply-guards test`
+Expected: FAIL — cannot resolve `../src/index.js`.
 
-- [ ] **Step 3: Write `scripts/check-core-vocabulary.mjs`**
+- [ ] **Step 3: Write `libs/comply-guards/src/core-vocabulary.ts`**
 
-```js
+```ts
 import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-async function sourceFiles(root) {
-  const found = [];
+/** Resolved from this file, so the guard works from any working directory. */
+export const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+
+export interface Violation {
+  /** Repo-relative, so the report reads the same wherever it was run from. */
+  file: string;
+  /** 1-indexed. */
+  line: number;
+  term: string;
+}
+
+async function sourceFiles(root: string): Promise<string[]> {
+  const found: string[] = [];
   for (const entry of await readdir(root, { withFileTypes: true })) {
     const path = join(root, entry.name);
     if (entry.isDirectory()) found.push(...(await sourceFiles(path)));
@@ -2898,23 +2926,33 @@ async function sourceFiles(root) {
 }
 
 /**
- * Reports any forbidden term appearing in a string literal in core source.
- * Comments and identifiers are ignored; only literals can leak corpus vocabulary.
+ * Reports any forbidden term appearing inside a string literal under `roots`.
+ * Comments and identifiers are ignored: only literals can leak corpus vocabulary
+ * into code. `roots` are repo-relative.
  */
-export async function checkCoreVocabulary(roots, forbidden) {
-  const violations = [];
-  const lowered = forbidden.map((t) => t.toLowerCase());
+export async function checkCoreVocabulary(
+  roots: string[],
+  forbidden: string[],
+): Promise<Violation[]> {
+  const violations: Violation[] = [];
+  const lowered = forbidden.map((term) => term.toLowerCase());
 
   for (const root of roots) {
-    for (const file of await sourceFiles(root)) {
+    for (const file of await sourceFiles(join(REPO_ROOT, root))) {
       const lines = (await readFile(file, 'utf8')).split('\n');
       for (const [index, line] of lines.entries()) {
-        if (line.trimStart().startsWith('*') || line.trimStart().startsWith('//')) continue;
+        const trimmed = line.trimStart();
+        if (trimmed.startsWith('*') || trimmed.startsWith('//')) continue;
+
         for (const literal of line.matchAll(/'([^']*)'|"([^"]*)"/g)) {
           const value = (literal[1] ?? literal[2] ?? '').toLowerCase();
           for (const [position, term] of lowered.entries()) {
             if (value.includes(term)) {
-              violations.push({ file, line: index + 1, term: forbidden[position] });
+              violations.push({
+                file: relative(REPO_ROOT, file),
+                line: index + 1,
+                term: forbidden[position]!,
+              });
             }
           }
         }
@@ -2925,28 +2963,28 @@ export async function checkCoreVocabulary(roots, forbidden) {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [ ] **Step 4: Write the barrel `libs/comply-guards/src/index.ts`**
 
-Run: `pnpm test`  (root-level guard test; no package filter applies)
-Expected: 2 tests PASS. If the first fails, core source has leaked corpus vocabulary — fix the source, not the test.
-
-- [ ] **Step 5: Wire it into the default test run**
-
-In `package.json`, leave `test` as `vitest run` — the guard is already a vitest test and runs with everything else. Add a standalone script for CI convenience:
-
-```json
-"lint:law004": "node --input-type=module -e \"import {checkCoreVocabulary} from './scripts/check-core-vocabulary.mjs'; const v = await checkCoreVocabulary(['libs/comply-core/src','libs/comply-readiness/src','libs/comply-integrity/src'], ['alpha','beta','widget','lever','overview','terms','rules','agreed']); if (v.length) { console.error(v); process.exit(1); } console.log('LAW-004 clean');\""
+```ts
+export * from './core-vocabulary.js';
 ```
+
+- [ ] **Step 5: Run the guard's tests**
+
+Run: `pnpm --filter @vertuo/comply-guards test`
+Expected: 3 tests PASS.
+
+If the first test fails, core source has leaked corpus vocabulary. **Fix the source, not the test** — that is the entire point of this guard.
 
 - [ ] **Step 6: Run everything**
 
-Run: `pnpm test && pnpm typecheck && pnpm lint:law004`
-Expected: all PASS, `LAW-004 clean`.
+Run: `pnpm test && pnpm typecheck`
+Expected: every package PASSES. The guard now runs on every build through Turborepo, with no extra script for anyone to remember.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add scripts/check-core-vocabulary.mjs tests/law package.json
+git add libs/comply-guards pnpm-lock.yaml
 git commit -m "test: LAW-004 guard rejecting corpus vocabulary in core source"
 ```
 
