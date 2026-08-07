@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { parseDocument } from '@vertuo/comply-ingestion';
 import { extract } from '@vertuo/comply-ingestion';
+import type { ParsedDocument } from '@vertuo/comply-ingestion';
 import type { FacetSpec } from '@vertuo/comply-profile';
 
 describe('extractors', () => {
@@ -39,5 +40,69 @@ describe('extractors', () => {
     expect(items[0]!.attributes.name).toBe('R-1 Widgets are made once');
     expect(items[0]!.relations.map((r) => r.targetRef)).toEqual(['r-2-sprockets-turn']);
     expect(items[1]!.relations).toEqual([]);
+  });
+
+  it('table extractor skips GFM alignment separator rows (:---, ---:, :---:)', () => {
+    const doc: ParsedDocument = {
+      file: 'inline://alignment.md',
+      data: {},
+      body: [
+        '',
+        '| Word | Meaning | Extra |',
+        '| :--- | ---: | :---: |',
+        '| Widget | A thing that is made. | Foo |',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table',
+      columns: { Word: 'name', Meaning: 'definition' },
+    };
+    const items = extract(doc, facet);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.attributes.name).toBe('Widget');
+    expect(items[0]!.attributes.definition).toBe('A thing that is made.');
+  });
+
+  it('table extractor honours the `\\|` escape so a later column does not shift', () => {
+    const doc: ParsedDocument = {
+      file: 'inline://escaped-pipe.md',
+      data: {},
+      body: [
+        '',
+        '| Word | Meaning |',
+        '| --- | --- |',
+        '| A\\|B | Foo |',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table',
+      columns: { Word: 'name', Meaning: 'definition' },
+    };
+    const items = extract(doc, facet);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.attributes.name).toBe('A|B');
+    expect(items[0]!.attributes.definition).toBe('Foo');
+  });
+
+  it('heading extractor collects reference-style links as relations', () => {
+    const doc: ParsedDocument = {
+      file: 'inline://reference-link.md',
+      data: {},
+      body: [
+        '',
+        '## Some Rule',
+        '',
+        'See [Other Rule][other-rule] for details.',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'rules', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement',
+    };
+    const items = extract(doc, facet);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.relations.map((r) => r.targetRef)).toEqual(['other-rule']);
   });
 });
