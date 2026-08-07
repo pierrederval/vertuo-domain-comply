@@ -81,6 +81,30 @@ export const profileSchema = z
         });
       }
     }
+    // A Term facet must map onto the core's semantic slots for a term's canonical name
+    // and its definition, so a language-integrity check can find them without guessing
+    // at corpus-specific attribute names.
+    for (const [index, facet] of profile.facets.entries()) {
+      if (facet.factKind !== 'Term') continue;
+      if (facet.extractor === 'table') {
+        const targets = new Set(Object.values(facet.columns ?? {}));
+        for (const required of ['name', 'definition']) {
+          if (!targets.has(required)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['facets', index, 'columns'],
+              message: `Term facet "${facet.name}" has no column mapped to "${required}"`,
+            });
+          }
+        }
+      } else if (facet.bodyAttribute === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, 'bodyAttribute'],
+          message: `Term facet "${facet.name}" must set bodyAttribute to name the attribute holding its definition`,
+        });
+      }
+    }
   });
 
 export type ExtractorName = z.infer<typeof extractorNameSchema>;

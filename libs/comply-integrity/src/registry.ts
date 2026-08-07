@@ -14,9 +14,11 @@ export interface TermEntry {
 function termAttributes(profile: Profile): { name: string; definition: string } | null {
   const facet = profile.facets.find((f) => f.factKind === 'Term');
   if (facet === undefined) return null;
-  // 'name' and 'definition' are the core's internal attribute names. A Profile maps its
-  // own column headings onto them (table extractor) or names the body attribute directly
-  // (heading extractor). No corpus vocabulary reaches this file.
+  // 'name' and 'definition' are core semantic slots: every Term facet is *required* to map
+  // onto them (table extractor: a column targets each; otherwise: bodyAttribute names the
+  // definition, and the heading extractor emits 'name' itself). comply-profile's schema
+  // validates this at load time (see profile.ts), so by the time a Profile reaches here the
+  // mapping is guaranteed, not assumed. No corpus vocabulary reaches this file.
   return { name: 'name', definition: facet.bodyAttribute ?? 'definition' };
 }
 

@@ -14,7 +14,9 @@ async function writeProfile(body: unknown): Promise<string> {
 const valid = {
   id: 'p',
   adapter: { kind: 'markdown-frontmatter', root: './corpus', moduleIdKey: 'm', facetKey: 'f', statusKey: 's' },
-  facets: [{ name: 'anything', factKind: 'Term', extractor: 'table' }],
+  facets: [
+    { name: 'anything', factKind: 'Term', extractor: 'table', columns: { A: 'name', B: 'definition' } },
+  ],
   maturity: { levels: ['a', 'b'], approvedAtOrAbove: 'b' },
   statusMappings: [],
   criteria: {},
@@ -42,5 +44,23 @@ describe('loadProfile', () => {
       maturity: { levels: ['a', 'b'], approvedAtOrAbove: 'zzz' },
     });
     await expect(loadProfile(path)).rejects.toThrow(/zzz/);
+  });
+
+  it('rejects a Term facet whose table columns map to neither name nor definition', async () => {
+    const path = await writeProfile({
+      ...valid,
+      facets: [
+        { name: 'glossary', factKind: 'Term', extractor: 'table', columns: { Word: 'term', Meaning: 'meaning' } },
+      ],
+    });
+    await expect(loadProfile(path)).rejects.toThrow(/glossary/);
+  });
+
+  it('rejects a non-table Term facet with no bodyAttribute', async () => {
+    const path = await writeProfile({
+      ...valid,
+      facets: [{ name: 'definitions', factKind: 'Term', extractor: 'heading' }],
+    });
+    await expect(loadProfile(path)).rejects.toThrow(/definitions/);
   });
 });

@@ -6,6 +6,10 @@ import { buildTermRegistry, type TermEntry } from '../registry.js';
 export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Finding[] {
   const byCanonical = new Map<string, TermEntry[]>();
   for (const entry of buildTermRegistry(corpus, profile)) {
+    // An empty definition means "not yet documented here", not "documented as nothing".
+    // That is a well-formedness concern (requiredAttributes), not a language-integrity one —
+    // comparing it against a real definition elsewhere would report absence as contradiction.
+    if (entry.definition === '') continue;
     const bucket = byCanonical.get(entry.canonical) ?? [];
     bucket.push(entry);
     byCanonical.set(entry.canonical, bucket);
