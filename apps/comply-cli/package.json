@@ -1,0 +1,19 @@
+{
+  "name": "@vertuo/comply-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": {
+    "@vertuo/comply-core": "workspace:*",
+    "@vertuo/comply-profile": "workspace:*",
+    "@vertuo/comply-ingestion": "workspace:*",
+    "@vertuo/comply-readiness": "workspace:*",
+    "@vertuo/comply-integrity": "workspace:*"
+  },
+  "devDependencies": {
+    "@vertuo/comply-fixtures": "workspace:*",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
