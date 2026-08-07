@@ -6,9 +6,9 @@
   "main": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
-  "dependencies": { "@vertuo/comply-profile": "workspace:*" },
+  "dependencies": {},
   "devDependencies": {
-    "@vertuo/comply-ingestion": "workspace:*",
+    "@vertuo/comply-profile": "workspace:*",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

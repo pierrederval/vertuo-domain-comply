@@ -34,14 +34,10 @@ importers:
         version: 2.1.9(@types/node@24.13.3)
 
   libs/comply-fixtures:
-    dependencies:
+    devDependencies:
       '@vertuo/comply-profile':
         specifier: workspace:*
         version: link:../comply-profile
-    devDependencies:
-      '@vertuo/comply-ingestion':
-        specifier: workspace:*
-        version: link:../comply-ingestion
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
