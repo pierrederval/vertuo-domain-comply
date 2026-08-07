@@ -20,6 +20,7 @@
 - Node `>=24`, `pnpm@10`, `"type": "module"`, TypeScript `strict: true` and `noUncheckedIndexedAccess: true`.
 - **One library per bounded context** (ADR-0013). Cross-context imports use the package name; a package may not reach into another's `src/`. The package graph enforces the domain model.
 - **Every package exposes a barrel `src/index.ts`** re-exporting the symbols its Interfaces block names. Other packages import the barrel only.
+- **A workspace package used only by tests belongs in `devDependencies`,** not `dependencies`. Fixtures and the ingestion adapter are test-only for the readiness and integrity libraries.
 - **A task adding a file to an existing package must re-export it from that package's barrel**, in the same commit. Downstream tasks import through the barrel and cannot see your file otherwise. Each task's Files block names the exact export line to add.
 - **Zod is the single definition of a shape.** A hand-written type where a Zod schema exists is duplication.
 - Test command from the repo root: `pnpm test` (Turborepo, every package) and `pnpm typecheck`. Turborepo does **not** forward file arguments, so to run one file use `pnpm --filter @vertuo/<package> test <path-relative-to-that-package>`.
@@ -934,7 +935,7 @@ git commit -m "test: fixture corpus A with deliberate integrity defects"
 ### Task 5: Markdown adapter — discovery, frontmatter, facet routing
 
 **Files:**
-- Create: `libs/comply-ingestion/package.json`, `libs/comply-ingestion/tsconfig.json`, `libs/comply-ingestion/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"gray-matter": "^4.0.3"`
+- Create: `libs/comply-ingestion/package.json`, `libs/comply-ingestion/tsconfig.json`, `libs/comply-ingestion/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"gray-matter": "^4.0.3"`; devDependencies additionally `"@vertuo/comply-fixtures": "workspace:*"` (its tests drive the real fixture corpora)
 - Create: `libs/comply-ingestion/src/adapter.ts`, `libs/comply-ingestion/src/markdown/discover.ts`, `libs/comply-ingestion/src/markdown/document.ts`
 - Create: `libs/comply-ingestion/src/index.ts` — barrel, containing `export * from './adapter.js'; export * from './markdown/discover.js'; export * from './markdown/document.js';`
 - Test: `libs/comply-ingestion/test/document.test.ts`
@@ -1606,7 +1607,7 @@ git commit -m "test: dissimilar fixture corpus B, enforcing the two-corpus rule"
 ### Task 9: Well-formedness criteria engine
 
 **Files:**
-- Create: `libs/comply-readiness/package.json`, `libs/comply-readiness/tsconfig.json`, `libs/comply-readiness/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`
+- Create: `libs/comply-readiness/package.json`, `libs/comply-readiness/tsconfig.json`, `libs/comply-readiness/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`; devDependencies additionally `"@vertuo/comply-fixtures": "workspace:*"` and `"@vertuo/comply-ingestion": "workspace:*"` (Tasks 10 and 11 load real corpora in their tests)
 - Create: `libs/comply-readiness/src/wellformed.ts`
 - Create: `libs/comply-readiness/src/index.ts` — barrel, containing `export * from './wellformed.js';`
 - Test: `libs/comply-readiness/test/wellformed.test.ts`
@@ -2250,7 +2251,7 @@ git commit -m "feat: disposable run snapshots and per-module trend"
 ### Task 13: Term registry and the conflicting-definition check
 
 **Files:**
-- Create: `libs/comply-integrity/package.json`, `libs/comply-integrity/tsconfig.json`, `libs/comply-integrity/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`
+- Create: `libs/comply-integrity/package.json`, `libs/comply-integrity/tsconfig.json`, `libs/comply-integrity/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`; devDependencies additionally `"@vertuo/comply-fixtures": "workspace:*"` and `"@vertuo/comply-ingestion": "workspace:*"`
 - Create: `libs/comply-integrity/src/registry.ts`, `libs/comply-integrity/src/checks/conflicting-definition.ts`
 - Create: `libs/comply-integrity/src/index.ts` — barrel, containing `export * from './registry.js'; export * from './checks/conflicting-definition.js';`
 - Test: `libs/comply-integrity/test/conflicting-definition.test.ts`
@@ -2657,7 +2658,7 @@ git commit -m "feat: broken-reference check and integrity check runner"
 ### Task 16: CLI
 
 **Files:**
-- Create: `apps/comply-cli/package.json`, `apps/comply-cli/tsconfig.json`, `apps/comply-cli/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-ingestion": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`, `"@vertuo/comply-integrity": "workspace:*"`
+- Create: `apps/comply-cli/package.json`, `apps/comply-cli/tsconfig.json`, `apps/comply-cli/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-ingestion": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`, `"@vertuo/comply-integrity": "workspace:*"`; devDependencies additionally `"@vertuo/comply-fixtures": "workspace:*"`
 - Create: `apps/comply-cli/src/render.ts`, `apps/comply-cli/src/main.ts`
 - Test: `apps/comply-cli/test/render.test.ts`
 
