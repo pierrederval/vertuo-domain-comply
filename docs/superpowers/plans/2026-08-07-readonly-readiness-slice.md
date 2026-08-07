@@ -10,11 +10,11 @@
 
 ## Global Constraints
 
-- **LAW-004 — the core knows no business.** No business term, natural-language string, facet name, or maturity-level name may appear in `libs/comply-core/src/`, `libs/comply-readiness/src/`, or `libs/comply-integrity/src/`. All such values arrive as Profile data. Enforced by Task 16.
+- **LAW-004 — the core knows no business.** No business term, natural-language string, facet name, or maturity-level name may appear in `libs/comply-core/src/`, `libs/comply-readiness/src/`, or `libs/comply-integrity/src/`. All such values arrive as Profile data. Enforced by Task 17.
 - **LAW-003 — append-only.** No code in this slice writes to a Corpus at all. The projection is in-memory and discarded.
 - **LAW-009 — evidence, not assertion.** Every `Fact` and every `Finding` carries an `origin: SourceLocation` (`file` + 1-indexed `line`) that a human can open.
 - **LAW-006 — never claim completeness.** Every reported score carries its denominator.
-- **ADR-0001 — two-corpus rule.** Two deliberately dissimilar fixture corpora exist from Task 7 onward. Every subsequent feature is tested against both.
+- **ADR-0001 — two-corpus rule.** Two deliberately dissimilar fixture corpora exist from Task 8 onward. Every subsequent feature is tested against both.
 - **ADR-0005 — five Fact Kinds,** a closed set: `Module`, `Term`, `Rule`, `Message`, `Transition`.
 - **ADR-0006 — Maturity and Sources are separate fields,** never one composite value.
 - Node `>=24`, `pnpm@10`, `"type": "module"`, TypeScript `strict: true` and `noUncheckedIndexedAccess: true`.
