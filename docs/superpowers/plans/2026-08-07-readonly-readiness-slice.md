@@ -21,7 +21,8 @@
 - **One library per bounded context** (ADR-0013). Cross-context imports use the package name; a package may not reach into another's `src/`. The package graph enforces the domain model.
 - **Every package exposes a barrel `src/index.ts`** re-exporting the symbols its Interfaces block names. Other packages import the barrel only.
 - **Zod is the single definition of a shape.** A hand-written type where a Zod schema exists is duplication.
-- Test command: `pnpm test` (Turborepo, all packages). Typecheck: `pnpm typecheck`.
+- Test command from the repo root: `pnpm test` (Turborepo, every package) and `pnpm typecheck`. Turborepo does **not** forward file arguments, so to run one file use `pnpm --filter @vertuo/<package> test <path-relative-to-that-package>`.
+- A task that creates a new package commits that package's manifest and the updated `pnpm-lock.yaml` alongside its source, or the package is not a workspace member.
 
 ## Package template
 
@@ -404,7 +405,7 @@ describe('maturity decomposition (ADR-0006)', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-profile/test/maturity.test.ts`
+Run: `pnpm --filter @vertuo/comply-profile test test/maturity.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-profile/src/maturity.js`.
 
 - [ ] **Step 3: Write `libs/comply-profile/src/profile.ts`**
@@ -533,7 +534,7 @@ export function isApproved(profile: Profile, level: string | null): boolean {
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `pnpm test libs/comply-profile/test/maturity.test.ts`
+Run: `pnpm --filter @vertuo/comply-profile test test/maturity.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 6: Write the failing test for the loader**
@@ -590,7 +591,7 @@ describe('loadProfile', () => {
 
 - [ ] **Step 7: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-profile/test/load.test.ts`
+Run: `pnpm --filter @vertuo/comply-profile test test/load.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-profile/src/load.js`.
 
 - [ ] **Step 8: Write `libs/comply-profile/src/load.ts` and the barrel**
@@ -634,7 +635,7 @@ Expected: all PASS.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add libs/comply-profile/src libs/comply-profile/test
+git add libs/comply-profile pnpm-lock.yaml
 git commit -m "feat: Profile model, loader, and maturity/source decomposition"
 ```
 
@@ -704,7 +705,7 @@ describe('Corpus projection', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-core/test/corpus.test.ts`
+Run: `pnpm --filter @vertuo/comply-core test test/corpus.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-core/src/corpus.js`.
 
 - [ ] **Step 3: Write `libs/comply-core/src/corpus.ts`**
@@ -738,7 +739,7 @@ export function buildCorpus(facts: Fact[]): Corpus {
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-core/test/corpus.test.ts`
+Run: `pnpm --filter @vertuo/comply-core test test/corpus.test.ts`
 Expected: 4 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -916,13 +917,13 @@ describe('fixture profile A', () => {
 
 - [ ] **Step 5: Run test**
 
-Run: `pnpm test libs/comply-fixtures/test/profile-a.test.ts`
+Run: `pnpm --filter @vertuo/comply-fixtures test test/profile-a.test.ts`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add libs/comply-fixtures
+git add libs/comply-fixtures pnpm-lock.yaml
 git commit -m "test: fixture corpus A with deliberate integrity defects"
 ```
 
@@ -977,7 +978,7 @@ describe('document discovery and parsing', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-ingestion/test/document.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/document.test.ts`
 Expected: FAIL — cannot resolve the modules.
 
 - [ ] **Step 3: Write `libs/comply-ingestion/src/adapter.ts`**
@@ -1057,13 +1058,13 @@ export async function parseDocument(file: string): Promise<ParsedDocument | null
 
 - [ ] **Step 6: Run tests**
 
-Run: `pnpm test libs/comply-ingestion/test/document.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/document.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add libs/comply-ingestion/src libs/comply-ingestion/test
+git add libs/comply-ingestion pnpm-lock.yaml
 git commit -m "feat: markdown document discovery and frontmatter parsing"
 ```
 
@@ -1130,7 +1131,7 @@ describe('extractors', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-ingestion/test/extractors.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/extractors.test.ts`
 Expected: FAIL — cannot resolve `extractors.js`.
 
 - [ ] **Step 3: Write `libs/comply-ingestion/src/markdown/extractors.ts`**
@@ -1243,7 +1244,7 @@ export function extract(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] 
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-ingestion/test/extractors.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/extractors.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -1319,7 +1320,7 @@ Note: `beta/terms.md` declares `area: bravo`, so a third module identity now exi
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-ingestion/test/markdown-adapter.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/markdown-adapter.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-ingestion/src/markdown/index.js`.
 
 - [ ] **Step 3: Write `libs/comply-ingestion/src/markdown/index.ts`**
@@ -1568,7 +1569,7 @@ describe('two-corpus rule (ADR-0001)', () => {
 
 - [ ] **Step 4: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-fixtures/test/two-corpus.test.ts`
+Run: `pnpm --filter @vertuo/comply-fixtures test test/two-corpus.test.ts`
 Expected: FAIL — `level: 2` parses as a number, so `text()` returns null and the status is never decomposed.
 
 - [ ] **Step 5: Fix the leak in `libs/comply-ingestion/src/markdown/index.ts`**
@@ -1591,7 +1592,7 @@ Expected: all PASS, both corpora.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add libs/comply-fixtures/corpus/corpus-b libs/comply-fixtures/corpus/profile-b.json libs/comply-fixtures/test/two-corpus.test.ts libs/comply-ingestion/src/markdown/index.ts
+git add libs/comply-fixtures pnpm-lock.yaml/corpus/corpus-b libs/comply-fixtures/corpus/profile-b.json libs/comply-fixtures/test/two-corpus.test.ts libs/comply-ingestion/src/markdown/index.ts
 git commit -m "test: dissimilar fixture corpus B, enforcing the two-corpus rule"
 ```
 
@@ -1683,7 +1684,7 @@ describe('well-formedness engine', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-readiness/test/wellformed.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/wellformed.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-readiness/src/wellformed.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/wellformed.ts`**
@@ -1785,13 +1786,13 @@ export function evaluateFacet(
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-readiness/test/wellformed.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/wellformed.test.ts`
 Expected: 6 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-readiness/src/wellformed.ts libs/comply-readiness/test/wellformed.test.ts
+git add libs/comply-readiness pnpm-lock.yaml
 git commit -m "feat: profile-driven well-formedness criteria engine"
 ```
 
@@ -1847,7 +1848,7 @@ describe('Module Owner resolution (ADR-0010)', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-readiness/test/owner.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/owner.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-readiness/src/owner.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/owner.ts`**
@@ -1901,7 +1902,7 @@ export function resolveOwners(corpus: Corpus, profile: Profile): OwnerResolution
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-readiness/test/owner.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/owner.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -1980,7 +1981,7 @@ describe('Readiness Matrix', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-readiness/test/matrix.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/matrix.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-readiness/src/matrix.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/matrix.ts`**
@@ -2159,7 +2160,7 @@ describe('run snapshots', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-readiness/test/snapshot.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/snapshot.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-readiness/src/snapshot.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/snapshot.ts`**
@@ -2225,7 +2226,7 @@ export function trend(current: Snapshot, previous: Snapshot | null): TrendRow[] 
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-readiness/test/snapshot.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/snapshot.test.ts`
 Expected: 4 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -2291,7 +2292,7 @@ describe('conflicting definition check', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-integrity/test/conflicting-definition.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/conflicting-definition.test.ts`
 Expected: FAIL — cannot resolve the modules.
 
 - [ ] **Step 3: Write `libs/comply-integrity/src/registry.ts`**
@@ -2375,13 +2376,13 @@ export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Fi
 
 - [ ] **Step 5: Run tests**
 
-Run: `pnpm test libs/comply-integrity/test/conflicting-definition.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/conflicting-definition.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add libs/comply-integrity/src/registry.ts libs/comply-integrity/src/checks/conflicting-definition.ts libs/comply-integrity/test
+git add libs/comply-integrity pnpm-lock.yaml
 git commit -m "feat: term registry and conflicting-definition check"
 ```
 
@@ -2434,7 +2435,7 @@ Note: corpus B is flat, so every document shares one container while declaring `
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-integrity/test/split-identity.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/split-identity.test.ts`
 Expected: FAIL — cannot resolve `split-identity.js`.
 
 - [ ] **Step 3: Write `libs/comply-integrity/src/checks/split-identity.ts`**
@@ -2481,7 +2482,7 @@ export function checkSplitIdentity(corpus: Corpus): Finding[] {
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-integrity/test/split-identity.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/split-identity.test.ts`
 Expected: 2 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -2568,7 +2569,7 @@ describe('check runner', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm test libs/comply-integrity/test/broken-reference.test.ts libs/comply-integrity/test/run.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/broken-reference.test.ts test/run.test.ts`
 Expected: FAIL — cannot resolve the modules.
 
 - [ ] **Step 3: Write `libs/comply-integrity/src/checks/broken-reference.ts`**
@@ -2696,7 +2697,7 @@ describe('rendering', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test apps/comply-cli/test/render.test.ts`
+Run: `pnpm --filter @vertuo/comply-cli test test/render.test.ts`
 Expected: FAIL — cannot resolve `apps/comply-cli/src/render.js`.
 
 - [ ] **Step 3: Write `apps/comply-cli/src/render.ts`**
@@ -2826,7 +2827,7 @@ Expected: a two-row matrix and `No findings.`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/comply-cli
+git add apps/comply-cli pnpm-lock.yaml
 git commit -m "feat: CLI rendering the Readiness Matrix and findings"
 ```
 
@@ -2877,7 +2878,7 @@ The second test uses `libs/comply-profile/src` deliberately: adapter-kind names 
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test tests/law/core-vocabulary.test.ts`
+Run: `pnpm test`  (root-level guard test; no package filter applies)
 Expected: FAIL — cannot resolve the script.
 
 - [ ] **Step 3: Write `scripts/check-core-vocabulary.mjs`**
@@ -2926,7 +2927,7 @@ export async function checkCoreVocabulary(roots, forbidden) {
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test tests/law/core-vocabulary.test.ts`
+Run: `pnpm test`  (root-level guard test; no package filter applies)
 Expected: 2 tests PASS. If the first fails, core source has leaked corpus vocabulary — fix the source, not the test.
 
 - [ ] **Step 5: Wire it into the default test run**
