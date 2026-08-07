@@ -12,7 +12,10 @@ export interface Snapshot {
 
 export interface TrendRow {
   moduleId: FactId;
-  approvedDelta: number;
+  /** Null when there is no prior figure for this module — a first-ever run, or a
+   *  module that did not exist in the previous snapshot. Never conflated with 0,
+   *  which means the figure held steady against a real baseline. */
+  approvedDelta: number | null;
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -80,7 +83,7 @@ export function trend(current: Snapshot, previous: Snapshot | null): TrendRow[] 
     const before = previous?.scores.find((s) => s.moduleId === score.moduleId);
     return {
       moduleId: score.moduleId,
-      approvedDelta: before === undefined ? 0 : score.approved - before.approved,
+      approvedDelta: before === undefined ? null : score.approved - before.approved,
     };
   });
 }
