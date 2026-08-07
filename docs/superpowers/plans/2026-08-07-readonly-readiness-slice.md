@@ -177,6 +177,7 @@ packages:
 ```
 node_modules/
 .comply/
+.superpowers/
 .turbo/
 dist/
 ```
