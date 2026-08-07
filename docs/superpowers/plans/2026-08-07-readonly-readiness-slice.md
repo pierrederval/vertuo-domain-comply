@@ -1159,6 +1159,12 @@ Expected: FAIL — cannot resolve `extractors.js`.
 
 - [ ] **Step 3: Write `libs/comply-ingestion/src/markdown/extractors.ts`**
 
+This code handles three shapes the tidy fixtures do not contain, each of which the first draft got
+wrong: GFM alignment separators (`:---`), which were parsed as data rows and fabricated junk items;
+escaped pipes in cells, which shifted every later column so values landed under the wrong attribute
+names; and reference-style links, which were invisible so relations under-extracted. The first two
+corrupt data rather than dropping it, which is the failure mode this product exists to detect.
+
 ```ts
 import type { AttributeValue, Relation } from '@vertuo/comply-core';
 import type { FacetSpec } from '@vertuo/comply-profile';
@@ -1171,15 +1177,20 @@ export interface ExtractedItem {
   line: number;
 }
 
-const LINK = /\[[^\]]*\]\(([^)]+)\)/g;
+const INLINE_LINK = /\[[^\]]*\]\(([^)]+)\)/g;
+/** `[text][ref]` — the explicit reference form only; `ref` must be non-empty. Link definitions are not resolved. */
+const REFERENCE_LINK = /\[[^\]]*\]\[([^\]]+)\]/g;
 
-/** Collects markdown link targets, reduced to their fragment where one exists. */
+/** Collects markdown link targets. Inline targets are reduced to their fragment where one exists. */
 function relationsIn(text: string): Relation[] {
   const out: Relation[] = [];
-  for (const match of text.matchAll(LINK)) {
+  for (const match of text.matchAll(INLINE_LINK)) {
     const target = match[1]!;
     const hash = target.indexOf('#');
     out.push({ type: 'reference', targetRef: hash >= 0 ? target.slice(hash + 1) : target });
+  }
+  for (const match of text.matchAll(REFERENCE_LINK)) {
+    out.push({ type: 'reference', targetRef: match[1]! });
   }
   return out;
 }
@@ -1189,6 +1200,33 @@ function extractDocument(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[]
   const text = doc.body.trim();
   if (text === '') return [];
   return [{ attributes: { [attribute]: text }, relations: relationsIn(text), line: doc.bodyStartLine }];
+}
+
+/** Matches a GFM separator cell: optional leading/trailing colon around one or more dashes. */
+function isSeparatorCell(cell: string): boolean {
+  return /^:?-+:?$/.test(cell.replace(/\s/g, ''));
+}
+
+/** Splits a table row on unescaped `|`, unescaping `\|` to a literal `|` within each cell. */
+function splitRowCells(row: string): string[] {
+  const cells: string[] = [];
+  let current = '';
+  for (let i = 0; i < row.length; i += 1) {
+    const ch = row[i];
+    if (ch === '\\' && row[i + 1] === '|') {
+      current += '|';
+      i += 1;
+      continue;
+    }
+    if (ch === '|') {
+      cells.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  cells.push(current.trim());
+  return cells;
 }
 
 function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
@@ -1201,11 +1239,10 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
     const trimmed = line.trim();
     if (!trimmed.startsWith('|')) { headers = null; continue; }
 
-    const cells = trimmed.slice(1, trimmed.endsWith('|') ? -1 : undefined)
-      .split('|').map((c) => c.trim());
+    const cells = splitRowCells(trimmed.slice(1, trimmed.endsWith('|') ? -1 : undefined));
 
     if (headers === null) { headers = cells; continue; }
-    if (cells.every((c) => /^-+$/.test(c.replace(/\s/g, '')))) continue;
+    if (cells.every(isSeparatorCell)) continue;
 
     const attributes: Record<string, AttributeValue> = {};
     const relations: Relation[] = [];
