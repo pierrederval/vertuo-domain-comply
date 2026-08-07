@@ -2011,6 +2011,13 @@ git commit -m "feat: Module Owner resolution with missing-owner findings"
 
 - [ ] **Step 1: Write the failing test**
 
+The last two cases are regression tests for the state ladder, and they exist because the fixture
+corpora cannot exercise it: no fixture fact combines an approved maturity level with a failing
+criterion, and every multi-fact facet draws its maturity from one shared field. Without these,
+deleting the `wellFormed &&` guard or changing `facts.every` to `facts.some` would fail no test in the
+repository, and the product's headline score would silently become plausible-but-wrong. Verify they
+bite by making each break deliberately and watching the matching test fail.
+
 `libs/comply-readiness/test/matrix.test.ts`:
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2019,6 +2026,42 @@ import { loadCorpus } from '@vertuo/comply-ingestion';
 import { loadProfile } from '@vertuo/comply-profile';
 import { buildMatrix } from '@vertuo/comply-readiness';
 import { scoreMatrix } from '@vertuo/comply-readiness';
+import { buildCorpus } from '@vertuo/comply-core';
+import type { Fact } from '@vertuo/comply-core';
+import type { Profile } from '@vertuo/comply-profile';
+
+/** Minimal inline Profile: one Module facet, one Term facet, a three-rung ladder. */
+const inlineProfile: Profile = {
+  id: 'inline-profile',
+  adapter: {
+    kind: 'markdown-frontmatter',
+    root: './inline',
+    moduleIdKey: 'area',
+    facetKey: 'kind',
+    statusKey: 'state',
+  },
+  facets: [
+    { name: 'summary', factKind: 'Module', extractor: 'document', bodyAttribute: 'description' },
+    { name: 'items', factKind: 'Term', extractor: 'heading', bodyAttribute: 'definition' },
+  ],
+  maturity: { levels: ['draft', 'reviewed', 'final'], approvedAtOrAbove: 'final' },
+  statusMappings: [],
+  criteria: {
+    Term: [{ type: 'requiredAttributes', attributes: ['name', 'definition'] }],
+  },
+};
+
+function fact(overrides: Partial<Fact> & Pick<Fact, 'id' | 'kind' | 'moduleId' | 'facet'>): Fact {
+  return {
+    containerId: 'inline',
+    attributes: {},
+    relations: [],
+    maturityLevel: null,
+    sources: [],
+    origin: { file: 'inline', line: 1 },
+    ...overrides,
+  };
+}
 
 describe('Readiness Matrix', () => {
   it('grades every module against every declared facet', async () => {
@@ -2060,6 +2103,61 @@ describe('Readiness Matrix', () => {
 
     expect(matrix.rows.map((r) => r.moduleId)).toEqual(['one', 'two']);
     expect(matrix.rows[1]!.cells.find((c) => c.facet === 'constraints')!.state).toBe('absent');
+  });
+
+  it('does not reach approved when maturity is approved but a criterion still fails', () => {
+    const facts: Fact[] = [
+      fact({ id: 'm1', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),
+      fact({
+        id: 'm1-term',
+        kind: 'Term',
+        moduleId: 'm1',
+        facet: 'items',
+        attributes: { name: 'Foo' }, // 'definition' missing -> fails requiredAttributes
+        maturityLevel: 'final', // the profile's approved rung
+        sources: ['review'],
+      }),
+    ];
+    const corpus = buildCorpus(facts);
+    const matrix = buildMatrix(corpus, inlineProfile);
+
+    const row = matrix.rows.find((r) => r.moduleId === 'm1')!;
+    const cell = row.cells.find((c) => c.facet === 'items')!;
+
+    expect(cell.state).toBe('present');
+    expect(cell.state).not.toBe('approved');
+  });
+
+  it('caps a facet with mixed maturity at well-formed, never approved', () => {
+    const facts: Fact[] = [
+      fact({ id: 'm2', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),
+      fact({
+        id: 'm2-term-a',
+        kind: 'Term',
+        moduleId: 'm2',
+        facet: 'items',
+        attributes: { name: 'A', definition: 'def A' },
+        maturityLevel: 'final', // approved rung
+        sources: ['review'],
+      }),
+      fact({
+        id: 'm2-term-b',
+        kind: 'Term',
+        moduleId: 'm2',
+        facet: 'items',
+        attributes: { name: 'B', definition: 'def B' },
+        maturityLevel: 'reviewed', // below the approved rung
+        sources: ['review'],
+      }),
+    ];
+    const corpus = buildCorpus(facts);
+    const matrix = buildMatrix(corpus, inlineProfile);
+
+    const row = matrix.rows.find((r) => r.moduleId === 'm2')!;
+    const cell = row.cells.find((c) => c.facet === 'items')!;
+
+    expect(cell.state).toBe('well-formed');
+    expect(cell.state).not.toBe('approved');
   });
 });
 ```
