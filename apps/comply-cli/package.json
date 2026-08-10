@@ -9,6 +9,7 @@
     "@vertuo/comply-lens": "workspace:*",
     "@vertuo/comply-ingestion": "workspace:*",
     "@vertuo/comply-readiness": "workspace:*",
+    "@vertuo/comply-reading": "workspace:*",
     "@vertuo/comply-integrity": "workspace:*",
     "@vertuo/comply-seed": "workspace:*"
   },

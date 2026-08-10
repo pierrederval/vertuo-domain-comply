@@ -55,6 +55,12 @@ export const adapterSpecSchema = z.object({
 export const lensSchema = z
   .object({
     id: z.string().min(1),
+    /**
+     * What to call this Corpus where a person will read it. Optional: a Corpus
+     * that declares none is called by its id, which is a name somebody chose too.
+     * Never interpreted — it is drawn and nothing else.
+     */
+    name: z.string().min(1).optional(),
     adapter: adapterSpecSchema,
     facets: z.array(facetSpecSchema),
     maturity: maturityLadderSchema,

@@ -29,10 +29,10 @@ const ENGINEERING_VOCABULARY = [
 /** The surfaces that carry text a reader meets today, before any interface exists. */
 const SURFACES_TODAY = ['apps/comply-cli/src/render.ts', 'libs/comply-ingestion/src/interpret.ts'];
 
-async function check(source: string): Promise<SurfaceReport> {
+async function check(source: string, fileName = 'surface.ts'): Promise<SurfaceReport> {
   const dir = await mkdtemp(join(tmpdir(), 'comply-guards-'));
   try {
-    await writeFile(join(dir, 'surface.ts'), source, 'utf8');
+    await writeFile(join(dir, fileName), source, 'utf8');
     return await checkSurfaceVocabulary([relative(REPO_ROOT, dir)], ENGINEERING_VOCABULARY);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -65,6 +65,20 @@ describe('LAW-010: business language at the surface', () => {
     expect(violations[0]!.line).toBe(1);
   });
 
+  it('reports a term in the file kind an interface is actually written in', async () => {
+    // Almost every string a reader meets will be written in a component file. A
+    // guard that reads only .ts would pass over the entire interface in silence
+    // from its first line, which is the failure this guard exists to prevent
+    // arriving one file extension later.
+    const { scanned, violations } = await check(
+      'export const Row = () => <p>Nothing to commit</p>;\n',
+      'row.tsx',
+    );
+
+    expect(scanned.map((f) => f.split('/').at(-1))).toEqual(['row.tsx']);
+    expect(violations.map((v) => v.term)).toEqual(['commit']);
+  });
+
   it('reports a term inside a template literal', async () => {
     const { violations } = await check(
       'export const empty = `No ${kind} in the repository yet`;\n',
@@ -93,6 +107,27 @@ describe('LAW-010: business language at the surface', () => {
       'null',
       'repository',
     ]);
+  });
+
+  it('reports a term in an attribute a reader hovers rather than reads', async () => {
+    const { violations } = await check(
+      'export const Hint = () => <abbr title="Nothing was committed">x</abbr>;\n',
+      'hint.tsx',
+    );
+
+    expect(violations.map((v) => v.term)).toEqual(['commit']);
+  });
+
+  it('reports a term that a line break falls in the middle of', async () => {
+    // Read with the language's own parser, so a sentence that wraps is one piece
+    // of text. Matching quotes line by line could not see this, and a label long
+    // enough to wrap is exactly the kind that carries a whole sentence.
+    const { violations } = await check(
+      ['export const empty = `Nothing has been', '  committed yet`;'].join('\n'),
+    );
+
+    expect(violations.map((v) => v.term)).toEqual(['commit']);
+    expect(violations[0]!.line).toBe(1);
   });
 
   it('says nothing about a word that merely contains a term', async () => {
@@ -148,9 +183,11 @@ describe('LAW-010: business language at the surface', () => {
 
   it('refuses to answer about a place it could not look', async () => {
     // A guard that reports nothing because it scanned nothing reads exactly like
-    // a guard that found nothing wrong.
+    // a guard that found nothing wrong. The named root is one no package will
+    // ever have — a package that has been built is a root that exists, and this
+    // assertion would then quietly stop asserting anything.
     await expect(
-      checkSurfaceVocabulary(['apps/comply-studio/src'], ENGINEERING_VOCABULARY),
+      checkSurfaceVocabulary(['apps/nothing-is-here/src'], ENGINEERING_VOCABULARY),
     ).rejects.toThrow();
   });
 });

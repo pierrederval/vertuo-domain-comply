@@ -10,6 +10,10 @@ const CORE_ROOTS = [
   'libs/comply-integrity/src',
   'libs/comply-ingestion/src',
   'libs/comply-seed/src',
+  'libs/comply-reading/src',
+  'libs/comply-contract/src',
+  'apps/comply-api/src',
+  'apps/comply-studio/src',
 ];
 
 describe('LAW-004: the core knows no business', () => {
@@ -52,6 +56,24 @@ describe('LAW-004: the core knows no business', () => {
       const violations = await checkCoreVocabulary([relative(REPO_ROOT, dir)], ['sprocket']);
       expect(violations.length).toBeGreaterThan(0);
       expect(violations[0]!.term).toBe('sprocket');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('detects a forbidden term in a component file', async () => {
+    // The interface is where one corpus's shape is most tempting to hardcode —
+    // a column named after a Facet reads perfectly and is a defect. Component
+    // files are covered on the same terms as everything else.
+    const dir = await mkdtemp(join(tmpdir(), 'comply-guards-'));
+    try {
+      await writeFile(
+        join(dir, 'leak.tsx'),
+        'export const Head = () => <th>sprocket</th>;\n',
+        'utf8',
+      );
+      const violations = await checkCoreVocabulary([relative(REPO_ROOT, dir)], ['sprocket']);
+      expect(violations.map((v) => v.term)).toEqual(['sprocket']);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

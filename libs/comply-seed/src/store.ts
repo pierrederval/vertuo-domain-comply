@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { seedDigest } from './digest.js';
@@ -44,6 +44,51 @@ export async function holdSeed(dir: string, seed: Seed): Promise<HeldSeed> {
   await rename(staging, path);
 
   return { path, digest, alreadyHeld: false };
+}
+
+export interface ShelvedSeed {
+  path: string;
+  digest: string;
+  /**
+   * When this knowledge was written down from source. A Seed is written once and
+   * never rewritten (ADR-0012), so the moment its file appeared is the moment the
+   * source was last read — which is the age every reading made from it inherits.
+   */
+  heldAt: Date;
+}
+
+/** A digest is 64 hex characters, so `<lensId>-<digest>.json` parses without ambiguity. */
+const HELD_SEED = /^(.+)-([0-9a-f]{64})\.json$/;
+
+/**
+ * The most recently written down Seed held for one Lens, or nothing.
+ *
+ * Nothing is a real answer and not a failure: a Lens whose source has never been
+ * read is a Corpus with no knowledge written down yet, which a reader is entitled
+ * to be told plainly rather than shown an empty reading of.
+ *
+ * The Lens's name is matched in full rather than as a prefix. `l1-extra`'s Seeds
+ * begin with `l1-`, and handing them to `l1` would attribute one Corpus's
+ * knowledge to another — the worst thing a shelf could do.
+ */
+export async function latestHeldSeed(dir: string, lensId: string): Promise<ShelvedSeed | null> {
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch {
+    return null;
+  }
+
+  let latest: ShelvedSeed | null = null;
+  for (const name of names) {
+    const parsed = HELD_SEED.exec(name);
+    if (parsed === null || parsed[1] !== lensId) continue;
+
+    const path = join(dir, name);
+    const heldAt = (await stat(path)).mtime;
+    if (latest === null || heldAt > latest.heldAt) latest = { path, digest: parsed[2]!, heldAt };
+  }
+  return latest;
 }
 
 export async function readSeed(path: string): Promise<Seed> {

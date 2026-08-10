@@ -1,5 +1,7 @@
 node_modules/
 .comply/
+libs/comply-fixtures/corpus/seeds/
+libs/comply-fixtures/corpus/runs/
 .superpowers/
 .turbo/
 dist/

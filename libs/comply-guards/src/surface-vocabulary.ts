@@ -54,8 +54,8 @@ export async function surfaceRoots(base: string = REPO_ROOT): Promise<string[]> 
 
 /**
  * Reports engineering vocabulary reaching text a reader could meet — a label, an
- * error, an empty state (LAW-010). `roots` are repo-relative; `forbidden` are
- * whole words.
+ * error, an empty state, the words between two tags (LAW-010). `roots` are
+ * repo-relative; `forbidden` are whole words.
  *
  * Two kinds of literal are left out, because neither is anything a reader is
  * shown: the path in an import or export, and whatever is written inside an
@@ -79,7 +79,7 @@ export async function surfaceRoots(base: string = REPO_ROOT): Promise<string[]> 
  * word would see both, and would also see *sparse*, and would rule against every
  * Finding code built on a prefixed term. Whether such a code is a surface at all
  * is a question for whoever names them, not for this guard to settle by failing a
- * build. The line-based limitation of {@link scanLiterals} applies too.
+ * build.
  */
 export async function checkSurfaceVocabulary(
   roots: string[],

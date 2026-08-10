@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { buildCorpus } from '@vertuo/comply-core';
 import { extractSeed, interpret } from '@vertuo/comply-ingestion';
 import { loadLens } from '@vertuo/comply-lens';
@@ -5,13 +6,21 @@ import { readPreviousSnapshot, writeSnapshot } from '@vertuo/comply-readiness';
 import { holdSeed, readSeed, type Seed } from '@vertuo/comply-seed';
 import { readCorpus } from './reading.js';
 
-const SHELF_DIR = '.comply/seeds';
-const RUNS_DIR = '.comply/runs';
+/**
+ * The shelf this runner writes to, which is the one the server reads. Both take
+ * it from the same place so that what a build reports and what a person is shown
+ * are readings of the same knowledge.
+ */
+const SHELF = process.env['COMPLY_SHELF'] ?? '.comply';
+const SEEDS_DIR = join(SHELF, 'seeds');
+const RUNS_DIR = join(SHELF, 'runs');
 
 const USAGE = [
   'Usage:',
   '  pnpm comply extract <lens.json>              write down the knowledge as found',
   '  pnpm comply report  <lens.json> [seed.json]  read it and say where it stands',
+  '',
+  `Both work on the shelf at ${SHELF}. Set COMPLY_SHELF to work on another.`,
 ].join('\n');
 
 /**
@@ -22,7 +31,7 @@ const USAGE = [
  */
 async function extractCommand(lensPath: string): Promise<void> {
   const lens = await loadLens(lensPath);
-  const held = await holdSeed(SHELF_DIR, await extractSeed(lens));
+  const held = await holdSeed(SEEDS_DIR, await extractSeed(lens));
 
   console.log(
     held.alreadyHeld
@@ -44,7 +53,7 @@ async function reportCommand(lensPath: string, seedPath: string | undefined): Pr
 
   let seed: Seed;
   if (seedPath === undefined) {
-    const held = await holdSeed(SHELF_DIR, await extractSeed(lens));
+    const held = await holdSeed(SEEDS_DIR, await extractSeed(lens));
     seed = await readSeed(held.path);
   } else {
     seed = await readSeed(seedPath);

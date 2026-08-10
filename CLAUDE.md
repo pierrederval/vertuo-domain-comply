@@ -64,5 +64,24 @@ Two rules that are easy to break:
 
 One library per bounded context, so the domain model's boundaries are enforced by the package graph.
 
-The application is not yet scaffolded; this file gains its build, test, and lint commands in the
-change that scaffolds it.
+## Commands
+
+Run all of these from the repository root.
+
+| Command | What it does |
+| --- | --- |
+| `pnpm test` | Every package's tests, including both vocabulary guards |
+| `pnpm typecheck` | Every package |
+| `pnpm comply extract <lens.json>` | Write down what is at source, as a Seed |
+| `pnpm comply report <lens.json>` | Read a Corpus and print where it stands |
+| `pnpm shelf:fixtures` | Put both fixture Corpus on the development shelf |
+| `pnpm api` | Serve that shelf, read-only, on port 4000 |
+| `pnpm studio` | The Studio, on port 5173, answering from the API |
+
+The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
+Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the two scripts
+above point it at `libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in
+development, which is where shape-leakage shows up (ADR-0001).
+
+There is no lint step and no CI workflow yet. Both guards run under `pnpm test`, so on a laptop
+LAW-004 and LAW-010 are enforced; nothing enforces them on a pull request until #32 lands.
