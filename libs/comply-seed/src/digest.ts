@@ -8,7 +8,10 @@ import type { Seed } from './seed.js';
  * a no-op (ADR-0012).
  */
 function canonical(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  // `value ?? null` rather than a literal fallback: an absent value encodes the
+  // same way a null one does, and the four characters that says are JSON's to
+  // write, not ours to spell out in a string (LAW-010).
+  if (value === null || typeof value !== 'object') return JSON.stringify(value ?? null);
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
 
   const entries = Object.entries(value as Record<string, unknown>)
