@@ -1,8 +1,16 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { holdSeed, readSeed, seedDigest, seedSchema, SEED_VERSION, type Seed } from '../src/index.js';
+import {
+  holdSeed,
+  latestHeldSeed,
+  readSeed,
+  seedDigest,
+  seedSchema,
+  SEED_VERSION,
+  type Seed,
+} from '../src/index.js';
 
 function seed(overrides: Partial<Seed> = {}): Seed {
   return {
@@ -94,5 +102,50 @@ describe('a Seed as an artifact', () => {
     const path = join(dir, 'broken.json');
     await writeFile(path, JSON.stringify({ version: 1, lensId: '' }), 'utf8');
     await expect(readSeed(path)).rejects.toThrow(/cannot be read/);
+  });
+});
+
+describe('what the shelf holds for one Lens', () => {
+  it('finds the most recently written down, and says when that was', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'comply-shelf-'));
+    const older = await holdSeed(dir, seed());
+    const newer = await holdSeed(dir, seed({ lensId: 'l1', documents: [] }));
+
+    // Set the times explicitly: two files written in the same millisecond would
+    // otherwise decide the order between them by luck.
+    await utimes(older.path, new Date('2026-01-01T00:00:00Z'), new Date('2026-01-01T00:00:00Z'));
+    await utimes(newer.path, new Date('2026-02-01T00:00:00Z'), new Date('2026-02-01T00:00:00Z'));
+
+    const latest = await latestHeldSeed(dir, 'l1');
+
+    expect(latest?.path).toBe(newer.path);
+    expect(latest?.digest).toBe(newer.digest);
+    // The only honest age a reading has before any reading is recorded: when the
+    // knowledge it is made of was written down from source.
+    expect(latest?.heldAt.toISOString()).toBe('2026-02-01T00:00:00.000Z');
+  });
+
+  it('holds each Lens apart, including one whose name begins with another', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'comply-shelf-'));
+    const held = await holdSeed(dir, seed({ lensId: 'l1-extra' }));
+
+    expect((await latestHeldSeed(dir, 'l1-extra'))?.path).toBe(held.path);
+    // 'l1-extra-<digest>.json' begins with 'l1-', and belongs to neither Lens
+    // but its own. Matching on the prefix alone would hand it to 'l1'.
+    expect(await latestHeldSeed(dir, 'l1')).toBeNull();
+  });
+
+  it('says nothing rather than guessing when nothing has been written down yet', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'comply-shelf-'));
+    expect(await latestHeldSeed(dir, 'l1')).toBeNull();
+    expect(await latestHeldSeed(join(dir, 'nowhere'), 'l1')).toBeNull();
+  });
+
+  it('passes over anything on the shelf that is not a Seed it wrote', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'comply-shelf-'));
+    await writeFile(join(dir, 'l1-notadigest.json'), '{}', 'utf8');
+    await writeFile(join(dir, 'l1.json'), '{}', 'utf8');
+
+    expect(await latestHeldSeed(dir, 'l1')).toBeNull();
   });
 });
