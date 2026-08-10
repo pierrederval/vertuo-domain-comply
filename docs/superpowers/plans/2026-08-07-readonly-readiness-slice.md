@@ -10,18 +10,22 @@
 
 ## Global Constraints
 
-- **LAW-004 — the core knows no business.** No business term, natural-language string, facet name, or maturity-level name may appear in `libs/comply-core/src/`, `libs/comply-readiness/src/`, or `libs/comply-integrity/src/`. All such values arrive as Profile data. Enforced by Task 16.
+- **LAW-004 — the core knows no business.** No business term, natural-language string, facet name, or maturity-level name may appear in `libs/comply-core/src/`, `libs/comply-readiness/src/`, or `libs/comply-integrity/src/`. All such values arrive as Profile data. Enforced by Task 17.
 - **LAW-003 — append-only.** No code in this slice writes to a Corpus at all. The projection is in-memory and discarded.
 - **LAW-009 — evidence, not assertion.** Every `Fact` and every `Finding` carries an `origin: SourceLocation` (`file` + 1-indexed `line`) that a human can open.
 - **LAW-006 — never claim completeness.** Every reported score carries its denominator.
-- **ADR-0001 — two-corpus rule.** Two deliberately dissimilar fixture corpora exist from Task 7 onward. Every subsequent feature is tested against both.
+- **ADR-0001 — two-corpus rule.** Two deliberately dissimilar fixture corpora exist from Task 8 onward. Every subsequent feature is tested against both.
 - **ADR-0005 — five Fact Kinds,** a closed set: `Module`, `Term`, `Rule`, `Message`, `Transition`.
 - **ADR-0006 — Maturity and Sources are separate fields,** never one composite value.
 - Node `>=24`, `pnpm@10`, `"type": "module"`, TypeScript `strict: true` and `noUncheckedIndexedAccess: true`.
 - **One library per bounded context** (ADR-0013). Cross-context imports use the package name; a package may not reach into another's `src/`. The package graph enforces the domain model.
 - **Every package exposes a barrel `src/index.ts`** re-exporting the symbols its Interfaces block names. Other packages import the barrel only.
+- **A workspace package used only by tests belongs in `devDependencies`,** not `dependencies`.
+- **A test lives in the package whose behaviour it exercises,** not in the package supplying its data. `comply-fixtures` is a leaf: it publishes paths and owns no behaviour, and nothing may depend on it in both directions. Fixtures and the ingestion adapter are test-only for the readiness and integrity libraries.
+- **A task adding a file to an existing package must re-export it from that package's barrel**, in the same commit — and must stage the barrel alongside its other files. Downstream tasks import through the barrel and cannot see your file otherwise. Each task's Files block names the exact export line to add.
 - **Zod is the single definition of a shape.** A hand-written type where a Zod schema exists is duplication.
-- Test command: `pnpm test` (Turborepo, all packages). Typecheck: `pnpm typecheck`.
+- Test command from the repo root: `pnpm test` (Turborepo, every package) and `pnpm typecheck`. Turborepo does **not** forward file arguments, so to run one file use `pnpm --filter @vertuo/<package> test <path-relative-to-that-package>`.
+- A task that creates a new package commits that package's manifest and the updated `pnpm-lock.yaml` alongside its source, or the package is not a workspace member.
 
 ## Package template
 
@@ -90,7 +94,7 @@ imports from a context it should not depend on fails to resolve.
 | `libs/comply-integrity` | Term registry and the three exact-match Checks. |
 | `libs/comply-fixtures` | Both fixture corpora and their Profiles, exporting resolved absolute paths so tests work from any package's working directory. |
 | `apps/comply-cli` | Rendering and the entry point. |
-| `scripts/check-core-vocabulary.mjs` | The LAW-004 guard. |
+| `libs/comply-guards` | The LAW-004 guard: a scanner that fails the build when corpus vocabulary appears in core source. A package, so that `turbo test` runs it. |
 
 Files within each package follow the same one-responsibility rule: `fact.ts`, `finding.ts`,
 `corpus.ts` in core; `profile.ts`, `load.ts`, `maturity.ts` in profile; and so on. Each package has a
@@ -177,6 +181,7 @@ packages:
 ```
 node_modules/
 .comply/
+.superpowers/
 .turbo/
 dist/
 ```
@@ -317,13 +322,21 @@ export type FindingCode =
   | 'missing-owner'
   | 'split-identity'
   | 'broken-reference'
-  | 'conflicting-definition';
+  | 'conflicting-definition'
+  | 'empty-facet';
 
 export interface Finding {
   code: FindingCode;
   message: string;
   moduleId: FactId | null;
   origin: SourceLocation;
+  /**
+   * Further locations this finding concerns, beyond its primary `origin`
+   * (e.g. the other places a conflicting definition appears). A check
+   * reports locations as data; formatting them into text is the renderer's
+   * decision, not the check's (LAW-009 evidence stays structured).
+   */
+  relatedOrigins?: SourceLocation[];
 }
 ```
 
@@ -403,7 +416,7 @@ describe('maturity decomposition (ADR-0006)', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-profile/test/maturity.test.ts`
+Run: `pnpm --filter @vertuo/comply-profile test test/maturity.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-profile/src/maturity.js`.
 
 - [ ] **Step 3: Write `libs/comply-profile/src/profile.ts`**
@@ -492,6 +505,30 @@ export const profileSchema = z
         });
       }
     }
+    // A Term facet must map onto the core's semantic slots for a term's canonical name
+    // and its definition, so a language-integrity check can find them without guessing
+    // at corpus-specific attribute names.
+    for (const [index, facet] of profile.facets.entries()) {
+      if (facet.factKind !== 'Term') continue;
+      if (facet.extractor === 'table') {
+        const targets = new Set(Object.values(facet.columns ?? {}));
+        for (const required of ['name', 'definition']) {
+          if (!targets.has(required)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['facets', index, 'columns'],
+              message: `Term facet "${facet.name}" has no column mapped to "${required}"`,
+            });
+          }
+        }
+      } else if (facet.bodyAttribute === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, 'bodyAttribute'],
+          message: `Term facet "${facet.name}" must set bodyAttribute to name the attribute holding its definition`,
+        });
+      }
+    }
   });
 
 export type ExtractorName = z.infer<typeof extractorNameSchema>;
@@ -532,7 +569,7 @@ export function isApproved(profile: Profile, level: string | null): boolean {
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `pnpm test libs/comply-profile/test/maturity.test.ts`
+Run: `pnpm --filter @vertuo/comply-profile test test/maturity.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 6: Write the failing test for the loader**
@@ -589,7 +626,7 @@ describe('loadProfile', () => {
 
 - [ ] **Step 7: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-profile/test/load.test.ts`
+Run: `pnpm --filter @vertuo/comply-profile test test/load.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-profile/src/load.js`.
 
 - [ ] **Step 8: Write `libs/comply-profile/src/load.ts` and the barrel**
@@ -633,7 +670,7 @@ Expected: all PASS.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add libs/comply-profile/src libs/comply-profile/test
+git add libs/comply-profile pnpm-lock.yaml
 git commit -m "feat: Profile model, loader, and maturity/source decomposition"
 ```
 
@@ -643,6 +680,7 @@ git commit -m "feat: Profile model, loader, and maturity/source decomposition"
 
 **Files:**
 - Create: `libs/comply-core/src/corpus.ts`
+- Modify: `libs/comply-core/src/index.ts` — barrel, add `export * from './corpus.js';`
 - Test: `libs/comply-core/test/corpus.test.ts`
 
 **Interfaces:**
@@ -703,7 +741,7 @@ describe('Corpus projection', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-core/test/corpus.test.ts`
+Run: `pnpm --filter @vertuo/comply-core test test/corpus.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-core/src/corpus.js`.
 
 - [ ] **Step 3: Write `libs/comply-core/src/corpus.ts`**
@@ -737,13 +775,13 @@ export function buildCorpus(facts: Fact[]): Corpus {
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-core/test/corpus.test.ts`
+Run: `pnpm --filter @vertuo/comply-core test test/corpus.test.ts`
 Expected: 4 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-core/src/corpus.ts libs/comply-core/test/corpus.test.ts
+git add libs/comply-core/src/corpus.ts libs/comply-core/test/corpus.test.ts libs/comply-core/src/index.ts
 git commit -m "feat: read-only Corpus projection with lookups"
 ```
 
@@ -915,13 +953,13 @@ describe('fixture profile A', () => {
 
 - [ ] **Step 5: Run test**
 
-Run: `pnpm test libs/comply-fixtures/test/profile-a.test.ts`
+Run: `pnpm --filter @vertuo/comply-fixtures test test/profile-a.test.ts`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add libs/comply-fixtures
+git add libs/comply-fixtures pnpm-lock.yaml
 git commit -m "test: fixture corpus A with deliberate integrity defects"
 ```
 
@@ -930,8 +968,9 @@ git commit -m "test: fixture corpus A with deliberate integrity defects"
 ### Task 5: Markdown adapter — discovery, frontmatter, facet routing
 
 **Files:**
-- Create: `libs/comply-ingestion/package.json`, `libs/comply-ingestion/tsconfig.json`, `libs/comply-ingestion/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"gray-matter": "^4.0.3"`
+- Create: `libs/comply-ingestion/package.json`, `libs/comply-ingestion/tsconfig.json`, `libs/comply-ingestion/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"gray-matter": "^4.0.3"`; devDependencies additionally `"@vertuo/comply-fixtures": "workspace:*"` (its tests drive the real fixture corpora)
 - Create: `libs/comply-ingestion/src/adapter.ts`, `libs/comply-ingestion/src/markdown/discover.ts`, `libs/comply-ingestion/src/markdown/document.ts`
+- Create: `libs/comply-ingestion/src/index.ts` — barrel, containing `export * from './adapter.js'; export * from './markdown/discover.js'; export * from './markdown/document.js';`
 - Test: `libs/comply-ingestion/test/document.test.ts`
 
 **Interfaces:**
@@ -942,6 +981,9 @@ git commit -m "test: fixture corpus A with deliberate integrity defects"
 
 `libs/comply-ingestion/test/document.test.ts`:
 ```ts
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { discoverDocuments } from '@vertuo/comply-ingestion';
@@ -971,12 +1013,19 @@ describe('document discovery and parsing', () => {
     const doc = await parseDocument(fixturePath('profile-a.json'));
     expect(doc).toBeNull();
   });
+
+  it('returns null for malformed frontmatter rather than throwing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'doc-'));
+    const file = join(dir, 'broken.md');
+    await writeFile(file, '---\narea: [unterminated\n---\nbody\n', 'utf8');
+    await expect(parseDocument(file)).resolves.toBeNull();
+  });
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-ingestion/test/document.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/document.test.ts`
 Expected: FAIL — cannot resolve the modules.
 
 - [ ] **Step 3: Write `libs/comply-ingestion/src/adapter.ts`**
@@ -1039,7 +1088,15 @@ export async function parseDocument(file: string): Promise<ParsedDocument | null
   const text = await readFile(file, 'utf8');
   if (!text.startsWith('---')) return null;
 
-  const parsed = matter(text);
+  // Malformed frontmatter degrades to null rather than throwing: this tool scans whole
+  // corpora, and one bad document must be reported, not abort the run. `readFile` stays
+  // outside the catch so genuine I/O errors still propagate.
+  let parsed: matter.GrayMatterFile<string>;
+  try {
+    parsed = matter(text);
+  } catch {
+    return null;
+  }
   if (Object.keys(parsed.data).length === 0) return null;
 
   const consumed = text.slice(0, text.length - parsed.content.length);
@@ -1056,13 +1113,13 @@ export async function parseDocument(file: string): Promise<ParsedDocument | null
 
 - [ ] **Step 6: Run tests**
 
-Run: `pnpm test libs/comply-ingestion/test/document.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/document.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add libs/comply-ingestion/src libs/comply-ingestion/test
+git add libs/comply-ingestion pnpm-lock.yaml
 git commit -m "feat: markdown document discovery and frontmatter parsing"
 ```
 
@@ -1072,6 +1129,7 @@ git commit -m "feat: markdown document discovery and frontmatter parsing"
 
 **Files:**
 - Create: `libs/comply-ingestion/src/markdown/extractors.ts`
+- Modify: `libs/comply-ingestion/src/index.ts` — barrel, add `export * from './markdown/extractors.js';`
 - Test: `libs/comply-ingestion/test/extractors.test.ts`
 
 **Interfaces:**
@@ -1129,10 +1187,16 @@ describe('extractors', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-ingestion/test/extractors.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/extractors.test.ts`
 Expected: FAIL — cannot resolve `extractors.js`.
 
 - [ ] **Step 3: Write `libs/comply-ingestion/src/markdown/extractors.ts`**
+
+This code handles three shapes the tidy fixtures do not contain, each of which the first draft got
+wrong: GFM alignment separators (`:---`), which were parsed as data rows and fabricated junk items;
+escaped pipes in cells, which shifted every later column so values landed under the wrong attribute
+names; and reference-style links, which were invisible so relations under-extracted. The first two
+corrupt data rather than dropping it, which is the failure mode this product exists to detect.
 
 ```ts
 import type { AttributeValue, Relation } from '@vertuo/comply-core';
@@ -1146,15 +1210,20 @@ export interface ExtractedItem {
   line: number;
 }
 
-const LINK = /\[[^\]]*\]\(([^)]+)\)/g;
+const INLINE_LINK = /\[[^\]]*\]\(([^)]+)\)/g;
+/** `[text][ref]` — the explicit reference form only; `ref` must be non-empty. Link definitions are not resolved. */
+const REFERENCE_LINK = /\[[^\]]*\]\[([^\]]+)\]/g;
 
-/** Collects markdown link targets, reduced to their fragment where one exists. */
+/** Collects markdown link targets. Inline targets are reduced to their fragment where one exists. */
 function relationsIn(text: string): Relation[] {
   const out: Relation[] = [];
-  for (const match of text.matchAll(LINK)) {
+  for (const match of text.matchAll(INLINE_LINK)) {
     const target = match[1]!;
     const hash = target.indexOf('#');
     out.push({ type: 'reference', targetRef: hash >= 0 ? target.slice(hash + 1) : target });
+  }
+  for (const match of text.matchAll(REFERENCE_LINK)) {
+    out.push({ type: 'reference', targetRef: match[1]! });
   }
   return out;
 }
@@ -1164,6 +1233,33 @@ function extractDocument(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[]
   const text = doc.body.trim();
   if (text === '') return [];
   return [{ attributes: { [attribute]: text }, relations: relationsIn(text), line: doc.bodyStartLine }];
+}
+
+/** Matches a GFM separator cell: optional leading/trailing colon around one or more dashes. */
+function isSeparatorCell(cell: string): boolean {
+  return /^:?-+:?$/.test(cell.replace(/\s/g, ''));
+}
+
+/** Splits a table row on unescaped `|`, unescaping `\|` to a literal `|` within each cell. */
+function splitRowCells(row: string): string[] {
+  const cells: string[] = [];
+  let current = '';
+  for (let i = 0; i < row.length; i += 1) {
+    const ch = row[i];
+    if (ch === '\\' && row[i + 1] === '|') {
+      current += '|';
+      i += 1;
+      continue;
+    }
+    if (ch === '|') {
+      cells.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  cells.push(current.trim());
+  return cells;
 }
 
 function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
@@ -1176,11 +1272,10 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
     const trimmed = line.trim();
     if (!trimmed.startsWith('|')) { headers = null; continue; }
 
-    const cells = trimmed.slice(1, trimmed.endsWith('|') ? -1 : undefined)
-      .split('|').map((c) => c.trim());
+    const cells = splitRowCells(trimmed.slice(1, trimmed.endsWith('|') ? -1 : undefined));
 
     if (headers === null) { headers = cells; continue; }
-    if (cells.every((c) => /^-+$/.test(c.replace(/\s/g, '')))) continue;
+    if (cells.every(isSeparatorCell)) continue;
 
     const attributes: Record<string, AttributeValue> = {};
     const relations: Relation[] = [];
@@ -1242,13 +1337,13 @@ export function extract(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] 
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-ingestion/test/extractors.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/extractors.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-ingestion/src/markdown/extractors.ts libs/comply-ingestion/test/extractors.test.ts
+git add libs/comply-ingestion/src/markdown/extractors.ts libs/comply-ingestion/test/extractors.test.ts libs/comply-ingestion/src/index.ts
 git commit -m "feat: document, table, and heading body extractors"
 ```
 
@@ -1258,6 +1353,7 @@ git commit -m "feat: document, table, and heading body extractors"
 
 **Files:**
 - Create: `libs/comply-ingestion/src/markdown/index.ts`
+- Modify: `libs/comply-ingestion/src/index.ts` — barrel, add `export * from './markdown/index.js';`
 - Test: `libs/comply-ingestion/test/markdown-adapter.test.ts`
 
 **Interfaces:**
@@ -1318,10 +1414,18 @@ Note: `beta/terms.md` declares `area: bravo`, so a third module identity now exi
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-ingestion/test/markdown-adapter.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/markdown-adapter.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-ingestion/src/markdown/index.js`.
 
 - [ ] **Step 3: Write `libs/comply-ingestion/src/markdown/index.ts`**
+
+Two properties the first draft lacked. A document that passes every gate but extracts nothing now
+raises an `empty-facet` Finding instead of vanishing — otherwise an empty Module document is
+indistinguishable from an absent one, and empty placeholders are the commonest defect in a real
+corpus. And non-Module Fact ids derive from the document's relative path rather than a document-local
+index, so two documents sharing a `(moduleId, facet)` pair cannot silently overwrite each other in
+`Corpus.find`. Module ids stay exactly `moduleId` — a later task resolves owners via
+`corpus.find(moduleId)`.
 
 ```ts
 import { relative } from 'node:path';
@@ -1330,7 +1434,7 @@ import type { Fact } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
 import { decomposeStatus } from '@vertuo/comply-profile';
 import type { Profile } from '@vertuo/comply-profile';
-import type { SeedResult } from '../adapter.js';
+import type { SeedAdapter, SeedResult } from '../adapter.js';
 import { discoverDocuments } from './discover.js';
 import { parseDocument } from './document.js';
 import { extract } from './extractors.js';
@@ -1345,13 +1449,14 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
   const findings: Finding[] = [];
 
   for (const file of await discoverDocuments(root)) {
-    const containerId = relative(root, file).split('/').slice(0, -1).join('/') || '.';
+    const relativePath = relative(root, file);
+    const containerId = relativePath.split('/').slice(0, -1).join('/') || '.';
     const doc = await parseDocument(file);
 
     if (doc === null) {
       findings.push({
         code: 'unparsable-document', moduleId: null,
-        message: `No frontmatter found; the document could not be interpreted`,
+        message: `The document has no readable frontmatter and could not be interpreted`,
         origin: { file, line: 1 },
       });
       continue;
@@ -1397,14 +1502,24 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
 
     const owner = ownerKey === undefined ? null : text(doc.data[ownerKey]);
 
-    for (const [index, item] of extract(doc, facet).entries()) {
+    const items = extract(doc, facet);
+    if (items.length === 0) {
+      findings.push({
+        code: 'empty-facet', moduleId,
+        message: `Facet "${facet.name}" produced no content in this document`,
+        origin: { file, line: doc.bodyStartLine },
+      });
+      continue;
+    }
+
+    for (const [index, item] of items.entries()) {
       const attributes = { ...item.attributes };
       if (facet.factKind === 'Module') {
         attributes.name = moduleId;
         if (owner !== null) attributes.owner = owner;
       }
       facts.push({
-        id: facet.factKind === 'Module' ? moduleId : `${moduleId}/${facet.name}/${index}`,
+        id: facet.factKind === 'Module' ? moduleId : `${relativePath}#${index}`,
         kind: facet.factKind,
         moduleId: facet.factKind === 'Module' ? null : moduleId,
         facet: facet.name,
@@ -1421,7 +1536,7 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
   return { facts, findings };
 }
 
-export const markdownAdapter = { load: loadSeed };
+export const markdownAdapter: SeedAdapter = { load: loadSeed };
 
 export async function loadCorpus(
   profile: Profile,
@@ -1439,7 +1554,7 @@ Expected: all PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-ingestion/src/markdown/index.ts libs/comply-ingestion/test/markdown-adapter.test.ts
+git add libs/comply-ingestion/src/markdown/index.ts libs/comply-ingestion/test/markdown-adapter.test.ts libs/comply-ingestion/src/index.ts
 git commit -m "feat: assemble markdown adapter with parse-failure findings"
 ```
 
@@ -1450,7 +1565,7 @@ git commit -m "feat: assemble markdown adapter with parse-failure findings"
 **Files:**
 - Create: `libs/comply-fixtures/corpus/corpus-b/one.md`, `libs/comply-fixtures/corpus/corpus-b/two.md`, `libs/comply-fixtures/corpus/corpus-b/three.md`
 - Create: `libs/comply-fixtures/corpus/profile-b.json`
-- Test: `libs/comply-fixtures/test/two-corpus.test.ts`
+- Test: `libs/comply-ingestion/test/two-corpus.test.ts`
 
 **Interfaces:**
 - Consumes: `loadProfile`, `loadCorpus`.
@@ -1537,7 +1652,7 @@ Note: corpus B has no `Module` facet at all, so `moduleIds()` will be empty. Tas
 
 - [ ] **Step 3: Write the test**
 
-`libs/comply-fixtures/test/two-corpus.test.ts`:
+`libs/comply-ingestion/test/two-corpus.test.ts`:
 ```ts
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
@@ -1567,7 +1682,7 @@ describe('two-corpus rule (ADR-0001)', () => {
 
 - [ ] **Step 4: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-fixtures/test/two-corpus.test.ts`
+Run: `pnpm --filter @vertuo/comply-ingestion test test/two-corpus.test.ts`
 Expected: FAIL — `level: 2` parses as a number, so `text()` returns null and the status is never decomposed.
 
 - [ ] **Step 5: Fix the leak in `libs/comply-ingestion/src/markdown/index.ts`**
@@ -1590,7 +1705,7 @@ Expected: all PASS, both corpora.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add libs/comply-fixtures/corpus/corpus-b libs/comply-fixtures/corpus/profile-b.json libs/comply-fixtures/test/two-corpus.test.ts libs/comply-ingestion/src/markdown/index.ts
+git add libs/comply-fixtures pnpm-lock.yaml/corpus/corpus-b libs/comply-fixtures/corpus/profile-b.json libs/comply-ingestion/test/two-corpus.test.ts libs/comply-ingestion/src/markdown/index.ts
 git commit -m "test: dissimilar fixture corpus B, enforcing the two-corpus rule"
 ```
 
@@ -1599,8 +1714,9 @@ git commit -m "test: dissimilar fixture corpus B, enforcing the two-corpus rule"
 ### Task 9: Well-formedness criteria engine
 
 **Files:**
-- Create: `libs/comply-readiness/package.json`, `libs/comply-readiness/tsconfig.json`, `libs/comply-readiness/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`
+- Create: `libs/comply-readiness/package.json`, `libs/comply-readiness/tsconfig.json`, `libs/comply-readiness/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`; devDependencies additionally `"@vertuo/comply-fixtures": "workspace:*"` and `"@vertuo/comply-ingestion": "workspace:*"` (Tasks 10 and 11 load real corpora in their tests)
 - Create: `libs/comply-readiness/src/wellformed.ts`
+- Create: `libs/comply-readiness/src/index.ts` — barrel, containing `export * from './wellformed.js';`
 - Test: `libs/comply-readiness/test/wellformed.test.ts`
 
 **Interfaces:**
@@ -1682,7 +1798,7 @@ describe('well-formedness engine', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-readiness/test/wellformed.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/wellformed.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-readiness/src/wellformed.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/wellformed.ts`**
@@ -1784,13 +1900,13 @@ export function evaluateFacet(
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-readiness/test/wellformed.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/wellformed.test.ts`
 Expected: 6 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-readiness/src/wellformed.ts libs/comply-readiness/test/wellformed.test.ts
+git add libs/comply-readiness pnpm-lock.yaml
 git commit -m "feat: profile-driven well-formedness criteria engine"
 ```
 
@@ -1800,6 +1916,7 @@ git commit -m "feat: profile-driven well-formedness criteria engine"
 
 **Files:**
 - Create: `libs/comply-readiness/src/owner.ts`
+- Modify: `libs/comply-readiness/src/index.ts` — barrel, add `export * from './owner.js';`
 - Test: `libs/comply-readiness/test/owner.test.ts`
 
 **Interfaces:**
@@ -1846,7 +1963,7 @@ describe('Module Owner resolution (ADR-0010)', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-readiness/test/owner.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/owner.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-readiness/src/owner.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/owner.ts`**
@@ -1900,13 +2017,13 @@ export function resolveOwners(corpus: Corpus, profile: Profile): OwnerResolution
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-readiness/test/owner.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/owner.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-readiness/src/owner.ts libs/comply-readiness/test/owner.test.ts
+git add libs/comply-readiness/src/owner.ts libs/comply-readiness/test/owner.test.ts libs/comply-readiness/src/index.ts
 git commit -m "feat: Module Owner resolution with missing-owner findings"
 ```
 
@@ -1916,6 +2033,7 @@ git commit -m "feat: Module Owner resolution with missing-owner findings"
 
 **Files:**
 - Create: `libs/comply-readiness/src/matrix.ts`, `libs/comply-readiness/src/score.ts`
+- Modify: `libs/comply-readiness/src/index.ts` — barrel, add `export * from './matrix.js'; export * from './score.js';`
 - Test: `libs/comply-readiness/test/matrix.test.ts`
 
 **Interfaces:**
@@ -1923,6 +2041,13 @@ git commit -m "feat: Module Owner resolution with missing-owner findings"
 - Produces: `FacetState = 'absent' | 'present' | 'well-formed' | 'approved'`, `MatrixCell`, `ModuleRow`, `Matrix`, `buildMatrix(corpus, profile)`, `ModuleScore`, `scoreMatrix(matrix): ModuleScore[]`.
 
 - [ ] **Step 1: Write the failing test**
+
+The last two cases are regression tests for the state ladder, and they exist because the fixture
+corpora cannot exercise it: no fixture fact combines an approved maturity level with a failing
+criterion, and every multi-fact facet draws its maturity from one shared field. Without these,
+deleting the `wellFormed &&` guard or changing `facts.every` to `facts.some` would fail no test in the
+repository, and the product's headline score would silently become plausible-but-wrong. Verify they
+bite by making each break deliberately and watching the matching test fail.
 
 `libs/comply-readiness/test/matrix.test.ts`:
 ```ts
@@ -1932,6 +2057,42 @@ import { loadCorpus } from '@vertuo/comply-ingestion';
 import { loadProfile } from '@vertuo/comply-profile';
 import { buildMatrix } from '@vertuo/comply-readiness';
 import { scoreMatrix } from '@vertuo/comply-readiness';
+import { buildCorpus } from '@vertuo/comply-core';
+import type { Fact } from '@vertuo/comply-core';
+import type { Profile } from '@vertuo/comply-profile';
+
+/** Minimal inline Profile: one Module facet, one Term facet, a three-rung ladder. */
+const inlineProfile: Profile = {
+  id: 'inline-profile',
+  adapter: {
+    kind: 'markdown-frontmatter',
+    root: './inline',
+    moduleIdKey: 'area',
+    facetKey: 'kind',
+    statusKey: 'state',
+  },
+  facets: [
+    { name: 'summary', factKind: 'Module', extractor: 'document', bodyAttribute: 'description' },
+    { name: 'items', factKind: 'Term', extractor: 'heading', bodyAttribute: 'definition' },
+  ],
+  maturity: { levels: ['draft', 'reviewed', 'final'], approvedAtOrAbove: 'final' },
+  statusMappings: [],
+  criteria: {
+    Term: [{ type: 'requiredAttributes', attributes: ['name', 'definition'] }],
+  },
+};
+
+function fact(overrides: Partial<Fact> & Pick<Fact, 'id' | 'kind' | 'moduleId' | 'facet'>): Fact {
+  return {
+    containerId: 'inline',
+    attributes: {},
+    relations: [],
+    maturityLevel: null,
+    sources: [],
+    origin: { file: 'inline', line: 1 },
+    ...overrides,
+  };
+}
 
 describe('Readiness Matrix', () => {
   it('grades every module against every declared facet', async () => {
@@ -1974,12 +2135,67 @@ describe('Readiness Matrix', () => {
     expect(matrix.rows.map((r) => r.moduleId)).toEqual(['one', 'two']);
     expect(matrix.rows[1]!.cells.find((c) => c.facet === 'constraints')!.state).toBe('absent');
   });
+
+  it('does not reach approved when maturity is approved but a criterion still fails', () => {
+    const facts: Fact[] = [
+      fact({ id: 'm1', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),
+      fact({
+        id: 'm1-term',
+        kind: 'Term',
+        moduleId: 'm1',
+        facet: 'items',
+        attributes: { name: 'Foo' }, // 'definition' missing -> fails requiredAttributes
+        maturityLevel: 'final', // the profile's approved rung
+        sources: ['review'],
+      }),
+    ];
+    const corpus = buildCorpus(facts);
+    const matrix = buildMatrix(corpus, inlineProfile);
+
+    const row = matrix.rows.find((r) => r.moduleId === 'm1')!;
+    const cell = row.cells.find((c) => c.facet === 'items')!;
+
+    expect(cell.state).toBe('present');
+    expect(cell.state).not.toBe('approved');
+  });
+
+  it('caps a facet with mixed maturity at well-formed, never approved', () => {
+    const facts: Fact[] = [
+      fact({ id: 'm2', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),
+      fact({
+        id: 'm2-term-a',
+        kind: 'Term',
+        moduleId: 'm2',
+        facet: 'items',
+        attributes: { name: 'A', definition: 'def A' },
+        maturityLevel: 'final', // approved rung
+        sources: ['review'],
+      }),
+      fact({
+        id: 'm2-term-b',
+        kind: 'Term',
+        moduleId: 'm2',
+        facet: 'items',
+        attributes: { name: 'B', definition: 'def B' },
+        maturityLevel: 'reviewed', // below the approved rung
+        sources: ['review'],
+      }),
+    ];
+    const corpus = buildCorpus(facts);
+    const matrix = buildMatrix(corpus, inlineProfile);
+
+    const row = matrix.rows.find((r) => r.moduleId === 'm2')!;
+    const cell = row.cells.find((c) => c.facet === 'items')!;
+
+    expect(cell.state).toBe('well-formed');
+    expect(cell.state).not.toBe('approved');
+  });
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-readiness/test/matrix.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/matrix.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-readiness/src/matrix.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/matrix.ts`**
@@ -2092,7 +2308,7 @@ Expected: all PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add libs/comply-readiness/src/matrix.ts libs/comply-readiness/src/score.ts libs/comply-readiness/test/matrix.test.ts
+git add libs/comply-readiness/src/matrix.ts libs/comply-readiness/src/score.ts libs/comply-readiness/test/matrix.test.ts libs/comply-readiness/src/index.ts
 git commit -m "feat: Readiness Matrix and per-module scoring with denominators"
 ```
 
@@ -2102,6 +2318,7 @@ git commit -m "feat: Readiness Matrix and per-module scoring with denominators"
 
 **Files:**
 - Create: `libs/comply-readiness/src/snapshot.ts`
+- Modify: `libs/comply-readiness/src/index.ts` — barrel, add `export * from './snapshot.js';`
 - Test: `libs/comply-readiness/test/snapshot.test.ts`
 
 **Interfaces:**
@@ -2158,14 +2375,22 @@ describe('run snapshots', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-readiness/test/snapshot.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/snapshot.test.ts`
 Expected: FAIL — cannot resolve `libs/comply-readiness/src/snapshot.js`.
 
 - [ ] **Step 3: Write `libs/comply-readiness/src/snapshot.ts`**
 
+Three properties the first draft lacked, all in the same family: it guarded the failure it imagined
+and not the adjacent one. Reads are per-file fault-tolerant, so one corrupt snapshot costs a single
+data point rather than the whole directory. Writes go to a `.tmp` file in the same directory and are
+renamed into place, so an interrupted run cannot leave the partial file the reader would then have to
+survive — and because the reader filters on `.json`, it never sees a temp file mid-write. Filenames
+disambiguate on collision instead of silently overwriting.
+
 ```ts
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { FactId } from '@vertuo/comply-core';
 import type { ModuleScore } from './score.js';
 
@@ -2180,11 +2405,33 @@ export interface TrendRow {
   approvedDelta: number;
 }
 
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function writeSnapshot(dir: string, snapshot: Snapshot): Promise<string> {
   await mkdir(dir, { recursive: true });
-  const name = `${snapshot.profileId}-${snapshot.takenAt.replace(/[:.]/g, '-')}.json`;
+  const base = `${snapshot.profileId}-${snapshot.takenAt.replace(/[:.]/g, '-')}`;
+
+  let name = `${base}.json`;
+  let suffix = 1;
+  while (await pathExists(join(dir, name))) {
+    name = `${base}-${suffix}.json`;
+    suffix += 1;
+  }
   const path = join(dir, name);
-  await writeFile(path, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+
+  // Write to a temp file in the same directory, then rename into place.
+  // Rename within a directory is atomic, so a concurrent reader sees
+  // either the old contents or the complete new file, never a partial one.
+  const tmpPath = join(dir, `.${name}.${randomUUID()}.tmp`);
+  await writeFile(tmpPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+  await rename(tmpPath, path);
   return path;
 }
 
@@ -2203,7 +2450,14 @@ export async function readPreviousSnapshot(
   const candidates: Snapshot[] = [];
   for (const name of names) {
     if (!name.endsWith('.json')) continue;
-    const snapshot = JSON.parse(await readFile(join(dir, name), 'utf8')) as Snapshot;
+    let snapshot: Snapshot;
+    try {
+      snapshot = JSON.parse(await readFile(join(dir, name), 'utf8')) as Snapshot;
+    } catch {
+      // A single corrupt or partially-written file costs one data point,
+      // not the whole directory's trend history.
+      continue;
+    }
     if (snapshot.profileId === profileId && snapshot.takenAt < excludeAt) candidates.push(snapshot);
   }
 
@@ -2224,13 +2478,13 @@ export function trend(current: Snapshot, previous: Snapshot | null): TrendRow[] 
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-readiness/test/snapshot.test.ts`
+Run: `pnpm --filter @vertuo/comply-readiness test test/snapshot.test.ts`
 Expected: 4 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-readiness/src/snapshot.ts libs/comply-readiness/test/snapshot.test.ts
+git add libs/comply-readiness/src/snapshot.ts libs/comply-readiness/test/snapshot.test.ts libs/comply-readiness/src/index.ts
 git commit -m "feat: disposable run snapshots and per-module trend"
 ```
 
@@ -2239,8 +2493,9 @@ git commit -m "feat: disposable run snapshots and per-module trend"
 ### Task 13: Term registry and the conflicting-definition check
 
 **Files:**
-- Create: `libs/comply-integrity/package.json`, `libs/comply-integrity/tsconfig.json`, `libs/comply-integrity/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`
+- Create: `libs/comply-integrity/package.json`, `libs/comply-integrity/tsconfig.json`, `libs/comply-integrity/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`; devDependencies additionally `"@vertuo/comply-fixtures": "workspace:*"` and `"@vertuo/comply-ingestion": "workspace:*"`
 - Create: `libs/comply-integrity/src/registry.ts`, `libs/comply-integrity/src/checks/conflicting-definition.ts`
+- Create: `libs/comply-integrity/src/index.ts` — barrel, containing `export * from './registry.js'; export * from './checks/conflicting-definition.js';`
 - Test: `libs/comply-integrity/test/conflicting-definition.test.ts`
 
 **Interfaces:**
@@ -2290,10 +2545,15 @@ describe('conflicting definition check', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-integrity/test/conflicting-definition.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/conflicting-definition.test.ts`
 Expected: FAIL — cannot resolve the modules.
 
 - [ ] **Step 3: Write `libs/comply-integrity/src/registry.ts`**
+
+`name` and `definition` are core semantic slots that a Profile is *required* to map onto, and that
+requirement is validated when the Profile loads (Task 2). Without that validation this lookup would
+be coincidentally correct: a schema-valid Profile mapping a column to any other attribute would make
+the registry silently return nothing, in the package whose whole job is language integrity.
 
 ```ts
 import type { Corpus } from '@vertuo/comply-core';
@@ -2312,9 +2572,11 @@ export interface TermEntry {
 function termAttributes(profile: Profile): { name: string; definition: string } | null {
   const facet = profile.facets.find((f) => f.factKind === 'Term');
   if (facet === undefined) return null;
-  // 'name' and 'definition' are the core's internal attribute names. A Profile maps its
-  // own column headings onto them (table extractor) or names the body attribute directly
-  // (heading extractor). No corpus vocabulary reaches this file.
+  // 'name' and 'definition' are core semantic slots: every Term facet is *required* to map
+  // onto them (table extractor: a column targets each; otherwise: bodyAttribute names the
+  // definition, and the heading extractor emits 'name' itself). comply-profile's schema
+  // validates this at load time (see profile.ts), so by the time a Profile reaches here the
+  // mapping is guaranteed, not assumed. No corpus vocabulary reaches this file.
   return { name: 'name', definition: facet.bodyAttribute ?? 'definition' };
 }
 
@@ -2339,6 +2601,11 @@ export function buildTermRegistry(corpus: Corpus, profile: Profile): TermEntry[]
 
 - [ ] **Step 4: Write `libs/comply-integrity/src/checks/conflicting-definition.ts`**
 
+Entries with an empty definition are excluded from the comparison. A term that is merely undocumented
+in one place is not a term defined two ways, and reporting absence as contradiction is the kind of
+false positive that teaches people to ignore the tool. The exclusion belongs here, not in
+`buildTermRegistry`, which is separately exported.
+
 ```ts
 import type { Corpus } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
@@ -2348,6 +2615,10 @@ import { buildTermRegistry, type TermEntry } from '../registry.js';
 export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Finding[] {
   const byCanonical = new Map<string, TermEntry[]>();
   for (const entry of buildTermRegistry(corpus, profile)) {
+    // An empty definition means "not yet documented here", not "documented as nothing".
+    // That is a well-formedness concern (requiredAttributes), not a language-integrity one —
+    // comparing it against a real definition elsewhere would report absence as contradiction.
+    if (entry.definition === '') continue;
     const bucket = byCanonical.get(entry.canonical) ?? [];
     bucket.push(entry);
     byCanonical.set(entry.canonical, bucket);
@@ -2362,10 +2633,9 @@ export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Fi
     findings.push({
       code: 'conflicting-definition',
       moduleId: first!.moduleId,
-      message:
-        `Term "${canonical}" is defined ${distinct.size} different ways; also defined at ` +
-        rest.map((e) => `${e.origin.file}:${e.origin.line}`).join(', '),
+      message: `Term "${canonical}" is defined ${distinct.size} different ways`,
       origin: first!.origin,
+      relatedOrigins: rest.map((e) => e.origin),
     });
   }
   return findings;
@@ -2374,13 +2644,13 @@ export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Fi
 
 - [ ] **Step 5: Run tests**
 
-Run: `pnpm test libs/comply-integrity/test/conflicting-definition.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/conflicting-definition.test.ts`
 Expected: 3 tests PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add libs/comply-integrity/src/registry.ts libs/comply-integrity/src/checks/conflicting-definition.ts libs/comply-integrity/test
+git add libs/comply-integrity pnpm-lock.yaml
 git commit -m "feat: term registry and conflicting-definition check"
 ```
 
@@ -2390,6 +2660,7 @@ git commit -m "feat: term registry and conflicting-definition check"
 
 **Files:**
 - Create: `libs/comply-integrity/src/checks/split-identity.ts`
+- Modify: `libs/comply-integrity/src/index.ts` — barrel, add `export * from './checks/split-identity.js';`
 - Test: `libs/comply-integrity/test/split-identity.test.ts`
 
 **Interfaces:**
@@ -2433,10 +2704,16 @@ Note: corpus B is flat, so every document shares one container while declaring `
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test libs/comply-integrity/test/split-identity.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/split-identity.test.ts`
 Expected: FAIL — cannot resolve `split-identity.js`.
 
 - [ ] **Step 3: Write `libs/comply-integrity/src/checks/split-identity.ts`**
+
+Both the reported module and the cited document are chosen by evidence, not by sort order. The primary
+identity is the one matching the container's own name, falling back to the majority; the origin points
+at a document carrying an *anomalous* identity, never a consensus one. Picking by lexicographic rank
+looks correct on a two-identity fixture and degenerates at three: the evidence lands on the majority
+group, and `moduleId` — which owner routing follows — gets chosen by alphabetical accident.
 
 ```ts
 import type { Corpus } from '@vertuo/comply-core';
@@ -2448,6 +2725,40 @@ const UNGROUPED = '.';
 
 function identityOf(fact: Fact): string | null {
   return fact.kind === 'Module' ? fact.id : fact.moduleId;
+}
+
+function lastSegment(containerId: string): string {
+  const segments = containerId.split('/');
+  return segments[segments.length - 1] ?? containerId;
+}
+
+/**
+ * The identity that best claims the container: the one matching the container's last
+ * path segment, if any does; otherwise the one carried by the most facts, with ties
+ * broken lexicographically so the result never depends on fact order.
+ */
+function primaryIdentity(containerId: string, facts: Fact[]): string {
+  const counts = new Map<string, number>();
+  for (const fact of facts) {
+    const identity = identityOf(fact);
+    if (identity === null) continue;
+    counts.set(identity, (counts.get(identity) ?? 0) + 1);
+  }
+
+  const segment = lastSegment(containerId);
+  if (counts.has(segment)) return segment;
+
+  let best: string | undefined;
+  let bestCount = -1;
+  for (const [identity, count] of [...counts].sort(([a], [b]) => a.localeCompare(b))) {
+    if (count > bestCount) {
+      best = identity;
+      bestCount = count;
+    }
+  }
+  // Reachable only if `counts` is empty, which cannot happen: callers only invoke this
+  // once at least two distinct identities have been found among `facts`.
+  return best!;
 }
 
 export function checkSplitIdentity(corpus: Corpus): Finding[] {
@@ -2464,12 +2775,19 @@ export function checkSplitIdentity(corpus: Corpus): Finding[] {
     const identities = [...new Set(facts.map(identityOf).filter((i): i is string => i !== null))].sort();
     if (identities.length < 2) continue;
 
-    const offender = facts.find((f) => identityOf(f) === identities[1]) ?? facts[0]!;
+    const primary = primaryIdentity(containerId, facts);
+    const anomalies = identities.filter((identity) => identity !== primary);
+    const firstAnomaly = anomalies[0]!;
+    // An anomaly always exists here: identities.length >= 2 and primary is one of them.
+    const offender = facts.find((f) => identityOf(f) === firstAnomaly)!;
+
     findings.push({
       code: 'split-identity',
-      moduleId: identities[0]!,
+      moduleId: primary,
       message:
         `"${containerId}" carries ${identities.length} module identities (${identities.join(', ')}); ` +
+        `primary identity is "${primary}", anomalous ${anomalies.length === 1 ? 'identity is' : 'identities are'} ` +
+        `${anomalies.map((identity) => `"${identity}"`).join(', ')}; ` +
         `a change to the identity reached some documents and not others`,
       origin: offender.origin,
     });
@@ -2480,13 +2798,13 @@ export function checkSplitIdentity(corpus: Corpus): Finding[] {
 
 - [ ] **Step 4: Run tests**
 
-Run: `pnpm test libs/comply-integrity/test/split-identity.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/split-identity.test.ts`
 Expected: 2 tests PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add libs/comply-integrity/src/checks/split-identity.ts libs/comply-integrity/test/split-identity.test.ts
+git add libs/comply-integrity/src/checks/split-identity.ts libs/comply-integrity/test/split-identity.test.ts libs/comply-integrity/src/index.ts
 git commit -m "feat: split-identity check over adapter-reported containers"
 ```
 
@@ -2496,6 +2814,7 @@ git commit -m "feat: split-identity check over adapter-reported containers"
 
 **Files:**
 - Create: `libs/comply-integrity/src/checks/broken-reference.ts`, `libs/comply-integrity/src/run.ts`
+- Modify: `libs/comply-integrity/src/index.ts` — barrel, add `export * from './checks/broken-reference.js'; export * from './run.js';`
 - Test: `libs/comply-integrity/test/broken-reference.test.ts`, `libs/comply-integrity/test/run.test.ts`
 
 **Interfaces:**
@@ -2567,7 +2886,7 @@ describe('check runner', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm test libs/comply-integrity/test/broken-reference.test.ts libs/comply-integrity/test/run.test.ts`
+Run: `pnpm --filter @vertuo/comply-integrity test test/broken-reference.test.ts test/run.test.ts`
 Expected: FAIL — cannot resolve the modules.
 
 - [ ] **Step 3: Write `libs/comply-integrity/src/checks/broken-reference.ts`**
@@ -2592,7 +2911,15 @@ export function checkBrokenReference(corpus: Corpus): Finding[] {
   const findings: Finding[] = [];
   for (const fact of corpus.facts) {
     for (const relation of fact.relations) {
-      if (isExternal(relation.targetRef) || anchors.has(relation.targetRef)) continue;
+      // Check anchors before the external heuristic, not after: `moduleId` (and therefore
+      // fact.id for a Module fact) comes from unvalidated frontmatter, so a real in-corpus
+      // anchor can legitimately contain a dot or slash (e.g. "v1.2"). If the heuristic ran
+      // first, such an anchor would be misclassified as external and its reference silently
+      // waved through, whether or not it actually resolves. Resolving against known anchors
+      // first means a genuine match always wins, whatever characters it contains; the
+      // heuristic only gets the final say once resolution has already failed.
+      if (anchors.has(relation.targetRef)) continue;
+      if (isExternal(relation.targetRef)) continue;
       findings.push({
         code: 'broken-reference',
         moduleId: fact.moduleId,
@@ -2634,7 +2961,7 @@ Expected: all PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add libs/comply-integrity/src/checks/broken-reference.ts libs/comply-integrity/src/run.ts libs/comply-integrity/test
+git add libs/comply-integrity/src/checks/broken-reference.ts libs/comply-integrity/src/run.ts libs/comply-integrity/test libs/comply-integrity/src/index.ts
 git commit -m "feat: broken-reference check and integrity check runner"
 ```
 
@@ -2643,7 +2970,7 @@ git commit -m "feat: broken-reference check and integrity check runner"
 ### Task 16: CLI
 
 **Files:**
-- Create: `apps/comply-cli/package.json`, `apps/comply-cli/tsconfig.json`, `apps/comply-cli/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-ingestion": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`, `"@vertuo/comply-integrity": "workspace:*"`
+- Create: `apps/comply-cli/package.json`, `apps/comply-cli/tsconfig.json`, `apps/comply-cli/vitest.config.ts` — Package template, dependencies `"@vertuo/comply-core": "workspace:*"`, `"@vertuo/comply-profile": "workspace:*"`, `"@vertuo/comply-ingestion": "workspace:*"`, `"@vertuo/comply-readiness": "workspace:*"`, `"@vertuo/comply-integrity": "workspace:*"`; devDependencies additionally `"@vertuo/comply-fixtures": "workspace:*"`
 - Create: `apps/comply-cli/src/render.ts`, `apps/comply-cli/src/main.ts`
 - Test: `apps/comply-cli/test/render.test.ts`
 
@@ -2695,12 +3022,18 @@ describe('rendering', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test apps/comply-cli/test/render.test.ts`
+Run: `pnpm --filter @vertuo/comply-cli test test/render.test.ts`
 Expected: FAIL — cannot resolve `apps/comply-cli/src/render.js`.
 
 - [ ] **Step 3: Write `apps/comply-cli/src/render.ts`**
 
+Every displayed path is relative to the corpus root. Absolute paths cannot be shared, diffed between
+machines, or pasted into a ticket, and for a tool whose product *is* a report that is a defect rather
+than a cosmetic. Relatedly, no check formats a path into prose: findings carry `relatedOrigins` as
+locations, and the renderer decides how they appear.
+
 ```ts
+import { relative } from 'node:path';
 import type { Finding } from '@vertuo/comply-core';
 import type { FacetState, Matrix } from '@vertuo/comply-readiness';
 import type { ModuleScore } from '@vertuo/comply-readiness';
@@ -2757,11 +3090,24 @@ export function renderMatrix(
   ].join('\n');
 }
 
-export function renderFindings(findings: Finding[]): string {
+/**
+ * `corpusRoot` is the Profile's resolved adapter root (`profile.adapter.root`).
+ * Origins are stored as absolute paths internally (LAW-009 needs a path a human
+ * can open), but displaying that absolute path bakes the machine it ran on into
+ * the output — it can't be shared, diffed across machines, or pasted into a
+ * ticket. Rendering relativises against the corpus root; nothing upstream changes.
+ */
+export function renderFindings(findings: Finding[], corpusRoot: string): string {
   if (findings.length === 0) return 'No findings.';
-  const lines = findings.map(
-    (f) => `  [${f.code}] ${f.origin.file}:${f.origin.line}\n      ${f.message}`,
-  );
+  const lines = findings.map((f) => {
+    const related = (f.relatedOrigins ?? [])
+      .map((o) => `        also: ${relative(corpusRoot, o.file)}:${o.line}`)
+      .join('\n');
+    return (
+      `  [${f.code}] ${relative(corpusRoot, f.origin.file)}:${f.origin.line}\n      ${f.message}` +
+      (related === '' ? '' : `\n${related}`)
+    );
+  });
   return [`Findings (${findings.length}):`, ...lines].join('\n');
 }
 ```
@@ -2825,7 +3171,7 @@ Expected: a two-row matrix and `No findings.`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/comply-cli
+git add apps/comply-cli pnpm-lock.yaml
 git commit -m "feat: CLI rendering the Readiness Matrix and findings"
 ```
 
@@ -2834,24 +3180,29 @@ git commit -m "feat: CLI rendering the Readiness Matrix and findings"
 ### Task 17: LAW-004 guard
 
 **Files:**
-- Create: `scripts/check-core-vocabulary.mjs`
-- Modify: `package.json` (add `lint:law004` script, add it to `test`)
-- Test: `tests/law/core-vocabulary.test.ts`
+- Create: `libs/comply-guards/package.json`, `libs/comply-guards/tsconfig.json`, `libs/comply-guards/vitest.config.ts` — Package template, no dependencies
+- Create: `libs/comply-guards/src/core-vocabulary.ts`, `libs/comply-guards/src/index.ts`
+- Test: `libs/comply-guards/test/core-vocabulary.test.ts`
 
 **Interfaces:**
-- Consumes: nothing at runtime.
-- Produces: `checkCoreVocabulary(roots, forbidden): Violation[]` exported from the script for direct testing.
+- Consumes: nothing. It reads source files from disk and imports no workspace package.
+- Produces: package `@vertuo/comply-guards` exporting `Violation { file, line, term }`, `REPO_ROOT`, and `checkCoreVocabulary(roots, forbidden): Promise<Violation[]>`, where `roots` are repo-relative paths.
 
-This is what turns "the core knows no business" from an intention into something that fails. It scans core directories for any string literal drawn from a fixture corpus's vocabulary.
+This is what turns "the core knows no business" from an intention into something that fails a build. It is a package rather than a loose script for one reason: `turbo test` runs package test scripts, so a guard living outside a package would never execute.
 
 - [ ] **Step 1: Write the failing test**
 
-`tests/law/core-vocabulary.test.ts`:
+`libs/comply-guards/test/core-vocabulary.test.ts`:
 ```ts
 import { describe, expect, it } from 'vitest';
-import { checkCoreVocabulary } from '../../scripts/check-core-vocabulary.mjs';
+import { checkCoreVocabulary } from '../src/index.js';
 
-const CORE_ROOTS = ['libs/comply-core/src', 'libs/comply-readiness/src', 'libs/comply-integrity/src'];
+const CORE_ROOTS = [
+  'libs/comply-core/src',
+  'libs/comply-readiness/src',
+  'libs/comply-integrity/src',
+  'libs/comply-ingestion/src',
+];
 
 describe('LAW-004: the core knows no business', () => {
   it('finds no fixture vocabulary in core source', async () => {
@@ -2865,28 +3216,52 @@ describe('LAW-004: the core knows no business', () => {
   });
 
   it('detects a planted violation', async () => {
-    const violations = await checkCoreVocabulary(['libs/comply-profile/src'], ['markdown-frontmatter']);
+    const violations = await checkCoreVocabulary(
+      ['libs/comply-profile/src'],
+      ['markdown-frontmatter'],
+    );
     expect(violations.length).toBeGreaterThan(0);
     expect(violations[0]!.term).toBe('markdown-frontmatter');
+  });
+
+  it('reports the offending location so a human can open it', async () => {
+    const violations = await checkCoreVocabulary(
+      ['libs/comply-profile/src'],
+      ['markdown-frontmatter'],
+    );
+    expect(violations[0]!.file).toMatch(/^libs\/comply-profile\/src\//);
+    expect(violations[0]!.line).toBeGreaterThan(0);
   });
 });
 ```
 
-The second test uses `libs/comply-profile/src` deliberately: adapter-kind names legitimately live there, which proves the scanner detects real matches rather than always returning empty.
+The second and third tests scan `libs/comply-profile/src` deliberately: adapter-kind names legitimately live there, which proves the scanner detects real matches rather than vacuously returning empty.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm test tests/law/core-vocabulary.test.ts`
-Expected: FAIL — cannot resolve the script.
+Run: `pnpm --filter @vertuo/comply-guards test`
+Expected: FAIL — cannot resolve `../src/index.js`.
 
-- [ ] **Step 3: Write `scripts/check-core-vocabulary.mjs`**
+- [ ] **Step 3: Write `libs/comply-guards/src/core-vocabulary.ts`**
 
-```js
+```ts
 import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-async function sourceFiles(root) {
-  const found = [];
+/** Resolved from this file, so the guard works from any working directory. */
+export const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+
+export interface Violation {
+  /** Repo-relative, so the report reads the same wherever it was run from. */
+  file: string;
+  /** 1-indexed. */
+  line: number;
+  term: string;
+}
+
+async function sourceFiles(root: string): Promise<string[]> {
+  const found: string[] = [];
   for (const entry of await readdir(root, { withFileTypes: true })) {
     const path = join(root, entry.name);
     if (entry.isDirectory()) found.push(...(await sourceFiles(path)));
@@ -2896,23 +3271,36 @@ async function sourceFiles(root) {
 }
 
 /**
- * Reports any forbidden term appearing in a string literal in core source.
- * Comments and identifiers are ignored; only literals can leak corpus vocabulary.
+ * Reports any forbidden term appearing inside a string or template literal
+ * under `roots`. Comments and identifiers are ignored: only literals can leak
+ * corpus vocabulary into code. `roots` are repo-relative.
+ *
+ * Known limitation: scanning is line-based, so a forbidden term split across
+ * lines of a multi-line template literal will not be caught.
  */
-export async function checkCoreVocabulary(roots, forbidden) {
-  const violations = [];
-  const lowered = forbidden.map((t) => t.toLowerCase());
+export async function checkCoreVocabulary(
+  roots: string[],
+  forbidden: string[],
+): Promise<Violation[]> {
+  const violations: Violation[] = [];
+  const lowered = forbidden.map((term) => term.toLowerCase());
 
   for (const root of roots) {
-    for (const file of await sourceFiles(root)) {
+    for (const file of await sourceFiles(join(REPO_ROOT, root))) {
       const lines = (await readFile(file, 'utf8')).split('\n');
       for (const [index, line] of lines.entries()) {
-        if (line.trimStart().startsWith('*') || line.trimStart().startsWith('//')) continue;
-        for (const literal of line.matchAll(/'([^']*)'|"([^"]*)"/g)) {
-          const value = (literal[1] ?? literal[2] ?? '').toLowerCase();
+        const trimmed = line.trimStart();
+        if (trimmed.startsWith('*') || trimmed.startsWith('//')) continue;
+
+        for (const literal of line.matchAll(/`([^`]*)`|'([^']*)'|"([^"]*)"/g)) {
+          const value = (literal[1] ?? literal[2] ?? literal[3] ?? '').toLowerCase();
           for (const [position, term] of lowered.entries()) {
             if (value.includes(term)) {
-              violations.push({ file, line: index + 1, term: forbidden[position] });
+              violations.push({
+                file: relative(REPO_ROOT, file),
+                line: index + 1,
+                term: forbidden[position]!,
+              });
             }
           }
         }
@@ -2923,28 +3311,28 @@ export async function checkCoreVocabulary(roots, forbidden) {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [ ] **Step 4: Write the barrel `libs/comply-guards/src/index.ts`**
 
-Run: `pnpm test tests/law/core-vocabulary.test.ts`
-Expected: 2 tests PASS. If the first fails, core source has leaked corpus vocabulary — fix the source, not the test.
-
-- [ ] **Step 5: Wire it into the default test run**
-
-In `package.json`, leave `test` as `vitest run` — the guard is already a vitest test and runs with everything else. Add a standalone script for CI convenience:
-
-```json
-"lint:law004": "node --input-type=module -e \"import {checkCoreVocabulary} from './scripts/check-core-vocabulary.mjs'; const v = await checkCoreVocabulary(['libs/comply-core/src','libs/comply-readiness/src','libs/comply-integrity/src'], ['alpha','beta','widget','lever','overview','terms','rules','agreed']); if (v.length) { console.error(v); process.exit(1); } console.log('LAW-004 clean');\""
+```ts
+export * from './core-vocabulary.js';
 ```
+
+- [ ] **Step 5: Run the guard's tests**
+
+Run: `pnpm --filter @vertuo/comply-guards test`
+Expected: 3 tests PASS.
+
+If the first test fails, core source has leaked corpus vocabulary. **Fix the source, not the test** — that is the entire point of this guard.
 
 - [ ] **Step 6: Run everything**
 
-Run: `pnpm test && pnpm typecheck && pnpm lint:law004`
-Expected: all PASS, `LAW-004 clean`.
+Run: `pnpm test && pnpm typecheck`
+Expected: every package PASSES. The guard now runs on every build through Turborepo, with no extra script for anyone to remember.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add scripts/check-core-vocabulary.mjs tests/law package.json
+git add libs/comply-guards pnpm-lock.yaml
 git commit -m "test: LAW-004 guard rejecting corpus vocabulary in core source"
 ```
 

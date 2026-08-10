@@ -1,0 +1,30 @@
+{
+  "id": "corpus-a",
+  "adapter": {
+    "kind": "markdown-frontmatter",
+    "root": "./corpus-a",
+    "moduleIdKey": "area",
+    "facetKey": "kind",
+    "statusKey": "state",
+    "ownerKey": "stewart"
+  },
+  "facets": [
+    { "name": "overview", "factKind": "Module", "extractor": "document", "bodyAttribute": "description" },
+    { "name": "terms", "factKind": "Term", "extractor": "table",
+      "columns": { "Word": "name", "Meaning": "definition", "Also called": "aliases" } },
+    { "name": "rules", "factKind": "Rule", "extractor": "heading", "bodyAttribute": "statement" }
+  ],
+  "maturity": { "levels": ["blank", "guessed", "agreed"], "approvedAtOrAbove": "agreed" },
+  "statusMappings": [
+    { "match": "Guess - From System X", "maturity": "guessed", "sources": ["system-x"] },
+    { "match": "Agreed", "maturity": "agreed", "sources": ["system-x", "review"] }
+  ],
+  "criteria": {
+    "Module": [{ "type": "requiredAttributes", "attributes": ["description"] }],
+    "Term": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }],
+    "Rule": [
+      { "type": "requiredAttributes", "attributes": ["name", "statement"] },
+      { "type": "minSources", "count": 1 }
+    ]
+  }
+}
