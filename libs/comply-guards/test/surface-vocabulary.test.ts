@@ -183,9 +183,11 @@ describe('LAW-010: business language at the surface', () => {
 
   it('refuses to answer about a place it could not look', async () => {
     // A guard that reports nothing because it scanned nothing reads exactly like
-    // a guard that found nothing wrong.
+    // a guard that found nothing wrong. The named root is one no package will
+    // ever have — a package that has been built is a root that exists, and this
+    // assertion would then quietly stop asserting anything.
     await expect(
-      checkSurfaceVocabulary(['apps/comply-studio/src'], ENGINEERING_VOCABULARY),
+      checkSurfaceVocabulary(['apps/nothing-is-here/src'], ENGINEERING_VOCABULARY),
     ).rejects.toThrow();
   });
 });

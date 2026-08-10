@@ -13,6 +13,7 @@ const CORE_ROOTS = [
   'libs/comply-reading/src',
   'libs/comply-contract/src',
   'apps/comply-api/src',
+  'apps/comply-studio/src',
 ];
 
 describe('LAW-004: the core knows no business', () => {
