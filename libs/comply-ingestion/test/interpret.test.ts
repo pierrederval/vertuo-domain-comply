@@ -1,7 +1,7 @@
 import { isAbsolute, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
-import { extractSeed, interpret } from '@vertuo/comply-ingestion';
+import { extractSeed, interpret, INTERPRETATION_CHECKS } from '@vertuo/comply-ingestion';
 import { loadLens, type Lens } from '@vertuo/comply-lens';
 import { SEED_VERSION, type Seed, type SeedDocument } from '@vertuo/comply-seed';
 
@@ -33,6 +33,27 @@ function seedOf(...documents: Partial<SeedDocument>[]): Seed {
     })),
   };
 }
+
+describe('what applying a Lens looks for', () => {
+  it('names it, so the Findings it reports have something to be counted against', () => {
+    expect(INTERPRETATION_CHECKS).toEqual([
+      'unparsable-document',
+      'missing-module-identity',
+      'unknown-status',
+      'empty-facet',
+    ]);
+  });
+
+  it('reports nothing it did not say it was looking for', async () => {
+    // A defect kind added without being named shrinks the stated denominator
+    // below what actually ran, which reads as a smaller problem than there is.
+    for (const lensFile of ['lens-a.json', 'lens-b.json']) {
+      const loaded = await loadLens(fixturePath(lensFile));
+      const { findings } = interpret(await extractSeed(loaded), loaded);
+      for (const finding of findings) expect(INTERPRETATION_CHECKS).toContain(finding.code);
+    }
+  });
+});
 
 describe('what a Lens makes of a Seed', () => {
   it('reports a document nothing could be read from, in the words of the moment', async () => {

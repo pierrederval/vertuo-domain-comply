@@ -9,6 +9,22 @@ export interface Interpretation {
 }
 
 /**
+ * The defects applying a Lens looks for, named for the same reason the Checks
+ * against a whole Corpus are: a count of Findings is stated against what was
+ * looked for, and reading the knowledge in is where four of those looks happen
+ * (LAW-006).
+ *
+ * A test asserts that nothing {@link interpret} reports falls outside this set,
+ * so the two cannot drift apart silently.
+ */
+export const INTERPRETATION_CHECKS: readonly string[] = [
+  'unparsable-document',
+  'missing-module-identity',
+  'unknown-status',
+  'empty-facet',
+];
+
+/**
  * Applies a Lens to a Seed: what the knowledge *means*, decided here and nowhere
  * earlier.
  *
