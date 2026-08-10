@@ -10,7 +10,23 @@ and in conversation. Where a term has a tempting synonym, the synonym is named a
 One body of business knowledge under management, and the only authoritative record of it. A Corpus
 holds Facts and their complete history. Everything derived from it is disposable.
 
+Corpus is the word at every surface, including business-facing ones. It is not translated into a
+friendlier synonym, because each candidate synonym names something this product deliberately is not.
+
+**The plural of Corpus is Corpus.** Never "corpora" — a Latin plural nobody says out loud, in a
+product whose first duty is to be readable by the people who hold the knowledge. Five products being
+brought under management are five Corpus, and one organisation routinely has several: one per product,
+per business line, or per area being transitioned.
+
 Not a "repository" and not a "database" — those name storage, and the Corpus is a record.
+
+Not an **"application"**. What is measured is the knowledge about a business, not the software that
+business runs. A Corpus may be partly *inferred from* an application's code, and once complete it may
+be the input from which *another* application is built — but it is never the application itself. Name
+it "application" and every reading becomes nonsense: a Corpus scoring 40% invites "why is my
+application only 40% when it has been in production for three years?" The answer — *we are measuring
+what you have written down, not what you have shipped* — is the whole product, and the word destroys
+it. See ADR-0009: this tool neither generates application code nor checks it.
 
 ### Fact
 
@@ -34,10 +50,18 @@ The five kinds of Fact. This list is closed — it is the whole model, and it is
 | **Message** | What can be asked of the business, and what does the business announce? |
 | **Transition** | What states exist, and what moves between them? |
 
+### Module
+
+One area of the business, named and owned. A Fact in its own right, and the unit everything else is
+reported against: Readiness is measured per Module, and every Finding routes to a Module's Owner.
+
+Not a "domain" and not a "subdomain". Those are modelling words for the same idea, and a product that
+detects one thing known by two names cannot itself carry two names for its central concept.
+
 ### Facet
 
 A view of one Fact Kind within one Module — for example, that Module's Terms. Which Facets a Corpus
-has is declared by its Profile, never fixed by the core.
+has is declared by its Lens, never fixed by the core.
 
 ### Module Owner
 
@@ -49,7 +73,7 @@ Owner is a defect, because findings that route to nobody are ignored (LAW-007).
 ### Maturity
 
 How far a Fact has travelled from guess to agreement. An ordered ladder whose steps are declared by
-the Profile. The core defines only the ordering, never the names.
+the Lens. The core defines only the ordering, never the names.
 
 The three questions behind the ladder are always: is it **present**, is it **well-formed**, is it
 **approved**.
@@ -78,6 +102,21 @@ nearly empty.
 The coverage picture: every Module against every Facet, showing presence, well-formedness, and
 approval. Reported per Module and as a trend. Never as a single global number, which routes to nobody
 and motivates no one.
+
+### Integrity
+
+Whether the language of a Corpus holds together: no Term defined two ways, no Module known by two
+identities, no citation pointing nowhere. Read as a count of open Findings against a named set of
+Checks.
+
+**Readiness and Integrity are two independent readings and are never fused into one.** A Corpus can be
+fully approved and have no Integrity — every Facet signed off, while two Modules quietly share an
+identity. It can also be sound and nearly empty. Each reading is shown on its own, because they
+demand different work: a Readiness gap means *write something down*, a Finding means *reconcile two
+things that disagree*, and often those are different people.
+
+Neither reading is ever labelled "compliant" or "complete". A Corpus is *fully approved against the
+Facets its Lens declares* — a sentence that carries its own denominator (LAW-006).
 
 ### Gap
 
@@ -124,17 +163,32 @@ Occurrences are never applied automatically (LAW-008).
 
 ## Configuration and boundaries
 
-### Profile
+### Lens
 
-The declaration of how one Corpus is to be interpreted: its Facets, its Maturity ladder, its locale
-and word-formation rules, its well-formedness criteria. Everything business-specific lives here, so
-that none of it lives in the core (LAW-004).
+The declaration of how one Corpus is to be read: its Facets, its Maturity ladder, its locale and
+word-formation rules, its well-formedness criteria. Everything business-specific lives here, so that
+none of it lives in the core (LAW-004). One Corpus, one Lens.
+
+Not a "profile". A Lens tells you what it does — the same Corpus read through a different Lens yields
+different Facets and a different ladder — where "profile" says only "configuration lives here". The
+word is also already spoken for: the Studio has users, and a user's profile is their account. Naming
+two unrelated things "profile" would be a split identity in the vocabulary of the product that
+detects split identities. Renamed by ADR-0015; documents written before that decision say Profile.
 
 ### Seed
 
 A portable serialisation of a whole Corpus. Loading one establishes or replaces Corpus state;
 exporting one writes that state back out. Seeds bootstrap an environment, move a Corpus between
 environments, back it up, and set up tests — the same mechanism in every case.
+
+**A Seed is immutable.** Once written it is never edited, appended to, or overwritten. Re-reading the
+source produces a *new* Seed with a new digest, and the old one stays exactly as it was. A Seed whose
+content could change would make its digest meaningless, and the digest is what makes a load idempotent
+and gives Genesis something to cite (ADR-0012, LAW-009).
+
+A Seed carries Facts as they were extracted — raw status values, raw facet names, attributes, origins.
+It carries no readings: no Maturity decomposition, no scores, no Findings. What a Fact *means* is
+decided by the Lens when the Seed is read, never by whatever wrote it.
 
 A Seed is a technical artifact, never a business-facing surface. It is not a Change Request and does
 not represent anyone's decision (ADR-0012).
@@ -149,6 +203,21 @@ Adapter per shape. No Adapter is privileged; the first is not the model for the 
 The single record written when a Seed is loaded, carrying the Seed's digest, the Fact count, the
 actor, and the time. One Genesis per load — never one event per Fact, which would drown the audit
 trail in noise the tooling generated about itself.
+
+### Studio
+
+The interface through which people read a Corpus and work on it. It is the product's primary surface,
+not a viewer bolted onto a command-line tool: the command-line runner and the Studio are two callers
+of the same libraries, and the runner is the lesser of the two.
+
+The Studio's purpose is to carry a Corpus up the Maturity ladder. Facts arrive machine-inferred — from
+existing code, from an imported document set — and a Module Owner or product manager refines them,
+corroborates them, and approves them **inside the Studio**, without editing source files by hand.
+
+Every Studio edit is a Change Request through the Door (LAW-002). The Studio has no privileged write
+path, no "quick fix", and no direct edit, however small the change looks on screen.
+
+A read-only Studio is a phase, never the destination.
 
 ### Published Output
 

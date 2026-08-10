@@ -58,7 +58,10 @@ evidence, and who approved it. In-place mutation destroys exactly that.
 
 No business vocabulary, no natural language, no corpus convention, and no organisational structure is
 hardcoded in the core. Everything specific to a body of knowledge arrives at runtime through a
-**Profile** (how to interpret a corpus) and a **Seed Adapter** (how to import one).
+**Lens** (how to read a corpus) and a **Seed Adapter** (how to import one).
+
+*Amended 2026-08-10: this law previously named the Lens a "Profile". Only the word changed; the
+requirement is unchanged. See ADR-0015.*
 
 Any corpus is a pilot. None is privileged. A term, a section name, a review status, a locale, or a
 directory layout appearing in core source is a defect.

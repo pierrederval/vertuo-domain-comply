@@ -30,7 +30,7 @@ application code. Those boundaries are deliberate and recorded in [`docs/adr/`](
 ## Domain-agnostic by law
 
 The core knows nothing about any particular business. A body of knowledge arrives through a **Seed
-Adapter** and is interpreted through a **Profile** that declares its facets, maturity vocabulary,
+Adapter** and is read through a **Lens** that declares its facets, maturity vocabulary,
 locale, and well-formedness rules. Every corpus is a pilot; none is privileged. See **LAW-004** in
 [`CONSTITUTION.md`](./CONSTITUTION.md).
 
