@@ -7,6 +7,13 @@ export interface ExtractedItem {
   relations: Relation[];
   /** 1-indexed line in the original file. */
   line: number;
+  /**
+   * 1-indexed last line of the span this item was read from, inclusive. Reported
+   * so the source text can be quoted back to a reader exactly as written, rather
+   * than reconstructed from the attributes — a reconstruction is a paraphrase,
+   * and paraphrased evidence is not evidence (LAW-009).
+   */
+  endLine: number;
 }
 
 const INLINE_LINK = /\[[^\]]*\]\(([^)]+)\)/g;
@@ -31,7 +38,12 @@ function extractDocument(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[]
   const attribute = facet.bodyAttribute ?? 'body';
   const text = doc.body.trim();
   if (text === '') return [];
-  return [{ attributes: { [attribute]: text }, relations: relationsIn(text), line: doc.bodyStartLine }];
+  return [{
+    attributes: { [attribute]: text },
+    relations: relationsIn(text),
+    line: doc.bodyStartLine,
+    endLine: doc.bodyStartLine + doc.body.split('\n').length - 1,
+  }];
 }
 
 /** Matches a GFM separator cell: optional leading/trailing colon around one or more dashes. */
@@ -86,7 +98,11 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
       relations.push(...relationsIn(value));
     }
     if (Object.keys(attributes).length > 0) {
-      items.push({ attributes, relations, line: doc.bodyStartLine + offset });
+      // One row, one line: a row is quoted as itself. Pulling the header row in
+      // beside it would read better and would be two non-adjacent lines presented
+      // as one, which is not what the source says.
+      const line = doc.bodyStartLine + offset;
+      items.push({ attributes, relations, line, endLine: line });
     }
   }
   return items;
@@ -109,6 +125,8 @@ function extractHeading(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] 
       attributes: { name: current.name, slug: slugify(current.name), [attribute]: text },
       relations: relationsIn(text),
       line: current.line,
+      // The heading line plus everything under it, up to the next heading.
+      endLine: current.line + current.body.length,
     });
   };
 

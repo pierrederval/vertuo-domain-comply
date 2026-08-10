@@ -1,18 +1,17 @@
-import type { Fact } from '@vertuo/comply-core';
-import type { Finding } from '@vertuo/comply-core';
 import type { Lens } from '@vertuo/comply-lens';
+import type { Seed } from '@vertuo/comply-seed';
 
 /**
- * The payload a Seed Adapter produces: a whole Corpus state, not a set of changes.
- * In this slice it is consumed read-only. Step 3 will submit this same shape through
- * the Door's Load operation, recorded as one Genesis entry (ADR-0012) — never as a
- * Change Request, and never as one event per Fact.
+ * The port every Seed Adapter implements: source documents in, a Seed out.
+ *
+ * An adapter reads whatever a business already has and writes down what it found.
+ * It never says what any of it means, so a new adapter cannot arrive with a second
+ * opinion about what a status denotes — there is exactly one place that decides,
+ * and it is `interpret`.
+ *
+ * Loading a Seed through the Door is one Genesis entry, never one event per Fact
+ * (ADR-0012), and never a Change Request.
  */
-export interface SeedResult {
-  facts: Fact[];
-  findings: Finding[];
-}
-
 export interface SeedAdapter {
-  load(lens: Lens): Promise<SeedResult>;
+  extract(lens: Lens): Promise<Seed>;
 }

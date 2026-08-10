@@ -9,7 +9,8 @@
     "@vertuo/comply-lens": "workspace:*",
     "@vertuo/comply-ingestion": "workspace:*",
     "@vertuo/comply-readiness": "workspace:*",
-    "@vertuo/comply-integrity": "workspace:*"
+    "@vertuo/comply-integrity": "workspace:*",
+    "@vertuo/comply-seed": "workspace:*"
   },
   "devDependencies": {
     "@vertuo/comply-fixtures": "workspace:*",

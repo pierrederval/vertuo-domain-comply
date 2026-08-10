@@ -1,9 +1,13 @@
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { buildCorpus } from '@vertuo/comply-core';
 import { fixturePath } from '@vertuo/comply-fixtures';
-import { loadCorpus } from '@vertuo/comply-ingestion';
+import { extractSeed, interpret, loadCorpus } from '@vertuo/comply-ingestion';
 import { loadLens } from '@vertuo/comply-lens';
+import { holdSeed, readSeed } from '@vertuo/comply-seed';
 import { readCorpus } from '../src/reading.js';
 
 /** Fixed, so no baseline exists and the trend column reads the same on every run. */
@@ -32,6 +36,22 @@ describe.each([
     const { corpus, findings } = await loadCorpus(lens);
 
     const { text } = readCorpus(corpus, lens, findings, READ_AT, null);
+
+    expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
+  });
+
+  it('says the same thing again reading a Seed off the shelf', async () => {
+    const lens = await loadLens(fixturePath(lensFile));
+
+    // The long way round, exactly as the server will take it: extract, put the
+    // Seed on the shelf, read it back off disk, and only then apply the Lens.
+    // Anything that cannot survive being written down and read again — a path
+    // that was absolute, a value that was a number, an order that happened to
+    // hold in memory — shows up here and nowhere else.
+    const held = await holdSeed(await mkdtemp(join(tmpdir(), 'comply-shelf-')), await extractSeed(lens));
+    const { facts, findings } = interpret(await readSeed(held.path), lens);
+
+    const { text } = readCorpus(buildCorpus(facts), lens, findings, READ_AT, null);
 
     expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
   });

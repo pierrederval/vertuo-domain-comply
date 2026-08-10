@@ -41,6 +41,9 @@ importers:
       '@vertuo/comply-readiness':
         specifier: workspace:*
         version: link:../../libs/comply-readiness
+      '@vertuo/comply-seed':
+        specifier: workspace:*
+        version: link:../../libs/comply-seed
     devDependencies:
       '@vertuo/comply-fixtures':
         specifier: workspace:*
@@ -90,6 +93,9 @@ importers:
       '@vertuo/comply-lens':
         specifier: workspace:*
         version: link:../comply-lens
+      '@vertuo/comply-seed':
+        specifier: workspace:*
+        version: link:../comply-seed
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
