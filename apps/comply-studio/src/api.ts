@@ -1,4 +1,9 @@
-import { corpusListSchema, type CorpusSummary } from '@vertuo/comply-contract';
+import {
+  corpusDetailSchema,
+  corpusListSchema,
+  type CorpusDetail,
+  type CorpusSummary,
+} from '@vertuo/comply-contract';
 
 /**
  * Everything the Studio asks the server for, and the one place an answer is
@@ -16,4 +21,18 @@ export async function fetchCorpus(): Promise<CorpusSummary[]> {
   if (!answer.success) throw new Error('The Studio was sent something it could not read.');
 
   return answer.data.corpus;
+}
+
+/** The whole reading of one Corpus: the grid, the two figures, and their age. */
+export async function fetchCorpusDetail(id: string): Promise<CorpusDetail> {
+  const response = await fetch(`/corpus/${encodeURIComponent(id)}/reading`);
+  // Told apart from being unable to reach the server at all, because one of the
+  // two is answered by looking somewhere else and the other by waiting.
+  if (response.status === 404) throw new Error('No Corpus of that name is on the shelf.');
+  if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
+
+  const answer = corpusDetailSchema.safeParse(await response.json());
+  if (!answer.success) throw new Error('The Studio was sent something it could not read.');
+
+  return answer.data;
 }

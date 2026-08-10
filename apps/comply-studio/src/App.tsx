@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router';
-import type { CorpusSummary } from '@vertuo/comply-contract';
-import { fetchCorpus } from './api.js';
+import { useEffect, useState, type ReactNode } from 'react';
+import { NavLink, Navigate, Route, Routes, useParams } from 'react-router';
+import { fetchCorpus, fetchCorpusDetail } from './api.js';
 import { NothingToShow, Page } from './components/layout.js';
 import { CorpusList } from './corpus/CorpusList.js';
+import { CorpusMatrix } from './corpus/CorpusMatrix.js';
 
 /**
  * Where a person can go. Three places, and the plural of Corpus is Corpus
@@ -44,27 +44,83 @@ function Placeholder({ title, children }: { title: string; children: string }) {
   );
 }
 
-function Corpus() {
-  const [corpus, setCorpus] = useState<CorpusSummary[] | null>(null);
+/**
+ * What the Studio shows while an answer is on its way, and what it shows when one
+ * cannot be had.
+ *
+ * Both said in one place, because they are one screen's worth of language and
+ * the reader meets them everywhere. Neither is ever a blank page: a surface with
+ * nothing on it reads as a broken one, and a person who cannot tell waiting from
+ * failing will wait through a failure.
+ */
+function Answering<T>({
+  ask,
+  about,
+  title,
+  children,
+}: {
+  ask: () => Promise<T>;
+  /** What is being asked about. Asking again when it changes is the point. */
+  about: string;
+  title: string;
+  children: (answer: T) => ReactNode;
+}) {
+  const [answer, setAnswer] = useState<T | null>(null);
   const [trouble, setTrouble] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCorpus()
-      .then(setCorpus)
-      .catch((cause: unknown) => setTrouble(cause instanceof Error ? cause.message : String(cause)));
-  }, []);
+    let listening = true;
+    setAnswer(null);
+    setTrouble(null);
 
-  if (trouble !== null) return <Page title="Corpus">
-    <NothingToShow>{trouble}</NothingToShow>
-  </Page>;
+    ask()
+      .then((given) => listening && setAnswer(given))
+      .catch((cause: unknown) => {
+        if (listening) setTrouble(cause instanceof Error ? cause.message : String(cause));
+      });
 
-  // Nothing yet is not the same fact as nothing at all, so the two never share a
-  // sentence: what a Corpus with no knowledge written down says is the list's own.
-  if (corpus === null) return <Page title="Corpus">
-    <NothingToShow>Reading the shelf.</NothingToShow>
-  </Page>;
+    return () => {
+      listening = false;
+    };
+    // Asked again when the subject changes, not when the asking is redefined:
+    // the caller builds a new function every render, and depending on that would
+    // ask forever.
+  }, [about]);
 
-  return <CorpusList corpus={corpus} />;
+  if (trouble !== null) {
+    return (
+      <Page title={title}>
+        <NothingToShow>{trouble}</NothingToShow>
+      </Page>
+    );
+  }
+  if (answer === null) {
+    return (
+      <Page title={title}>
+        <NothingToShow>Reading the shelf.</NothingToShow>
+      </Page>
+    );
+  }
+  return <>{children(answer)}</>;
+}
+
+function EveryCorpus() {
+  return (
+    <Answering ask={fetchCorpus} about="every" title="Corpus">
+      {(corpus) => <CorpusList corpus={corpus} />}
+    </Answering>
+  );
+}
+
+function OneCorpus() {
+  const { id } = useParams();
+  const asked = id ?? '';
+
+  return (
+    <Answering ask={() => fetchCorpusDetail(asked)} about={asked} title="Corpus">
+      {(corpus) => <CorpusMatrix corpus={corpus} />}
+    </Answering>
+  );
 }
 
 export function App() {
@@ -89,7 +145,8 @@ export function App() {
             </Placeholder>
           }
         />
-        <Route path="/corpus" element={<Corpus />} />
+        <Route path="/corpus" element={<EveryCorpus />} />
+        <Route path="/corpus/:id" element={<OneCorpus />} />
       </Routes>
     </div>
   );
