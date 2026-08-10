@@ -39,8 +39,13 @@ const CORPUS: CorpusSummary[] = corpusListSchema.parse({
   ],
 }).corpus;
 
+/** Each Corpus's name leads to its own page, so the list is drawn where links work. */
 function draw(corpus: CorpusSummary[]): string {
-  return renderToStaticMarkup(<CorpusList corpus={corpus} />);
+  return renderToStaticMarkup(
+    <MemoryRouter>
+      <CorpusList corpus={corpus} />
+    </MemoryRouter>,
+  );
 }
 
 describe('the Corpus list', () => {
@@ -95,6 +100,12 @@ describe('the Corpus list', () => {
     // No reading exists, so no figure is drawn: zero approved of zero Modules
     // would be a reading, and there is none to report.
     expect(drawn).not.toContain('class="figure"');
+  });
+
+  it('leads from each Corpus to the whole reading of it', () => {
+    const drawn = draw(CORPUS);
+
+    for (const entry of CORPUS) expect(drawn).toContain(`href="/corpus/${entry.id}"`);
   });
 
   it('says the shelf is empty rather than drawing nothing at all', () => {

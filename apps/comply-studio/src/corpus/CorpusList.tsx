@@ -1,12 +1,9 @@
+import { Link } from 'react-router';
 import type { CorpusSummary } from '@vertuo/comply-contract';
 import { Age } from '../components/Age.js';
 import { Figure } from '../components/Figure.js';
 import { NothingToShow, Panel, PanelHeading, Page, Stack } from '../components/layout.js';
-
-/** One of a thing is not "1 things". A denominator a reader trips over is one they discount. */
-function count(howMany: number, unit: string): string {
-  return `${howMany} ${howMany === 1 ? unit : `${unit}s`}`;
-}
+import { count } from '../words.js';
 
 /**
  * The two readings of one Corpus, side by side.
@@ -64,7 +61,9 @@ export function CorpusList({ corpus }: { corpus: CorpusSummary[] }) {
         <Stack>
           {corpus.map((entry) => (
             <Panel key={entry.id}>
-              <PanelHeading>{entry.name}</PanelHeading>
+              <PanelHeading>
+                <Link to={`/corpus/${entry.id}`}>{entry.name}</Link>
+              </PanelHeading>
               <Readings reading={entry.reading} />
             </Panel>
           ))}
