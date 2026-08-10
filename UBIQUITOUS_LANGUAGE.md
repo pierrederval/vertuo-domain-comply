@@ -193,6 +193,24 @@ decided by the Lens when the Seed is read, never by whatever wrote it.
 A Seed is a technical artifact, never a business-facing surface. It is not a Change Request and does
 not represent anyone's decision (ADR-0012).
 
+### Excerpt
+
+The source text a Fact was read from, travelling with it so a reader can check the claim without
+opening anything. A `{file, line}` pair is evidence for an engineer at a terminal and nothing at all
+for the person this product is built for.
+
+**An excerpt is the source, exactly as written.** Never summarised, never reworded, never assembled
+out of lines that are not adjacent in the source. Where the text runs long it is **cut, and says it
+was cut**, and the reader follows the origin for the rest.
+
+Cutting is the only alteration permitted, and it differs from a summary in kind: it changes none of
+the text it keeps, and it announces itself. A paraphrase does neither, so a reader has no way to tell
+that what they are looking at is not what the corpus says — which is the very defect this product
+exists to find, manufactured by the surface meant to reveal it (ADR-0017).
+
+Labels are not the excerpt's job. A Fact's attributes carry those already; the excerpt stays
+untouched, and the two are shown beside each other rather than fused.
+
 ### Seed Adapter
 
 A bidirectional translator between one external shape and a Seed. It imports and it exports. One
