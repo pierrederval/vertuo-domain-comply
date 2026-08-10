@@ -209,6 +209,18 @@ body {
   color: var(--mark);
 }
 
+/*
+ * The Module column stays put while the rest slides under it. It is the column
+ * every other one is read against, and a row of marks with nothing at the left
+ * of it says which state something is in without saying what.
+ */
+.grid th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--panel);
+}
+
 .module {
   display: grid;
   gap: 1px;
@@ -238,8 +250,13 @@ body {
   cursor: help;
 }
 
+/*
+ * Quiet, but never invisible. A cell drawn as nothing at all cannot be told from
+ * a Facet the grid forgot to draw, and absence is the thing this page is most
+ * often read for.
+ */
 .cell-absent {
-  color: var(--line);
+  color: #b3b9c1;
 }
 
 .cell-present,
