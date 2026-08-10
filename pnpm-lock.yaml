@@ -41,6 +41,9 @@ importers:
       '@vertuo/comply-readiness':
         specifier: workspace:*
         version: link:../../libs/comply-readiness
+      '@vertuo/comply-seed':
+        specifier: workspace:*
+        version: link:../../libs/comply-seed
     devDependencies:
       '@vertuo/comply-fixtures':
         specifier: workspace:*
@@ -90,6 +93,9 @@ importers:
       '@vertuo/comply-lens':
         specifier: workspace:*
         version: link:../comply-lens
+      '@vertuo/comply-seed':
+        specifier: workspace:*
+        version: link:../comply-seed
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -160,6 +166,19 @@ importers:
       '@vertuo/comply-ingestion':
         specifier: workspace:*
         version: link:../comply-ingestion
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@24.13.3)
+
+  libs/comply-seed:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

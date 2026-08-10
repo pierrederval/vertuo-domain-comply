@@ -9,6 +9,7 @@
   "dependencies": {
     "@vertuo/comply-core": "workspace:*",
     "@vertuo/comply-lens": "workspace:*",
+    "@vertuo/comply-seed": "workspace:*",
     "gray-matter": "^4.0.3"
   },
   "devDependencies": {

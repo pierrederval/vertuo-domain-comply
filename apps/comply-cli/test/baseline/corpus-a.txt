@@ -1,0 +1,30 @@
+MODULE    overview terms    rules    APPROVED  TREND  OWNER
+-----------------------------------------------------------
+alpha     OK       OK       ~~       2/3       n/a    avery
+beta      ~~       --       --       0/3       n/a    NO OWNER
+bravo     --       ~~       --       0/3       n/a    NO OWNER
+-----------------------------------------------------------
+Approved facets: 2/9 across 3 modules.
+Denominator is the facets this Lens declares. Knowledge absent from the corpus entirely is not counted.
+Legend: OK approved  ~~ well-formed  .. present  -- absent
+
+Facets not yet approved:
+  alpha / rules
+      not at the approved maturity level
+  beta / overview
+      not at the approved maturity level
+  bravo / terms
+      not at the approved maturity level
+
+Findings (5):
+  [split-identity] beta/terms.md:9
+      "beta" carries 2 module identities (beta, bravo); primary identity is "beta", anomalous identity is "bravo"; a change to the identity reached some documents and not others
+  [conflicting-definition] alpha/terms.md:10
+      Term "Widget" is defined 2 different ways
+        also: beta/terms.md:9
+  [broken-reference] beta/terms.md:10
+      Reference to "r-9-missing" resolves to nothing in the corpus
+  [missing-owner] beta/overview.md:6
+      Module "beta" has no owner; findings for it route to nobody
+  [missing-owner] beta/terms.md:9
+      Module "bravo" has no owner; findings for it route to nobody

@@ -1,0 +1,16 @@
+MODULE    definitions constraints APPROVED  TREND  OWNER
+--------------------------------------------------------
+one       OK          ~~          1/2       n/a    quinn
+two       ~~          --          0/2       n/a    quinn
+--------------------------------------------------------
+Approved facets: 1/4 across 2 modules.
+Denominator is the facets this Lens declares. Knowledge absent from the corpus entirely is not counted.
+Legend: OK approved  ~~ well-formed  .. present  -- absent
+
+Facets not yet approved:
+  one / constraints
+      not at the approved maturity level
+  two / definitions
+      not at the approved maturity level
+
+No findings.

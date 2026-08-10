@@ -1,0 +1,58 @@
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { buildCorpus } from '@vertuo/comply-core';
+import { fixturePath } from '@vertuo/comply-fixtures';
+import { extractSeed, interpret, loadCorpus } from '@vertuo/comply-ingestion';
+import { loadLens } from '@vertuo/comply-lens';
+import { holdSeed, readSeed } from '@vertuo/comply-seed';
+import { readCorpus } from '../src/reading.js';
+
+/** Fixed, so no baseline exists and the trend column reads the same on every run. */
+const READ_AT = '2026-01-01T00:00:00.000Z';
+
+function baselinePath(name: string): string {
+  return fileURLToPath(new URL(`./baseline/${name}`, import.meta.url));
+}
+
+/**
+ * What the runner says about each fixture Corpus, captured character for character.
+ *
+ * These two files are the evidence that moving the line between extraction and
+ * interpretation changed nothing a reader sees. They were recorded from the
+ * judging-while-extracting runner, before that line moved, and are not to be
+ * regenerated to make a change pass: a difference here means knowledge was lost
+ * on the way through the Seed, which is a design fault and not a stale
+ * expectation.
+ */
+describe.each([
+  ['lens-a.json', 'corpus-a.txt'],
+  ['lens-b.json', 'corpus-b.txt'],
+])('reading %s', (lensFile, baselineFile) => {
+  it('says exactly what it said before', async () => {
+    const lens = await loadLens(fixturePath(lensFile));
+    const { corpus, findings } = await loadCorpus(lens);
+
+    const { text } = readCorpus(corpus, lens, findings, READ_AT, null);
+
+    expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
+  });
+
+  it('says the same thing again reading a Seed off the shelf', async () => {
+    const lens = await loadLens(fixturePath(lensFile));
+
+    // The long way round, exactly as the server will take it: extract, put the
+    // Seed on the shelf, read it back off disk, and only then apply the Lens.
+    // Anything that cannot survive being written down and read again — a path
+    // that was absolute, a value that was a number, an order that happened to
+    // hold in memory — shows up here and nowhere else.
+    const held = await holdSeed(await mkdtemp(join(tmpdir(), 'comply-shelf-')), await extractSeed(lens));
+    const { facts, findings } = interpret(await readSeed(held.path), lens);
+
+    const { text } = readCorpus(buildCorpus(facts), lens, findings, READ_AT, null);
+
+    expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
+  });
+});
