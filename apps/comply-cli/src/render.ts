@@ -15,6 +15,32 @@ function pad(value: string, width: number): string {
   return value.length >= width ? value : value + ' '.repeat(width - value.length);
 }
 
+/**
+ * Every facet that exists but is not approved, with the reason it fell short.
+ *
+ * A grid of marks tells an owner that something is unfinished and never what to
+ * do about it, so the owner has to go and work that out for themselves — which
+ * is how a finding that technically reached someone still gets ignored
+ * (LAW-007). A cell short on content carries its unmet criteria; a cell whose
+ * content is sufficient and is simply unapproved says exactly that, and the two
+ * are never conflated because they are different work.
+ *
+ * The approved rung is not named here: the ladder's step names are corpus data
+ * and this renderer is not given the ladder (LAW-004).
+ */
+function renderShortfalls(matrix: Matrix): string[] {
+  const entries = matrix.rows.flatMap((row) =>
+    row.cells
+      .filter((cell) => cell.state === 'present' || cell.state === 'well-formed')
+      .map((cell) => {
+        const reasons = cell.unmet.length > 0 ? cell.unmet : ['not at the approved maturity level'];
+        return [`  ${row.moduleId} / ${cell.facet}`, ...reasons.map((r) => `      ${r}`)].join('\n');
+      }),
+  );
+
+  return entries.length === 0 ? [] : ['', 'Facets not yet approved:', ...entries];
+}
+
 export function renderMatrix(
   matrix: Matrix,
   scores: ModuleScore[],
@@ -54,6 +80,7 @@ export function renderMatrix(
     `Approved facets: ${approvedCells}/${totalCells} across ${scores.length} modules.`,
     'Denominator is the facets this Profile declares. Knowledge absent from the corpus entirely is not counted.',
     `Legend: ${MARK.approved} approved  ${MARK['well-formed']} well-formed  ${MARK.present} present  ${MARK.absent} absent`,
+    ...renderShortfalls(matrix),
   ].join('\n');
 }
 
