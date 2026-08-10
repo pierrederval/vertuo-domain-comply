@@ -1,5 +1,5 @@
 import type { AttributeValue, Relation } from '@vertuo/comply-core';
-import type { FacetSpec } from '@vertuo/comply-profile';
+import type { FacetSpec } from '@vertuo/comply-lens';
 import type { ParsedDocument } from './document.js';
 
 export interface ExtractedItem {

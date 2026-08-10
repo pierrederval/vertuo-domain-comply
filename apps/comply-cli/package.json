@@ -6,7 +6,7 @@
   "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
   "dependencies": {
     "@vertuo/comply-core": "workspace:*",
-    "@vertuo/comply-profile": "workspace:*",
+    "@vertuo/comply-lens": "workspace:*",
     "@vertuo/comply-ingestion": "workspace:*",
     "@vertuo/comply-readiness": "workspace:*",
     "@vertuo/comply-integrity": "workspace:*"

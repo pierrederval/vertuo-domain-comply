@@ -3,7 +3,7 @@ import type { Fact } from '@vertuo/comply-core';
 import { buildCorpus } from '@vertuo/comply-core';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { loadCorpus } from '@vertuo/comply-ingestion';
-import { loadProfile } from '@vertuo/comply-profile';
+import { loadLens } from '@vertuo/comply-lens';
 import { checkSplitIdentity } from '@vertuo/comply-integrity';
 
 function fact(partial: { id: string; moduleId: string; containerId: string; file: string; line: number }): Fact {
@@ -23,8 +23,8 @@ function fact(partial: { id: string; moduleId: string; containerId: string; file
 
 describe('split identity check', () => {
   it('reports one container carrying two module identities', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
     const findings = checkSplitIdentity(corpus);
 
     expect(findings).toHaveLength(1);
@@ -35,8 +35,8 @@ describe('split identity check', () => {
   });
 
   it('reports nothing for a corpus whose containers are internally consistent', async () => {
-    const profile = await loadProfile(fixturePath('profile-b.json'));
-    const { corpus } = await loadCorpus(profile);
+    const lens = await loadLens(fixturePath('lens-b.json'));
+    const { corpus } = await loadCorpus(lens);
     expect(checkSplitIdentity(corpus)).toEqual([]);
   });
 

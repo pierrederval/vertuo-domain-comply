@@ -3,7 +3,7 @@ import { fixturePath } from '@vertuo/comply-fixtures';
 import { parseDocument } from '@vertuo/comply-ingestion';
 import { extract } from '@vertuo/comply-ingestion';
 import type { ParsedDocument } from '@vertuo/comply-ingestion';
-import type { FacetSpec } from '@vertuo/comply-profile';
+import type { FacetSpec } from '@vertuo/comply-lens';
 
 describe('extractors', () => {
   it('document extractor yields exactly one item carrying the whole body', async () => {

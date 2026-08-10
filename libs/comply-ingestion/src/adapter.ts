@@ -1,6 +1,6 @@
 import type { Fact } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
-import type { Profile } from '@vertuo/comply-profile';
+import type { Lens } from '@vertuo/comply-lens';
 
 /**
  * The payload a Seed Adapter produces: a whole Corpus state, not a set of changes.
@@ -14,5 +14,5 @@ export interface SeedResult {
 }
 
 export interface SeedAdapter {
-  load(profile: Profile): Promise<SeedResult>;
+  load(lens: Lens): Promise<SeedResult>;
 }

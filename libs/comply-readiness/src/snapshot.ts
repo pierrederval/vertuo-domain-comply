@@ -6,7 +6,7 @@ import type { ModuleScore } from './score.js';
 
 export interface Snapshot {
   takenAt: string;
-  profileId: string;
+  lensId: string;
   scores: ModuleScore[];
 }
 
@@ -16,6 +16,19 @@ export interface TrendRow {
    *  module that did not exist in the previous snapshot. Never conflated with 0,
    *  which means the figure held steady against a real baseline. */
   approvedDelta: number | null;
+}
+
+/**
+ * A snapshot as found on disk. Runs from before ADR-0015 renamed the Lens carry
+ * its identity under the old key, and those files are exactly the baselines a
+ * trend needs. Refusing to read them would discard every comparison point the
+ * rename inherited — a cost ADR-0014 permits but nothing here requires paying.
+ * Tolerated on read only: nothing writes the old key, so the set of files
+ * needing it can only shrink.
+ */
+interface StoredSnapshot extends Omit<Snapshot, 'lensId'> {
+  lensId?: string;
+  profileId?: string;
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -29,7 +42,7 @@ async function pathExists(path: string): Promise<boolean> {
 
 export async function writeSnapshot(dir: string, snapshot: Snapshot): Promise<string> {
   await mkdir(dir, { recursive: true });
-  const base = `${snapshot.profileId}-${snapshot.takenAt.replace(/[:.]/g, '-')}`;
+  const base = `${snapshot.lensId}-${snapshot.takenAt.replace(/[:.]/g, '-')}`;
 
   let name = `${base}.json`;
   let suffix = 1;
@@ -50,7 +63,7 @@ export async function writeSnapshot(dir: string, snapshot: Snapshot): Promise<st
 
 export async function readPreviousSnapshot(
   dir: string,
-  profileId: string,
+  lensId: string,
   excludeAt: string,
 ): Promise<Snapshot | null> {
   let names: string[];
@@ -63,15 +76,19 @@ export async function readPreviousSnapshot(
   const candidates: Snapshot[] = [];
   for (const name of names) {
     if (!name.endsWith('.json')) continue;
-    let snapshot: Snapshot;
+    let stored: StoredSnapshot;
     try {
-      snapshot = JSON.parse(await readFile(join(dir, name), 'utf8')) as Snapshot;
+      stored = JSON.parse(await readFile(join(dir, name), 'utf8')) as StoredSnapshot;
     } catch {
       // A single corrupt or partially-written file costs one data point,
       // not the whole directory's trend history.
       continue;
     }
-    if (snapshot.profileId === profileId && snapshot.takenAt < excludeAt) candidates.push(snapshot);
+    const storedLensId = stored.lensId ?? stored.profileId;
+    if (storedLensId === lensId && stored.takenAt < excludeAt) {
+      // Normalise on the way out, so one transitional key never reaches a caller.
+      candidates.push({ ...stored, lensId: storedLensId });
+    }
   }
 
   candidates.sort((a, b) => a.takenAt.localeCompare(b.takenAt));
