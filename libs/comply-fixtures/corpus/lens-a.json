@@ -1,5 +1,6 @@
 {
   "id": "corpus-a",
+  "name": "Alpha",
   "adapter": {
     "kind": "markdown-frontmatter",
     "root": "./corpus-a",
