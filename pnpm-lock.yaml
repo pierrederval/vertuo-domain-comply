@@ -77,10 +77,11 @@ importers:
         version: 2.1.9(@types/node@24.13.3)
 
   libs/comply-guards:
-    devDependencies:
+    dependencies:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+    devDependencies:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@24.13.3)
