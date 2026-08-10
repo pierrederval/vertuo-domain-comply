@@ -241,7 +241,22 @@ export const corpusModuleSchema = z
     }
   });
 
+/**
+ * What was asked for and is not held.
+ *
+ * Which of the two is missing is part of the answer, because they send a reader
+ * to different places: a Corpus that is not on the shelf is something to put
+ * there, and a Module that is not in a Corpus is a name to go and check. The
+ * sentence each becomes is the surface's to write (LAW-010).
+ */
+export const notHeldSchema = z.object({
+  notHeld: z.enum(['corpus', 'module']),
+  id: z.string().min(1),
+  moduleId: z.string().min(1),
+});
+
 export type Place = z.infer<typeof placeSchema>;
+export type NotHeld = z.infer<typeof notHeldSchema>;
 export type UnmetCriterion = z.infer<typeof unmetCriterionSchema>;
 export type Knowledge = z.infer<typeof knowledgeSchema>;
 export type ModuleFacet = z.infer<typeof moduleFacetSchema>;

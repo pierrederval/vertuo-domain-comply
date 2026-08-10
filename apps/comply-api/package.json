@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@vertuo/comply-contract": "workspace:*",
+    "@vertuo/comply-core": "workspace:*",
     "@vertuo/comply-lens": "workspace:*",
+    "@vertuo/comply-readiness": "workspace:*",
     "@vertuo/comply-reading": "workspace:*",
     "@vertuo/comply-seed": "workspace:*",
     "fastify": "^5.2.0",

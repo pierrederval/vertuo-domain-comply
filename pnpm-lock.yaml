@@ -29,9 +29,15 @@ importers:
       '@vertuo/comply-contract':
         specifier: workspace:*
         version: link:../../libs/comply-contract
+      '@vertuo/comply-core':
+        specifier: workspace:*
+        version: link:../../libs/comply-core
       '@vertuo/comply-lens':
         specifier: workspace:*
         version: link:../../libs/comply-lens
+      '@vertuo/comply-readiness':
+        specifier: workspace:*
+        version: link:../../libs/comply-readiness
       '@vertuo/comply-reading':
         specifier: workspace:*
         version: link:../../libs/comply-reading
