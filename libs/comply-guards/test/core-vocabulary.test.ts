@@ -11,6 +11,7 @@ const CORE_ROOTS = [
   'libs/comply-ingestion/src',
   'libs/comply-seed/src',
   'libs/comply-reading/src',
+  'libs/comply-contract/src',
 ];
 
 describe('LAW-004: the core knows no business', () => {
