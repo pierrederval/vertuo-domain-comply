@@ -50,6 +50,26 @@ export interface Matrix {
  * quietly and only about the awkward cases. A Module's own Facet is the Module
  * Fact itself, which carries no `moduleId` of its own.
  */
+/**
+ * The distinct reasons a Facet falls short.
+ *
+ * Every Fact under a Facet is judged on its own, so two of them missing the same
+ * thing produce the same reason twice. What a reader is owed is the work, and
+ * that is one job rather than two: a reason names what is missing and never
+ * which Fact is missing it, so a repeat says nothing a person could act on
+ * differently. Reasons that differ — one short of two Sources, another short of
+ * three — are different jobs and all survive.
+ */
+function distinct(unmet: UnmetCriterion[]): UnmetCriterion[] {
+  const met = new Set<string>();
+  return unmet.filter((reason) => {
+    const said = JSON.stringify(reason);
+    if (met.has(said)) return false;
+    met.add(said);
+    return true;
+  });
+}
+
 export function factsUnder(corpus: Corpus, moduleId: FactId, facet: FacetSpec): Fact[] {
   return facet.factKind === 'Module'
     ? corpus.facts.filter((f) => f.id === moduleId && f.facet === facet.name)
@@ -77,10 +97,10 @@ export function buildMatrix(corpus: Corpus, lens: Lens): Matrix {
         };
       }
 
-      const unmet = [
+      const unmet = distinct([
         ...facts.flatMap((f) => evaluateFact(f, lens)),
         ...evaluateFacet(facts, facet.factKind, lens),
-      ];
+      ]);
 
       const notYetApproved = facts.filter((f) => !isApproved(lens, f.maturityLevel)).length;
       const wellFormed = unmet.length === 0;
