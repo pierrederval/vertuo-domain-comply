@@ -1,7 +1,10 @@
 import {
   corpusDetailSchema,
   corpusListSchema,
+  corpusModuleSchema,
+  notHeldSchema,
   type CorpusDetail,
+  type CorpusModule,
   type CorpusSummary,
 } from '@vertuo/comply-contract';
 
@@ -32,6 +35,31 @@ export async function fetchCorpusDetail(id: string): Promise<CorpusDetail> {
   if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
 
   const answer = corpusDetailSchema.safeParse(await response.json());
+  if (!answer.success) throw new Error('The Studio was sent something it could not read.');
+
+  return answer.data;
+}
+
+/** One Module: every Facet its Lens declares, and why each one falls short. */
+export async function fetchModule(id: string, moduleId: string): Promise<CorpusModule> {
+  const response = await fetch(
+    `/corpus/${encodeURIComponent(id)}/modules/${encodeURIComponent(moduleId)}`,
+  );
+
+  if (response.status === 404) {
+    // Two different things to go and do: put a Corpus on the shelf, or check a
+    // name against the grid. A single sentence for both would send half of the
+    // people who meet it to the wrong one.
+    const said = notHeldSchema.safeParse(await response.json());
+    throw new Error(
+      said.success && said.data.notHeld === 'corpus'
+        ? 'No Corpus of that name is on the shelf.'
+        : 'No Module of that name is in this Corpus.',
+    );
+  }
+  if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
+
+  const answer = corpusModuleSchema.safeParse(await response.json());
   if (!answer.success) throw new Error('The Studio was sent something it could not read.');
 
   return answer.data;

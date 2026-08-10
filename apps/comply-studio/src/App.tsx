@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Navigate, Route, Routes, useParams } from 'react-router';
-import { fetchCorpus, fetchCorpusDetail } from './api.js';
+import { fetchCorpus, fetchCorpusDetail, fetchModule } from './api.js';
 import { NothingToShow, Page } from './components/layout.js';
 import { CorpusList } from './corpus/CorpusList.js';
 import { CorpusMatrix } from './corpus/CorpusMatrix.js';
+import { ModuleDetail } from './corpus/ModuleDetail.js';
 
 /**
  * Where a person can go. Three places, and the plural of Corpus is Corpus
@@ -123,6 +124,22 @@ function OneCorpus() {
   );
 }
 
+function OneModule() {
+  const { id, moduleId } = useParams();
+  const corpus = id ?? '';
+  const asked = moduleId ?? '';
+
+  return (
+    <Answering
+      ask={() => fetchModule(corpus, asked)}
+      about={`${corpus}/${asked}`}
+      title="Module"
+    >
+      {(module) => <ModuleDetail module={module} />}
+    </Answering>
+  );
+}
+
 export function App() {
   return (
     <div className="studio">
@@ -147,6 +164,7 @@ export function App() {
         />
         <Route path="/corpus" element={<EveryCorpus />} />
         <Route path="/corpus/:id" element={<OneCorpus />} />
+        <Route path="/corpus/:id/modules/:moduleId" element={<OneModule />} />
       </Routes>
     </div>
   );
