@@ -9,7 +9,7 @@ and reviewed enough to build software from. Read [`CONTEXT.md`](./CONTEXT.md) fi
 [`UBIQUITOUS_LANGUAGE.md`](./UBIQUITOUS_LANGUAGE.md).
 
 Use the product's own words when you write code and interfaces: Corpus, Fact, Module, Term, Rule,
-Message, Transition, Maturity, Source, Change Request, Door, Check, Finding, Profile, Seed Adapter.
+Message, Transition, Maturity, Source, Change Request, Door, Check, Finding, Lens, Seed Adapter.
 They are defined in `UBIQUITOUS_LANGUAGE.md` and they are not interchangeable with synonyms.
 
 ## The laws are binding
@@ -21,7 +21,7 @@ The five most likely to be broken by accident:
 
 1. **No business vocabulary in the core** (LAW-004). No business term, no natural-language string, no
    fixed list of document sections, no hardcoded review-status names. If you are about to write a
-   domain word into core source, it belongs in a Profile instead. This includes test fixtures that
+   domain word into core source, it belongs in a Lens instead. This includes test fixtures that
    quietly assume one corpus's shape.
 2. **One Door** (LAW-002). Never write to the Corpus outside the Door. The Door has exactly two
    operations: proposing a Change Request, and loading a Seed. Migrations and quick fixes are neither

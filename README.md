@@ -9,4 +9,4 @@ It measures readiness, enforces the integrity of a ubiquitous language, and prot
 behind reviewed change proposals.
 
 The tool knows nothing about any particular business. A corpus arrives through a **Seed Adapter**
-and is interpreted through a **Profile**. See [`CONTEXT.md`](./CONTEXT.md).
+and is read through a **Lens**. See [`CONTEXT.md`](./CONTEXT.md).

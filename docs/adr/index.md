@@ -21,3 +21,6 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0011](./0011-toolchain.md) | ~~TypeScript, PostgreSQL, React, shared design system~~ *(superseded by 0013)* |
 | [0012](./0012-seed-is-transport-not-change.md) | A Seed is transport, not a change *(amends 0004)* |
 | [0013](./0013-technical-stack.md) | Technical stack *(supersedes 0011)* |
+| [0014](./0014-run-snapshots-stand-in-for-the-ledger.md) | Run snapshots stand in for the ledger, and hold history LAW-011 would otherwise forbid *(amended by 0016)* |
+| [0015](./0015-a-lens-not-a-profile.md) | The declaration of how a Corpus is read is a Lens, not a Profile *(amends LAW-004)* |
+| [0016](./0016-a-reading-is-recorded-when-its-inputs-change.md) | A recorded reading is a cache, keyed by the Seed and Lens that produced it *(amends 0014)* |

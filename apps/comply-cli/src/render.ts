@@ -30,8 +30,10 @@ export function renderMatrix(
 
   const lines = matrix.rows.map((row) => {
     const score = scores.find((s) => s.moduleId === row.moduleId)!;
-    const delta = trendRows.find((t) => t.moduleId === row.moduleId)?.approvedDelta ?? 0;
-    const deltaText = delta === 0 ? '·' : delta > 0 ? `+${delta}` : String(delta);
+    // No trend row for this module means the same thing as an explicit null: no
+    // prior figure to compare against. Never render that as "no change" (LAW-006).
+    const delta = trendRows.find((t) => t.moduleId === row.moduleId)?.approvedDelta ?? null;
+    const deltaText = delta === null ? 'n/a' : delta === 0 ? '·' : delta > 0 ? `+${delta}` : String(delta);
     return (
       pad(row.moduleId, nameWidth) + '  ' +
       row.cells.map((c) => pad(MARK[c.state], facetWidth)).join('') +

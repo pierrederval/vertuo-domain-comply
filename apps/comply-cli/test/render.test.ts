@@ -26,6 +26,33 @@ describe('rendering', () => {
     expect(renderMatrix(matrix, scoreMatrix(matrix), [])).toContain('NO OWNER');
   });
 
+  it('renders a module with no trend baseline as "n/a", never as the "·" used for a genuine zero delta', async () => {
+    const profile = await loadProfile(fixturePath('profile-a.json'));
+    const { corpus } = await loadCorpus(profile);
+    const matrix = buildMatrix(corpus, profile);
+    const scores = scoreMatrix(matrix);
+
+    // No trend row at all for this run's modules (e.g. a first-ever run).
+    const noBaseline = renderMatrix(matrix, scores, []);
+    expect(noBaseline).toContain('n/a');
+    expect(noBaseline).not.toMatch(/·/);
+
+    // An explicit null delta reads the same way as no trend row.
+    const explicitNull = renderMatrix(
+      matrix, scores,
+      scores.map((s) => ({ moduleId: s.moduleId, approvedDelta: null })),
+    );
+    expect(explicitNull).toContain('n/a');
+    expect(explicitNull).not.toMatch(/·/);
+
+    // A genuine zero delta still reads as "no change".
+    const zeroDelta = renderMatrix(
+      matrix, scores,
+      scores.map((s) => ({ moduleId: s.moduleId, approvedDelta: 0 })),
+    );
+    expect(zeroDelta).toMatch(/·/);
+  });
+
   it('renders each finding with a file and line a human can open, as a path relative to the corpus root', async () => {
     const profile = await loadProfile(fixturePath('profile-a.json'));
     const { corpus } = await loadCorpus(profile);

@@ -45,7 +45,7 @@ check, and a human.
 Computes presence, well-formedness, and approval per Module and Facet, and assembles the Readiness
 Matrix and its trend. Reads the Corpus; writes nothing.
 
-Well-formedness criteria are supplied by the Profile, never built in.
+Well-formedness criteria are supplied by the Lens, never built in.
 
 ### Language Integrity
 
@@ -63,7 +63,7 @@ This is the context most exposed to natural language, and therefore the one most
 
 *Brings knowledge in.*
 
-Owns Profiles and Seed Adapters. Translates bidirectionally between an external shape and a Seed —
+Owns Lenses and Seed Adapters. Translates bidirectionally between an external shape and a Seed —
 a portable serialisation of a whole Corpus.
 
 A Seed load is not a proposal. It passes through the Door, but as the `Load` operation, recorded as a
@@ -100,4 +100,4 @@ contributors disagree about which bucket a thing belongs in is an ontology that 
 fragmented model produces exactly the disagreement this product exists to detect.
 
 Growth pressure will be constant. It should be resisted at the Fact Kind level and absorbed in the
-Profile instead — that is what the Profile is for.
+Lens instead — that is what the Lens is for.

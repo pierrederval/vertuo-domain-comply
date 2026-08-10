@@ -34,8 +34,21 @@ describe('run snapshots', () => {
     expect(rows).toEqual([{ moduleId: 'alpha', approvedDelta: 2 }]);
   });
 
-  it('treats a first run as a zero delta rather than a jump', () => {
-    expect(trend(snapshot('a', 2), null)).toEqual([{ moduleId: 'alpha', approvedDelta: 0 }]);
+  it('reports no baseline, not a zero delta, on a first-ever run', () => {
+    expect(trend(snapshot('a', 2), null)).toEqual([{ moduleId: 'alpha', approvedDelta: null }]);
+  });
+
+  it('reports no baseline for a module absent from the previous snapshot, not a zero delta', () => {
+    const current: Snapshot = {
+      takenAt: 'b', profileId: 'p',
+      scores: [
+        { moduleId: 'alpha', owner: 'avery', total: 3, present: 3, wellFormed: 3, approved: 1 },
+        { moduleId: 'newmod', owner: 'avery', total: 2, present: 2, wellFormed: 2, approved: 2 },
+      ],
+    };
+    const rows = trend(current, snapshot('a', 1));
+    expect(rows.find((r) => r.moduleId === 'alpha')).toEqual({ moduleId: 'alpha', approvedDelta: 0 });
+    expect(rows.find((r) => r.moduleId === 'newmod')).toEqual({ moduleId: 'newmod', approvedDelta: null });
   });
 
   it('skips a corrupt snapshot file and still returns a valid earlier one', async () => {
