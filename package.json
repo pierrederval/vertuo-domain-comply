@@ -8,7 +8,9 @@
   "scripts": {
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "comply": "tsx apps/comply-cli/src/main.ts"
+    "comply": "tsx apps/comply-cli/src/main.ts",
+    "shelf:fixtures": "COMPLY_SHELF=libs/comply-fixtures/corpus pnpm comply extract libs/comply-fixtures/corpus/lens-a.json && COMPLY_SHELF=libs/comply-fixtures/corpus pnpm comply extract libs/comply-fixtures/corpus/lens-b.json",
+    "api": "COMPLY_SHELF=libs/comply-fixtures/corpus tsx apps/comply-api/src/main.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
