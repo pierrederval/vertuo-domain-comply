@@ -1,10 +1,33 @@
 import type { Fact, FactKind } from '@vertuo/comply-core';
-import type { Criterion, Lens } from '@vertuo/comply-lens';
+import type { Lens } from '@vertuo/comply-lens';
 
-export interface UnmetCriterion {
-  criterion: Criterion['type'];
-  detail: string;
-}
+/**
+ * Why one criterion was not met, as the parts of the reason and never as a
+ * sentence.
+ *
+ * A reason reaches a person as words, and the words belong to whatever surface
+ * is speaking to them: a terminal, a page, and one day a Change Request each
+ * phrase the same shortfall differently. What none of them may say is
+ * `requiredAttributes: missing: description` — a shortfall stated in the
+ * vocabulary of the thing that computed it, which is exactly what this type
+ * produced when it carried a flattened `detail` string, and it reached readers
+ * through the runner.
+ *
+ * Carrying the parts has a second effect worth having. A guard can only read
+ * text that is written down as text, so a sentence assembled from data at
+ * runtime is invisible to it. With the parts as data, every sentence a reader
+ * can meet is a literal in some surface's source, where LAW-010 is enforceable
+ * rather than merely intended.
+ *
+ * The tags are the Lens's own criterion type names (`Criterion['type']`), so a
+ * person reading a Lens and a person reading a shortfall are told about the same
+ * thing in the same word.
+ */
+export type UnmetCriterion =
+  | { criterion: 'requiredAttributes'; missing: string[] }
+  | { criterion: 'minSources'; has: number; needs: number }
+  | { criterion: 'minRelations'; relation: string; has: number; needs: number }
+  | { criterion: 'allStatesReachable'; unreachable: string[] };
 
 function attributeIsPresent(fact: Fact, name: string): boolean {
   const value = fact.attributes[name];
@@ -20,7 +43,7 @@ export function evaluateFact(fact: Fact, lens: Lens): UnmetCriterion[] {
       case 'requiredAttributes': {
         const missing = criterion.attributes.filter((a) => !attributeIsPresent(fact, a));
         if (missing.length > 0) {
-          unmet.push({ criterion: 'requiredAttributes', detail: `missing: ${missing.join(', ')}` });
+          unmet.push({ criterion: 'requiredAttributes', missing });
         }
         break;
       }
@@ -28,17 +51,20 @@ export function evaluateFact(fact: Fact, lens: Lens): UnmetCriterion[] {
         if (fact.sources.length < criterion.count) {
           unmet.push({
             criterion: 'minSources',
-            detail: `has ${fact.sources.length}, needs ${criterion.count}`,
+            has: fact.sources.length,
+            needs: criterion.count,
           });
         }
         break;
       }
       case 'minRelations': {
-        const count = fact.relations.filter((r) => r.type === criterion.relation).length;
-        if (count < criterion.count) {
+        const has = fact.relations.filter((r) => r.type === criterion.relation).length;
+        if (has < criterion.count) {
           unmet.push({
             criterion: 'minRelations',
-            detail: `has ${count} "${criterion.relation}", needs ${criterion.count}`,
+            relation: criterion.relation,
+            has,
+            needs: criterion.count,
           });
         }
         break;
@@ -82,10 +108,7 @@ export function evaluateFacet(
 
     const orphans = [...states].filter((s) => !reached.has(s)).sort();
     if (orphans.length > 0) {
-      unmet.push({
-        criterion: 'allStatesReachable',
-        detail: `unreachable: ${orphans.join(', ')}`,
-      });
+      unmet.push({ criterion: 'allStatesReachable', unreachable: orphans });
     }
   }
   return unmet;
