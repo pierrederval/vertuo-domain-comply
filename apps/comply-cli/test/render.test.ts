@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { renderFindings, renderMatrix } from '../src/render.js';
 import { loadCorpus } from '@vertuo/comply-ingestion';
-import { loadProfile } from '@vertuo/comply-profile';
-import type { Profile } from '@vertuo/comply-profile';
+import { loadLens } from '@vertuo/comply-lens';
+import type { Lens } from '@vertuo/comply-lens';
 import { runChecks } from '@vertuo/comply-integrity';
 import { buildMatrix } from '@vertuo/comply-readiness';
 import { scoreMatrix } from '@vertuo/comply-readiness';
 import { buildCorpus } from '@vertuo/comply-core';
 import type { Fact } from '@vertuo/comply-core';
 
-/** Minimal inline Profile: one Module facet, one Term facet, a two-rung ladder. */
-const inlineProfile: Profile = {
-  id: 'inline-profile',
+/** Minimal inline Lens: one Module facet, one Term facet, a two-rung ladder. */
+const inlineLens: Lens = {
+  id: 'inline-lens',
   adapter: {
     kind: 'markdown-frontmatter',
     root: './inline',
@@ -45,9 +45,9 @@ function fact(overrides: Partial<Fact> & Pick<Fact, 'id' | 'kind' | 'moduleId' |
 
 describe('rendering', () => {
   it('shows every score against its denominator (LAW-006)', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
-    const matrix = buildMatrix(corpus, profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const matrix = buildMatrix(corpus, lens);
     const out = renderMatrix(matrix, scoreMatrix(matrix), []);
 
     expect(out).toContain('alpha');
@@ -56,16 +56,16 @@ describe('rendering', () => {
   });
 
   it('marks a module with no owner rather than leaving it blank (ADR-0010)', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
-    const matrix = buildMatrix(corpus, profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const matrix = buildMatrix(corpus, lens);
     expect(renderMatrix(matrix, scoreMatrix(matrix), [])).toContain('NO OWNER');
   });
 
   it('renders a module with no trend baseline as "n/a", never as the "·" used for a genuine zero delta', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
-    const matrix = buildMatrix(corpus, profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const matrix = buildMatrix(corpus, lens);
     const scores = scoreMatrix(matrix);
 
     // No trend row at all for this run's modules (e.g. a first-ever run).
@@ -90,9 +90,9 @@ describe('rendering', () => {
   });
 
   it('renders each finding with a file and line a human can open, as a path relative to the corpus root', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
-    const out = renderFindings(runChecks(corpus, profile), profile.adapter.root);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const out = renderFindings(runChecks(corpus, lens), lens.adapter.root);
     expect(out).toMatch(/\.md:\d+/);
     expect(out).toContain('split-identity');
     expect(out).toContain('[split-identity] beta/terms.md');
@@ -100,9 +100,9 @@ describe('rendering', () => {
   });
 
   it('renders each related origin on its own line, relative to the corpus root, with no absolute path anywhere', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
-    const out = renderFindings(runChecks(corpus, profile), profile.adapter.root);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const out = renderFindings(runChecks(corpus, lens), lens.adapter.root);
 
     const conflictLine = out
       .split('\n')
@@ -112,9 +112,9 @@ describe('rendering', () => {
     // relativised exactly like the primary origin.
     const relatedLine = out.split('\n')[conflictLine + 2];
     expect(relatedLine).toContain('beta/terms.md:9');
-    expect(relatedLine).not.toContain(profile.adapter.root);
+    expect(relatedLine).not.toContain(lens.adapter.root);
 
-    expect(out).not.toContain(profile.adapter.root);
+    expect(out).not.toContain(lens.adapter.root);
   });
 
   it('renders the unmet reasons for a facet that fell short, so the owner is told why (LAW-007)', () => {
@@ -128,7 +128,7 @@ describe('rendering', () => {
         attributes: { name: 'Foo' }, // 'definition' missing -> fails requiredAttributes
       }),
     ];
-    const matrix = buildMatrix(buildCorpus(facts), inlineProfile);
+    const matrix = buildMatrix(buildCorpus(facts), inlineLens);
     const out = renderMatrix(matrix, scoreMatrix(matrix), []);
 
     expect(out).toContain('Facets not yet approved:');
@@ -148,7 +148,7 @@ describe('rendering', () => {
         maturityLevel: 'draft', // below the approved rung, so well-formed but not approved
       }),
     ];
-    const matrix = buildMatrix(buildCorpus(facts), inlineProfile);
+    const matrix = buildMatrix(buildCorpus(facts), inlineLens);
     const out = renderMatrix(matrix, scoreMatrix(matrix), []);
 
     expect(out).toContain('m1 / items');
@@ -171,7 +171,7 @@ describe('rendering', () => {
         maturityLevel: 'final', // meets every criterion and the approved rung
       }),
     ];
-    const matrix = buildMatrix(buildCorpus(facts), inlineProfile);
+    const matrix = buildMatrix(buildCorpus(facts), inlineLens);
     const out = renderMatrix(matrix, scoreMatrix(matrix), []);
 
     expect(out).not.toContain('Facets not yet approved');

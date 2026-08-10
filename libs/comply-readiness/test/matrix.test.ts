@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { loadCorpus } from '@vertuo/comply-ingestion';
-import { loadProfile } from '@vertuo/comply-profile';
+import { loadLens } from '@vertuo/comply-lens';
 import { buildMatrix } from '@vertuo/comply-readiness';
 import { scoreMatrix } from '@vertuo/comply-readiness';
 import { buildCorpus } from '@vertuo/comply-core';
 import type { Fact } from '@vertuo/comply-core';
-import type { Profile } from '@vertuo/comply-profile';
+import type { Lens } from '@vertuo/comply-lens';
 
-/** Minimal inline Profile: one Module facet, one Term facet, a three-rung ladder. */
-const inlineProfile: Profile = {
-  id: 'inline-profile',
+/** Minimal inline Lens: one Module facet, one Term facet, a three-rung ladder. */
+const inlineLens: Lens = {
+  id: 'inline-lens',
   adapter: {
     kind: 'markdown-frontmatter',
     root: './inline',
@@ -43,9 +43,9 @@ function fact(overrides: Partial<Fact> & Pick<Fact, 'id' | 'kind' | 'moduleId' |
 
 describe('Readiness Matrix', () => {
   it('grades every module against every declared facet', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
-    const matrix = buildMatrix(corpus, profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const matrix = buildMatrix(corpus, lens);
 
     expect(matrix.facets).toEqual(['overview', 'terms', 'rules']);
     const alpha = matrix.rows.find((r) => r.moduleId === 'alpha')!;
@@ -54,9 +54,9 @@ describe('Readiness Matrix', () => {
   });
 
   it('marks a facet absent when the module has no facts for it', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
-    const matrix = buildMatrix(corpus, profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const matrix = buildMatrix(corpus, lens);
 
     const beta = matrix.rows.find((r) => r.moduleId === 'beta')!;
     expect(beta.cells.find((c) => c.facet === 'rules')!.state).toBe('absent');
@@ -64,9 +64,9 @@ describe('Readiness Matrix', () => {
   });
 
   it('reports each score with its denominator (LAW-006)', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
-    const scores = scoreMatrix(buildMatrix(corpus, profile));
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const scores = scoreMatrix(buildMatrix(corpus, lens));
 
     const alpha = scores.find((s) => s.moduleId === 'alpha')!;
     expect(alpha.total).toBe(3);
@@ -75,9 +75,9 @@ describe('Readiness Matrix', () => {
   });
 
   it('builds rows for a corpus with no Module facet at all', async () => {
-    const profile = await loadProfile(fixturePath('profile-b.json'));
-    const { corpus } = await loadCorpus(profile);
-    const matrix = buildMatrix(corpus, profile);
+    const lens = await loadLens(fixturePath('lens-b.json'));
+    const { corpus } = await loadCorpus(lens);
+    const matrix = buildMatrix(corpus, lens);
 
     expect(matrix.rows.map((r) => r.moduleId)).toEqual(['one', 'two']);
     expect(matrix.rows[1]!.cells.find((c) => c.facet === 'constraints')!.state).toBe('absent');
@@ -92,12 +92,12 @@ describe('Readiness Matrix', () => {
         moduleId: 'm1',
         facet: 'items',
         attributes: { name: 'Foo' }, // 'definition' missing -> fails requiredAttributes
-        maturityLevel: 'final', // the profile's approved rung
+        maturityLevel: 'final', // the lens's approved rung
         sources: ['review'],
       }),
     ];
     const corpus = buildCorpus(facts);
-    const matrix = buildMatrix(corpus, inlineProfile);
+    const matrix = buildMatrix(corpus, inlineLens);
 
     const row = matrix.rows.find((r) => r.moduleId === 'm1')!;
     const cell = row.cells.find((c) => c.facet === 'items')!;
@@ -129,7 +129,7 @@ describe('Readiness Matrix', () => {
       }),
     ];
     const corpus = buildCorpus(facts);
-    const matrix = buildMatrix(corpus, inlineProfile);
+    const matrix = buildMatrix(corpus, inlineLens);
 
     const row = matrix.rows.find((r) => r.moduleId === 'm2')!;
     const cell = row.cells.find((c) => c.facet === 'items')!;

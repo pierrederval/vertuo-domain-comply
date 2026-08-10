@@ -4,11 +4,11 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { loadCorpus } from '@vertuo/comply-ingestion';
-import { loadProfile } from '@vertuo/comply-profile';
-import type { Profile } from '@vertuo/comply-profile';
+import { loadLens } from '@vertuo/comply-lens';
+import type { Lens } from '@vertuo/comply-lens';
 
-/** A minimal Profile for tests that need their own temporary corpus rather than the shared fixture. */
-function makeProfile(root: string): Profile {
+/** A minimal Lens for tests that need their own temporary corpus rather than the shared fixture. */
+function makeLens(root: string): Lens {
   return {
     id: 'temp-corpus',
     adapter: { kind: 'markdown-frontmatter', root, moduleIdKey: 'area', facetKey: 'kind', statusKey: 'state' },
@@ -24,8 +24,8 @@ function makeProfile(root: string): Profile {
 
 describe('markdown adapter', () => {
   it('imports every facet into typed Facts with origins', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
 
     // moduleIds() lists Module facts only. 'bravo' is declared by a Term document,
     // so it does not appear here — Task 10's allModuleIds() is what surfaces it.
@@ -36,8 +36,8 @@ describe('markdown adapter', () => {
   });
 
   it('decomposes the corpus status into a level and sources (ADR-0006)', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
 
     const agreed = corpus.facts.find((f) => f.origin.file.includes('alpha/terms.md'));
     expect(agreed?.maturityLevel).toBe('agreed');
@@ -49,10 +49,10 @@ describe('markdown adapter', () => {
   });
 
   it('reports an unrecognised status as a Finding rather than swallowing it', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
+    const lens = await loadLens(fixturePath('lens-a.json'));
     const mangled = {
-      ...profile,
-      statusMappings: profile.statusMappings.filter((m) => m.match === 'Agreed'),
+      ...lens,
+      statusMappings: lens.statusMappings.filter((m) => m.match === 'Agreed'),
     };
     const { findings } = await loadCorpus(mangled);
     const unknown = findings.filter((f) => f.code === 'unknown-status');
@@ -71,7 +71,7 @@ describe('markdown adapter', () => {
       'utf8',
     );
 
-    const { corpus, findings } = await loadCorpus(makeProfile(root));
+    const { corpus, findings } = await loadCorpus(makeLens(root));
 
     const emptyFacet = findings.filter((f) => f.code === 'empty-facet');
     expect(emptyFacet).toHaveLength(1);
@@ -99,7 +99,7 @@ describe('markdown adapter', () => {
       'utf8',
     );
 
-    const { corpus, findings } = await loadCorpus(makeProfile(root));
+    const { corpus, findings } = await loadCorpus(makeLens(root));
 
     expect(findings.filter((f) => f.code === 'empty-facet')).toHaveLength(0);
 

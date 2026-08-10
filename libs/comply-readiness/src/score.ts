@@ -4,7 +4,7 @@ import type { Matrix } from './matrix.js';
 export interface ModuleScore {
   moduleId: FactId;
   owner: string | null;
-  /** Denominator: the number of facets the Profile declares (LAW-006). */
+  /** Denominator: the number of facets the Lens declares (LAW-006). */
   total: number;
   present: number;
   wellFormed: number;

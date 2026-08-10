@@ -24,7 +24,7 @@ describe('LAW-004: the core knows no business', () => {
 
   it('detects a planted violation', async () => {
     const violations = await checkCoreVocabulary(
-      ['libs/comply-profile/src'],
+      ['libs/comply-lens/src'],
       ['markdown-frontmatter'],
     );
     expect(violations.length).toBeGreaterThan(0);
@@ -33,10 +33,10 @@ describe('LAW-004: the core knows no business', () => {
 
   it('reports the offending location so a human can open it', async () => {
     const violations = await checkCoreVocabulary(
-      ['libs/comply-profile/src'],
+      ['libs/comply-lens/src'],
       ['markdown-frontmatter'],
     );
-    expect(violations[0]!.file).toMatch(/^libs\/comply-profile\/src\//);
+    expect(violations[0]!.file).toMatch(/^libs\/comply-lens\/src\//);
     expect(violations[0]!.line).toBeGreaterThan(0);
   });
 

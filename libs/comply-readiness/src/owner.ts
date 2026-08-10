@@ -1,6 +1,6 @@
 import type { Corpus } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
-import type { Profile } from '@vertuo/comply-profile';
+import type { Lens } from '@vertuo/comply-lens';
 
 export interface OwnerResolution {
   owners: Map<string, string>;
@@ -16,7 +16,7 @@ export function allModuleIds(corpus: Corpus): string[] {
   return [...ids].sort();
 }
 
-export function resolveOwners(corpus: Corpus, profile: Profile): OwnerResolution {
+export function resolveOwners(corpus: Corpus, lens: Lens): OwnerResolution {
   const owners = new Map<string, string>();
   const findings: Finding[] = [];
 
@@ -25,7 +25,7 @@ export function resolveOwners(corpus: Corpus, profile: Profile): OwnerResolution
     const owner =
       typeof fromCorpus === 'string' && fromCorpus.trim() !== ''
         ? fromCorpus.trim()
-        : profile.owners?.[moduleId];
+        : lens.owners?.[moduleId];
 
     if (owner === undefined) {
       const anyFact = corpus.byModule(moduleId)[0] ?? corpus.find(moduleId);
@@ -33,7 +33,7 @@ export function resolveOwners(corpus: Corpus, profile: Profile): OwnerResolution
         code: 'missing-owner',
         moduleId,
         message: `Module "${moduleId}" has no owner; findings for it route to nobody`,
-        origin: anyFact?.origin ?? { file: profile.adapter.root, line: 1 },
+        origin: anyFact?.origin ?? { file: lens.adapter.root, line: 1 },
       });
       continue;
     }

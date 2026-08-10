@@ -1,5 +1,5 @@
 import type { Fact, FactKind } from '@vertuo/comply-core';
-import type { Criterion, Profile } from '@vertuo/comply-profile';
+import type { Criterion, Lens } from '@vertuo/comply-lens';
 
 export interface UnmetCriterion {
   criterion: Criterion['type'];
@@ -13,9 +13,9 @@ function attributeIsPresent(fact: Fact, name: string): boolean {
 }
 
 /** Criteria evaluated against one Fact in isolation. */
-export function evaluateFact(fact: Fact, profile: Profile): UnmetCriterion[] {
+export function evaluateFact(fact: Fact, lens: Lens): UnmetCriterion[] {
   const unmet: UnmetCriterion[] = [];
-  for (const criterion of profile.criteria[fact.kind] ?? []) {
+  for (const criterion of lens.criteria[fact.kind] ?? []) {
     switch (criterion.type) {
       case 'requiredAttributes': {
         const missing = criterion.attributes.filter((a) => !attributeIsPresent(fact, a));
@@ -54,10 +54,10 @@ export function evaluateFact(fact: Fact, profile: Profile): UnmetCriterion[] {
 export function evaluateFacet(
   facts: Fact[],
   kind: FactKind,
-  profile: Profile,
+  lens: Lens,
 ): UnmetCriterion[] {
   const unmet: UnmetCriterion[] = [];
-  for (const criterion of profile.criteria[kind] ?? []) {
+  for (const criterion of lens.criteria[kind] ?? []) {
     if (criterion.type !== 'allStatesReachable') continue;
     if (facts.length === 0) continue;
 

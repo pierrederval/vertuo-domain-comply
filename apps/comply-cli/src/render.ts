@@ -78,14 +78,14 @@ export function renderMatrix(
     ...lines,
     '-'.repeat(header.length),
     `Approved facets: ${approvedCells}/${totalCells} across ${scores.length} modules.`,
-    'Denominator is the facets this Profile declares. Knowledge absent from the corpus entirely is not counted.',
+    'Denominator is the facets this Lens declares. Knowledge absent from the corpus entirely is not counted.',
     `Legend: ${MARK.approved} approved  ${MARK['well-formed']} well-formed  ${MARK.present} present  ${MARK.absent} absent`,
     ...renderShortfalls(matrix),
   ].join('\n');
 }
 
 /**
- * `corpusRoot` is the Profile's resolved adapter root (`profile.adapter.root`).
+ * `corpusRoot` is the Lens's resolved adapter root (`lens.adapter.root`).
  * Origins are stored as absolute paths internally (LAW-009 needs a path a human
  * can open), but displaying that absolute path bakes the machine it ran on into
  * the output — it can't be shared, diffed across machines, or pasted into a

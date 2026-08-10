@@ -2,8 +2,8 @@ import { relative } from 'node:path';
 import { buildCorpus, type Corpus } from '@vertuo/comply-core';
 import type { Fact } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
-import { decomposeStatus } from '@vertuo/comply-profile';
-import type { Profile } from '@vertuo/comply-profile';
+import { decomposeStatus } from '@vertuo/comply-lens';
+import type { Lens } from '@vertuo/comply-lens';
 import type { SeedAdapter, SeedResult } from '../adapter.js';
 import { discoverDocuments } from './discover.js';
 import { parseDocument } from './document.js';
@@ -15,8 +15,8 @@ function text(value: unknown): string | null {
   return null;
 }
 
-export async function loadSeed(profile: Profile): Promise<SeedResult> {
-  const { root, moduleIdKey, facetKey, statusKey, ownerKey } = profile.adapter;
+export async function loadSeed(lens: Lens): Promise<SeedResult> {
+  const { root, moduleIdKey, facetKey, statusKey, ownerKey } = lens.adapter;
   const facts: Fact[] = [];
   const findings: Finding[] = [];
 
@@ -46,7 +46,7 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
       continue;
     }
 
-    const facet = profile.facets.find((f) => f.name === facetName);
+    const facet = lens.facets.find((f) => f.name === facetName);
     if (facet === undefined) {
       findings.push({
         code: 'unparsable-document', moduleId,
@@ -60,11 +60,11 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
     let maturityLevel: string | null = null;
     let sources: string[] = [];
     if (rawStatus !== null) {
-      const decomposed = decomposeStatus(profile, rawStatus);
+      const decomposed = decomposeStatus(lens, rawStatus);
       if (decomposed === null) {
         findings.push({
           code: 'unknown-status', moduleId,
-          message: `Status "${rawStatus}" matches no mapping in profile "${profile.id}"`, origin,
+          message: `Status "${rawStatus}" matches no mapping in lens "${lens.id}"`, origin,
         });
       } else {
         maturityLevel = decomposed.maturityLevel;
@@ -111,8 +111,8 @@ export async function loadSeed(profile: Profile): Promise<SeedResult> {
 export const markdownAdapter: SeedAdapter = { load: loadSeed };
 
 export async function loadCorpus(
-  profile: Profile,
+  lens: Lens,
 ): Promise<{ corpus: Corpus; findings: Finding[] }> {
-  const { facts, findings } = await loadSeed(profile);
+  const { facts, findings } = await loadSeed(lens);
   return { corpus: buildCorpus(facts), findings };
 }

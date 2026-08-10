@@ -1,11 +1,11 @@
 import type { Corpus } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
-import type { Profile } from '@vertuo/comply-profile';
+import type { Lens } from '@vertuo/comply-lens';
 import { buildTermRegistry, type TermEntry } from '../registry.js';
 
-export function checkConflictingDefinition(corpus: Corpus, profile: Profile): Finding[] {
+export function checkConflictingDefinition(corpus: Corpus, lens: Lens): Finding[] {
   const byCanonical = new Map<string, TermEntry[]>();
-  for (const entry of buildTermRegistry(corpus, profile)) {
+  for (const entry of buildTermRegistry(corpus, lens)) {
     // An empty definition means "not yet documented here", not "documented as nothing".
     // That is a well-formedness concern (requiredAttributes), not a language-integrity one —
     // comparing it against a real definition elsewhere would report absence as contradiction.

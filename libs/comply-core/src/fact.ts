@@ -23,13 +23,13 @@ export interface Fact {
   kind: FactKind;
   /** null for Facts of kind 'Module'. */
   moduleId: FactId | null;
-  /** Profile-declared facet name. The core never inspects its value. */
+  /** Lens-declared facet name. The core never inspects its value. */
   facet: string;
   /** Adapter-reported grouping (e.g. a directory). Used by split-identity. */
   containerId: string;
   attributes: Record<string, AttributeValue>;
   relations: Relation[];
-  /** A level name from the Profile's ladder. null when the corpus said nothing. */
+  /** A level name from the Lens's ladder. null when the corpus said nothing. */
   maturityLevel: string | null;
   /** Provenance. A set, never merged with maturityLevel (ADR-0006). */
   sources: string[];

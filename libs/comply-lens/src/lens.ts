@@ -52,7 +52,7 @@ export const adapterSpecSchema = z.object({
   ownerKey: z.string().optional(),
 });
 
-export const profileSchema = z
+export const lensSchema = z
   .object({
     id: z.string().min(1),
     adapter: adapterSpecSchema,
@@ -63,8 +63,8 @@ export const profileSchema = z
     /** Fallback owner map when the corpus carries no owner key. */
     owners: z.record(z.string()).optional(),
   })
-  .superRefine((profile, ctx) => {
-    const { levels, approvedAtOrAbove } = profile.maturity;
+  .superRefine((lens, ctx) => {
+    const { levels, approvedAtOrAbove } = lens.maturity;
     if (!levels.includes(approvedAtOrAbove)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -72,7 +72,7 @@ export const profileSchema = z
         message: `approvedAtOrAbove "${approvedAtOrAbove}" is not on the ladder [${levels.join(', ')}]`,
       });
     }
-    for (const [index, mapping] of profile.statusMappings.entries()) {
+    for (const [index, mapping] of lens.statusMappings.entries()) {
       if (!levels.includes(mapping.maturity)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -84,7 +84,7 @@ export const profileSchema = z
     // A Term facet must map onto the core's semantic slots for a term's canonical name
     // and its definition, so a language-integrity check can find them without guessing
     // at corpus-specific attribute names.
-    for (const [index, facet] of profile.facets.entries()) {
+    for (const [index, facet] of lens.facets.entries()) {
       if (facet.factKind !== 'Term') continue;
       if (facet.extractor === 'table') {
         const targets = new Set(Object.values(facet.columns ?? {}));
@@ -119,4 +119,4 @@ export type MaturityLadder = z.infer<typeof maturityLadderSchema>;
 export type StatusMapping = z.infer<typeof statusMappingSchema>;
 export type Criterion = z.infer<typeof criterionSchema>;
 export type AdapterSpec = z.infer<typeof adapterSpecSchema>;
-export type Profile = z.infer<typeof profileSchema>;
+export type Lens = z.infer<typeof lensSchema>;

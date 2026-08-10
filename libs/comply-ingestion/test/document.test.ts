@@ -27,7 +27,7 @@ describe('document discovery and parsing', () => {
   });
 
   it('returns null for a document with no frontmatter', async () => {
-    const doc = await parseDocument(fixturePath('profile-a.json'));
+    const doc = await parseDocument(fixturePath('lens-a.json'));
     expect(doc).toBeNull();
   });
 

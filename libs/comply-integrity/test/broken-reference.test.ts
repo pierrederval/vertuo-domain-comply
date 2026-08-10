@@ -3,7 +3,7 @@ import type { Fact } from '@vertuo/comply-core';
 import { buildCorpus } from '@vertuo/comply-core';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { loadCorpus } from '@vertuo/comply-ingestion';
-import { loadProfile } from '@vertuo/comply-profile';
+import { loadLens } from '@vertuo/comply-lens';
 import { checkBrokenReference } from '@vertuo/comply-integrity';
 
 function fact(partial: {
@@ -30,8 +30,8 @@ function fact(partial: {
 
 describe('broken reference check', () => {
   it('reports a reference whose target exists nowhere in the corpus', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
     const findings = checkBrokenReference(corpus);
 
     expect(findings).toHaveLength(1);
@@ -41,8 +41,8 @@ describe('broken reference check', () => {
   });
 
   it('accepts a reference resolving to another fact by slug', async () => {
-    const profile = await loadProfile(fixturePath('profile-a.json'));
-    const { corpus } = await loadCorpus(profile);
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
     const resolved = corpus.facts
       .flatMap((f) => f.relations)
       .filter((r) => r.targetRef === 'r-2-sprockets-turn');

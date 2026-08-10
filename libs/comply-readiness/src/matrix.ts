@@ -1,7 +1,7 @@
 import type { Corpus } from '@vertuo/comply-core';
 import type { FactId } from '@vertuo/comply-core';
-import { isApproved } from '@vertuo/comply-profile';
-import type { Profile } from '@vertuo/comply-profile';
+import { isApproved } from '@vertuo/comply-lens';
+import type { Lens } from '@vertuo/comply-lens';
 import { allModuleIds, resolveOwners } from './owner.js';
 import { evaluateFacet, evaluateFact } from './wellformed.js';
 
@@ -22,19 +22,19 @@ export interface ModuleRow {
 }
 
 export interface Matrix {
-  profileId: string;
+  lensId: string;
   facets: string[];
   rows: ModuleRow[];
 }
 
-export function buildMatrix(corpus: Corpus, profile: Profile): Matrix {
-  const { owners } = resolveOwners(corpus, profile);
-  const facets = profile.facets.map((f) => f.name);
+export function buildMatrix(corpus: Corpus, lens: Lens): Matrix {
+  const { owners } = resolveOwners(corpus, lens);
+  const facets = lens.facets.map((f) => f.name);
 
   const rows: ModuleRow[] = allModuleIds(corpus).map((moduleId) => ({
     moduleId,
     owner: owners.get(moduleId) ?? null,
-    cells: profile.facets.map((facet) => {
+    cells: lens.facets.map((facet) => {
       const facts =
         facet.factKind === 'Module'
           ? corpus.facts.filter((f) => f.id === moduleId && f.facet === facet.name)
@@ -45,12 +45,12 @@ export function buildMatrix(corpus: Corpus, profile: Profile): Matrix {
       }
 
       const unmet = [
-        ...facts.flatMap((f) => evaluateFact(f, profile).map((u) => `${u.criterion}: ${u.detail}`)),
-        ...evaluateFacet(facts, facet.factKind, profile).map((u) => `${u.criterion}: ${u.detail}`),
+        ...facts.flatMap((f) => evaluateFact(f, lens).map((u) => `${u.criterion}: ${u.detail}`)),
+        ...evaluateFacet(facts, facet.factKind, lens).map((u) => `${u.criterion}: ${u.detail}`),
       ];
 
       const wellFormed = unmet.length === 0;
-      const approved = wellFormed && facts.every((f) => isApproved(profile, f.maturityLevel));
+      const approved = wellFormed && facts.every((f) => isApproved(lens, f.maturityLevel));
 
       return {
         moduleId,
@@ -62,5 +62,5 @@ export function buildMatrix(corpus: Corpus, profile: Profile): Matrix {
     }),
   }));
 
-  return { profileId: profile.id, facets, rows };
+  return { lensId: lens.id, facets, rows };
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Fact } from '@vertuo/comply-core';
 import { evaluateFacet, evaluateFact } from '@vertuo/comply-readiness';
-import type { Profile } from '@vertuo/comply-profile';
+import type { Lens } from '@vertuo/comply-lens';
 
-const base: Profile = {
+const base: Lens = {
   id: 'p',
   adapter: { kind: 'markdown-frontmatter', root: '.', moduleIdKey: 'm', facetKey: 'f', statusKey: 's' },
   facets: [],
@@ -43,7 +43,7 @@ describe('well-formedness engine', () => {
     expect(unmet.map((u) => u.criterion)).toEqual(['minSources']);
   });
 
-  it('applies no criteria to a Fact Kind the profile does not constrain', () => {
+  it('applies no criteria to a Fact Kind the lens does not constrain', () => {
     expect(evaluateFact(fact({ kind: 'Term', attributes: {} }), base)).toEqual([]);
   });
 
