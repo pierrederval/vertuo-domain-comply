@@ -64,6 +64,13 @@ the same defects are reported in the same order as before.
 
 - `libs/comply-seed` has no field for a maturity level, a source list, a score, or a message, and a test
   holds its key set closed against exactly that.
+- **A Seed is a list of documents, each holding its items — not a flat list of Facts.** The design of
+  2026-08-10 names a single `SeedFact` carrying status, facet, container, origin and excerpt together.
+  A flat list cannot hold a document that yielded *nothing*, and those are precisely the documents worth
+  surfacing: one nothing could be read from, one with no identity, one whose facet the Lens does not
+  declare. Recording the document and its items separately is what lets the Seed keep those cases
+  without keeping a message. It also stops a status and an owner being repeated on every item, where two
+  copies could disagree.
 - Extraction consults a facet only for the extractor it names. A facet name the Lens does not declare
   yields no items and no complaint; interpretation is what calls it a defect.
 - An excerpt's length limit is a property of extraction, so changing it changes future Seeds and leaves
