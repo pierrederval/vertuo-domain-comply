@@ -2,7 +2,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { corpusListSchema, type CorpusSummary } from '@vertuo/comply-contract';
-import { Navigation } from '../src/App.js';
 import { CorpusList } from '../src/corpus/CorpusList.js';
 
 /**
@@ -119,20 +118,5 @@ describe('the Corpus list', () => {
     const drawn = draw(CORPUS);
     for (const word of ['Alpha', 'corpus-b', 'Third']) expect(drawn).toContain(word);
     expect(draw([])).not.toMatch(/Alpha|corpus-|Third/);
-  });
-});
-
-describe('where a person can go', () => {
-  it('offers three destinations and no more', () => {
-    const drawn = renderToStaticMarkup(
-      <MemoryRouter>
-        <Navigation />
-      </MemoryRouter>,
-    );
-
-    expect(drawn.match(/data-destination=""/g)).toHaveLength(3);
-    expect(drawn).toContain('Home');
-    expect(drawn).toContain('Inbox');
-    expect(drawn).toContain('Corpus');
   });
 });

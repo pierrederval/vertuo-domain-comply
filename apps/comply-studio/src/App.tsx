@@ -1,117 +1,61 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink, Navigate, Route, Routes, useParams } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, Route, Routes, useParams } from 'react-router';
 import { fetchCorpus, fetchCorpusDetail, fetchModule } from './api.js';
+import { Answering } from './components/Answering.js';
 import { NothingToShow, Page } from './components/layout.js';
 import { CorpusList } from './corpus/CorpusList.js';
 import { CorpusMatrix } from './corpus/CorpusMatrix.js';
 import { ModuleDetail } from './corpus/ModuleDetail.js';
+import { AppShell, type ShelfState } from './shell/AppShell.js';
+import { DESTINATIONS, OPENS_AT } from './shell/destinations.js';
 
 /**
- * Where a person can go. Three places, and the plural of Corpus is Corpus
- * (spec §5).
- */
-const DESTINATIONS = [
-  { to: '/home', label: 'Home' },
-  { to: '/inbox', label: 'Inbox' },
-  { to: '/corpus', label: 'Corpus' },
-];
-
-export function Navigation() {
-  return (
-    <nav className="navigation">
-      {DESTINATIONS.map((destination) => (
-        <NavLink
-          key={destination.to}
-          to={destination.to}
-          data-destination=""
-          className={({ isActive }) => (isActive ? 'destination here' : 'destination')}
-        >
-          {destination.label}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
-
-/**
- * Home is a work surface, per Corpus, and Inbox is a queue per Owner. Both are
- * their own slices (#25, #23). Until then each says what it will hold rather than
- * standing empty, because an empty screen reads as a broken one.
- */
-function Placeholder({ title, children }: { title: string; children: string }) {
-  return (
-    <Page title={title}>
-      <NothingToShow>{children}</NothingToShow>
-    </Page>
-  );
-}
-
-/**
- * What the Studio shows while an answer is on its way, and what it shows when one
- * cannot be had.
+ * The shelf, read once and shared.
  *
- * Both said in one place, because they are one screen's worth of language and
- * the reader meets them everywhere. Neither is ever a blank page: a surface with
- * nothing on it reads as a broken one, and a person who cannot tell waiting from
- * failing will wait through a failure.
+ * The sidebar and the Corpus list are the same answer drawn two ways, so they
+ * are asked for once. Asking twice would let the two disagree about what is on
+ * the shelf, and a reader would have no way to tell which of them was right.
  */
-function Answering<T>({
-  ask,
-  about,
-  title,
-  children,
-}: {
-  ask: () => Promise<T>;
-  /** What is being asked about. Asking again when it changes is the point. */
-  about: string;
-  title: string;
-  children: (answer: T) => ReactNode;
-}) {
-  const [answer, setAnswer] = useState<T | null>(null);
-  const [trouble, setTrouble] = useState<string | null>(null);
+function useShelf(): ShelfState {
+  const [shelf, setShelf] = useState<ShelfState>({ corpus: null, trouble: null });
 
   useEffect(() => {
     let listening = true;
-    setAnswer(null);
-    setTrouble(null);
 
-    ask()
-      .then((given) => listening && setAnswer(given))
+    fetchCorpus()
+      .then((corpus) => listening && setShelf({ corpus, trouble: null }))
       .catch((cause: unknown) => {
-        if (listening) setTrouble(cause instanceof Error ? cause.message : String(cause));
+        if (!listening) return;
+        setShelf({
+          corpus: null,
+          trouble: cause instanceof Error ? cause.message : String(cause),
+        });
       });
 
     return () => {
       listening = false;
     };
-    // Asked again when the subject changes, not when the asking is redefined:
-    // the caller builds a new function every render, and depending on that would
-    // ask forever.
-  }, [about]);
+  }, []);
 
-  if (trouble !== null) {
+  return shelf;
+}
+
+function EveryCorpus({ shelf }: { shelf: ShelfState }) {
+  if (shelf.trouble !== null) {
     return (
-      <Page title={title}>
-        <NothingToShow>{trouble}</NothingToShow>
+      <Page title="Corpus">
+        <NothingToShow>{shelf.trouble}</NothingToShow>
       </Page>
     );
   }
-  if (answer === null) {
+  if (shelf.corpus === null) {
     return (
-      <Page title={title}>
+      <Page title="Corpus">
         <NothingToShow>Reading the shelf.</NothingToShow>
       </Page>
     );
   }
-  return <>{children(answer)}</>;
-}
-
-function EveryCorpus() {
-  return (
-    <Answering ask={fetchCorpus} about="every" title="Corpus">
-      {(corpus) => <CorpusList corpus={corpus} />}
-    </Answering>
-  );
+  return <CorpusList corpus={shelf.corpus} />;
 }
 
 function OneCorpus() {
@@ -119,7 +63,7 @@ function OneCorpus() {
   const asked = id ?? '';
 
   return (
-    <Answering ask={() => fetchCorpusDetail(asked)} about={asked} title="Corpus">
+    <Answering ask={() => fetchCorpusDetail(asked)} about={asked}>
       {(corpus) => <CorpusMatrix corpus={corpus} />}
     </Answering>
   );
@@ -131,42 +75,71 @@ function OneModule() {
   const asked = moduleId ?? '';
 
   return (
-    <Answering
-      ask={() => fetchModule(corpus, asked)}
-      about={`${corpus}/${asked}`}
-      title="Module"
-    >
+    <Answering ask={() => fetchModule(corpus, asked)} about={`${corpus}/${asked}`}>
       {(module) => <ModuleDetail module={module} />}
     </Answering>
   );
 }
 
-export function App() {
+/**
+ * A destination that has its place but not yet its content.
+ *
+ * It says what it will hold rather than standing empty, because a surface with
+ * nothing on it reads as a broken one — and a reader who takes an unbuilt
+ * surface for a broken one stops trusting the ones that work.
+ */
+function BeingBuilt({ label, says }: { label: string; says: string }) {
   return (
-    <div className="studio">
-      <Navigation />
-      <Routes>
+    <Page title={label}>
+      <NothingToShow>{says}</NothingToShow>
+    </Page>
+  );
+}
+
+/** Nothing is kept at the address the reader arrived at. */
+function Nowhere() {
+  return (
+    <Page title="Nothing here">
+      <NothingToShow>
+        Nothing is kept at that address.{' '}
+        <Link to="/corpus" className="underline">
+          Every Corpus on the shelf
+        </Link>{' '}
+        is a place to start.
+      </NothingToShow>
+    </Page>
+  );
+}
+
+export function App() {
+  const shelf = useShelf();
+
+  return (
+    <Routes>
+      <Route element={<AppShell shelf={shelf} />}>
         <Route path="/" element={<Navigate to="/corpus" replace />} />
-        <Route
-          path="/home"
-          element={
-            <Placeholder title="Home">
-              A work surface for one Corpus, with what changed in it, is being built.
-            </Placeholder>
-          }
-        />
-        <Route
-          path="/inbox"
-          element={
-            <Placeholder title="Inbox">
-              The Findings that route to one person, unowned ones first, are being built.
-            </Placeholder>
-          }
-        />
-        <Route path="/corpus" element={<EveryCorpus />} />
-        <Route path="/corpus/:id" element={<OneCorpus />} />
+        <Route path="/corpus" element={<EveryCorpus shelf={shelf} />} />
+        {/*
+          A Corpus opens where its reading is. The address without a destination
+          is kept and redirected rather than removed, so every link to a Corpus
+          made before this shell existed still arrives somewhere.
+        */}
+        <Route path="/corpus/:id" element={<Navigate to={OPENS_AT} replace />} />
+        <Route path="/corpus/:id/readiness" element={<OneCorpus />} />
+        {DESTINATIONS.filter((destination) => destination.beingBuilt !== undefined).map(
+          (destination) => (
+            <Route
+              key={destination.at}
+              path={`/corpus/:id/${destination.at}`}
+              element={
+                <BeingBuilt label={destination.label} says={destination.beingBuilt ?? ''} />
+              }
+            />
+          ),
+        )}
         <Route path="/corpus/:id/modules/:moduleId" element={<OneModule />} />
-      </Routes>
-    </div>
+        <Route path="*" element={<Nowhere />} />
+      </Route>
+    </Routes>
   );
 }

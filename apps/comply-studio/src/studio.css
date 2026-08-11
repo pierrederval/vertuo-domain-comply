@@ -1,6 +1,15 @@
 @import 'tailwindcss';
 
 /*
+ * The vendored components carry `dark:` utilities. Binding that variant to a
+ * `.dark` ancestor, which nothing here ever sets, is what keeps them off: dark
+ * mode is not designed yet, and left on the reader's system preference the
+ * components would go dark while every value below stayed light. Half a theme
+ * is worse than one.
+ */
+@custom-variant dark (&:is(.dark *));
+
+/*
  * Every value the Studio draws with, in one place.
  *
  * The names on the left are this product's; the names in `@theme inline` are the
@@ -463,4 +472,17 @@ body {
 .also {
   font-size: var(--text-small);
   color: var(--ink-quiet);
+}
+/*
+ ---break---
+ */
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }

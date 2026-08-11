@@ -10,12 +10,17 @@ import type { ReactNode } from 'react';
  * component library would be a second deviation that also has to be undone.
  */
 
+/*
+ * One surface's worth of content. A section rather than a `main`, because the
+ * shell owns the `main` a page is drawn inside and two of them on one document
+ * is one too many.
+ */
 export function Page({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <main className="page">
+    <section>
       <h1 className="page-title">{title}</h1>
       {children}
-    </main>
+    </section>
   );
 }
 
