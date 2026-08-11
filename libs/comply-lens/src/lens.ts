@@ -97,7 +97,42 @@ export const facetSpecSchema = z.object({
    * what every Facet did before this could be said.
    */
   itemPattern: z.string().min(1).optional(),
-  /** For 'document' and 'heading': the attribute the body lands in. */
+  /**
+   * For 'document' and 'heading': the parts one of this Facet's Facts is written
+   * in — the source's own subheading, mapped onto an attribute name, exactly as
+   * `columns` maps a table's headers (ADR-0020).
+   *
+   * This is what turns a question about the quality of prose into a question about
+   * presence. *A rule must say why it exists* is a judgment nobody can make
+   * mechanically, and a criterion that tried would be a word count or a pattern
+   * over prose, both of which ADR-0020 refuses. Written in parts, the same
+   * question is whether a part is there.
+   *
+   * Several spellings may name one attribute, because a corpus drifts: one person
+   * writes the rationale under one heading and the next writes it under another,
+   * and a Lens unable to say they are the same part would force a corpus to be
+   * tidied before it could be read at all. Where a source turns out to have
+   * written two of them, both are kept — neither is dropped in silence (LAW-006).
+   *
+   * A subheading no part names contributes nothing. It is not set aside either:
+   * set aside counts one of this Facet's own things, declined (ADR-0025), and a
+   * subheading was never going to be one of them.
+   *
+   * Parts decide what a Fact is made of and never how many Facts there are, so
+   * naming them can no more move a count than tightening a criterion can
+   * (ADR-0016).
+   *
+   * Optional. A Facet that names none reads the whole body into one attribute,
+   * which is what every Facet did before this could be said.
+   */
+  parts: z.record(z.string()).optional(),
+  /**
+   * For 'document' and 'heading': the attribute the body lands in.
+   *
+   * Where a Facet names parts, this holds only what was written before the first
+   * of them — so a Facet whose documents begin at their first part must name a
+   * part for that opening section, or ask for nothing that lands here.
+   */
   bodyAttribute: z.string().optional(),
   /**
    * What counts as enough under this Facet (ADR-0019).
@@ -211,6 +246,40 @@ export const lensSchema = z
           message:
             `facet "${facet.name}" describes its headings as "${facet.itemPattern}", ` +
             `which is not a description this reading can follow`,
+        });
+      }
+    }
+
+    // Naming the parts a Fact is written in means nothing to a Facet that reads rows:
+    // a row has no subheadings under it. Refused for the same reason as the two rules
+    // above — ignored, the declaration reads as though it were in force, and whoever
+    // wrote it believes those Facts carry parts that were never read.
+    //
+    // An empty declaration is refused too, and is the more dangerous of the two. It
+    // reads as "no parts named", but it puts a Facet into reading-by-parts with no part
+    // to read, so every Fact under it keeps only what was written before its first
+    // subheading — which for a source that begins at one is nothing at all.
+    for (const [index, facet] of lens.facets.entries()) {
+      if (facet.parts === undefined) continue;
+      if (facet.extractor === 'table') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, 'parts'],
+          message:
+            `facet "${facet.name}" names the parts its facts are written in but reads rows ` +
+            `of a table; a row has nothing written under it, so only a facet reading ` +
+            `whole documents or headings can name parts`,
+        });
+        continue;
+      }
+      if (Object.keys(facet.parts).length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, 'parts'],
+          message:
+            `facet "${facet.name}" names no parts at all; remove parts to read each fact ` +
+            `whole, because naming none reads every fact as only what stands before its ` +
+            `first part`,
         });
       }
     }

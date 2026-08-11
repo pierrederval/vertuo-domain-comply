@@ -9,13 +9,27 @@ stewart: avery
 
 *Invariant.*
 
+### Statement
+
 A Widget may not be made twice. See [R-2](rules.md#r-2-a-sprocket-s-role-in-the-søcket).
+
+### Why it exists
+
+Two Widgets carrying one identity cannot be told apart by anybody downstream.
+
+### Who last read it
+
+Avery, against System X.
 
 ## R-2 A Sprocket's Rôle in the Søcket
 
-*Invariant.*
+### Statement
 
 A Sprocket turns when asked. It is never a [Widget](terms.md#widget).
+
+### Rationale
+
+Nothing else in Alpha turns, so whoever needs turning needs this.
 
 ## Terminology
 

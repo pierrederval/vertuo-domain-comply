@@ -431,3 +431,216 @@ describe('extractors', () => {
     expect(items[0]!.relations.map((r) => r.targetRef)).toEqual(['other-rule']);
   });
 });
+
+/**
+ * A Fact written in parts, read as the parts it is written in (ADR-0020).
+ *
+ * The level a Part sits at follows from the level the Facet cuts its items at:
+ * a Facet reading headings cuts at one, so its Parts are written one below.
+ * A Facet reading a whole document has cut nothing, so the document's own
+ * sections are its Parts.
+ */
+describe('the parts a Fact is written in', () => {
+  const RULE_IN_PARTS: ParsedDocument = {
+    file: 'inline://parts.md',
+    data: {},
+    body: [
+      '',
+      '## R-1 Widgets are made once',
+      '',
+      '*Invariant.*',
+      '',
+      '### Statement',
+      '',
+      'A Widget may not be made twice.',
+      '',
+      '### Why it exists',
+      '',
+      'Two Widgets with one identity cannot be told apart downstream.',
+      '',
+      '### Who last read it',
+      '',
+      'Avery.',
+      '',
+      '## R-2 A Sprocket turns',
+      '',
+      '### Statement',
+      '',
+      'A Sprocket turns when asked.',
+      '',
+      '### Rationale',
+      '',
+      'Nothing else here turns.',
+    ].join('\n'),
+    bodyStartLine: 1,
+  };
+
+  const RULES: FacetSpec = {
+    name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
+    itemPattern: '^R-[0-9]+',
+    parts: {
+      Statement: 'statement',
+      'Why it exists': 'rationale',
+      Rationale: 'rationale',
+    },
+  };
+
+  it('reads a subheading onto the attribute its Facet names', () => {
+    const { items } = extract(RULE_IN_PARTS, RULES);
+
+    expect(items).toHaveLength(2);
+    expect(items[1]!.attributes.statement).toBe('A Sprocket turns when asked.');
+    expect(items[1]!.attributes.rationale).toBe('Nothing else here turns.');
+  });
+
+  it('reads several spellings of one part onto one attribute, because a corpus drifts', () => {
+    // One rule says "Why it exists" and another says "Rationale". They are the same
+    // part of a rule, spelled two ways by two people, and a Lens that could not say so
+    // would force a corpus to be tidied before it could be read at all.
+    const { items } = extract(RULE_IN_PARTS, RULES);
+
+    expect(items[0]!.attributes.rationale)
+      .toBe('Two Widgets with one identity cannot be told apart downstream.');
+    expect(items[1]!.attributes.rationale).toBe('Nothing else here turns.');
+  });
+
+  it('lands prose written before the first part in the body attribute', () => {
+    // A rule that classifies itself in a line before saying anything else has written
+    // that line under no heading, so there is no part for it to belong to.
+    const lead: ParsedDocument = {
+      ...RULE_IN_PARTS,
+      body: ['', '## R-3 Crates close', '', '*Policy.*', '', '### Rationale', '', 'Because.'].join('\n'),
+    };
+    const { items } = extract(lead, RULES);
+
+    expect(items[0]!.attributes.statement).toBe('*Policy.*');
+    expect(items[0]!.attributes.rationale).toBe('Because.');
+  });
+
+  it('keeps both when the prose and a part name the same attribute, rather than one silently winning', () => {
+    // `*Invariant.*` is written before the first part and lands in the body attribute;
+    // `Statement` is mapped to that same attribute. Both were written down, so both are
+    // kept — in the order the document writes them.
+    //
+    // Kept as two and never joined into one string: two sections that are not adjacent
+    // in the source, presented as continuous prose, is not what the source says
+    // (LAW-009, ADR-0017). Dropping one would be worse still, and silent.
+    const { items } = extract(RULE_IN_PARTS, RULES);
+
+    expect(items[0]!.attributes.statement)
+      .toEqual(['*Invariant.*', 'A Widget may not be made twice.']);
+  });
+
+  it('passes over a subheading no part names, and does not count it as set aside', () => {
+    // Set aside means declined — something the Facet would otherwise have read as one
+    // of its own things (ADR-0025). A subheading was never going to be a rule, so
+    // nothing was declined and the figure a reader is shown does not move.
+    const read = extract(RULE_IN_PARTS, RULES);
+
+    expect(read.items[0]!.attributes).not.toHaveProperty('Who last read it');
+    expect(Object.values(read.items[0]!.attributes)).not.toContain('Avery.');
+    expect(read.setAside).toBe(0);
+  });
+
+  it('reads the same things, quoted from the same lines, whether or not its Facet names parts (ADR-0016)', () => {
+    // Parts decide what a Fact is made of and never how many there are. The span each
+    // Fact is quoted from is the same span either way, so the evidence a reader is
+    // shown is untouched (ADR-0017).
+    const named = extract(RULE_IN_PARTS, RULES);
+    const silent = extract(RULE_IN_PARTS, { ...RULES, parts: undefined });
+
+    expect(named.items).toHaveLength(silent.items.length);
+    expect(named.items.map((i) => [i.line, i.endLine])).toEqual(silent.items.map((i) => [i.line, i.endLine]));
+    expect(named.setAside).toBe(silent.setAside);
+  });
+
+  it('follows a reference written in any part of a Fact, because its source is the Fact', () => {
+    // A reference is written on the page this Fact was read from, whether or not the
+    // section holding it is mapped to an attribute. Reading only the mapped ones would
+    // make what a Lens chooses to name decide which links a reader is told about.
+    const linked: ParsedDocument = {
+      ...RULE_IN_PARTS,
+      body: [
+        '', '## R-4 Sprockets fit',
+        '', '### Statement', '', 'A Sprocket fits a [Socket](terms.md#socket).',
+        '', '### Who last read it', '', 'Avery, against [R-1](rules.md#r-1).',
+      ].join('\n'),
+    };
+    const { items } = extract(linked, RULES);
+
+    expect(items[0]!.relations.map((r) => r.targetRef)).toEqual(['socket', 'r-1']);
+  });
+
+  it('reads a whole document as the sections it is written in', () => {
+    // A Facet reading a document has cut nothing, so the document's own sections are
+    // its parts. This is how a Module says what it owns without a second file.
+    const area: ParsedDocument = {
+      file: 'inline://index.md',
+      data: {},
+      body: [
+        '',
+        '# Alpha',
+        '',
+        'Alpha handles the first thing.',
+        '',
+        '## What it owns',
+        '',
+        'Widgets and Crates.',
+        '',
+        '## Who last read it',
+        '',
+        'Avery.',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'overview', factKind: 'Module', extractor: 'document', criteria: [],
+      bodyAttribute: 'description',
+      parts: { 'What it owns': 'owns' },
+    };
+    const { items, setAside } = extract(area, facet);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]!.attributes.owns).toBe('Widgets and Crates.');
+    expect(String(items[0]!.attributes.description)).toContain('first thing');
+    expect(String(items[0]!.attributes.description)).not.toContain('Widgets and Crates');
+    expect(setAside).toBe(0);
+  });
+
+  it('leaves the body attribute empty when a document begins at its first section', () => {
+    // Every area index in the DDD Corpus does exactly this: the first thing after the
+    // frontmatter is a section heading. A Facet that reads such a document and names no
+    // part for its opening section is asking for a description nothing can fill, which
+    // is why the DDD Lens maps that section onto its description attribute.
+    const noLead: ParsedDocument = {
+      file: 'inline://index.md',
+      data: {},
+      body: ['', '## Objective', '', 'The first thing.'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'overview', factKind: 'Module', extractor: 'document', criteria: [],
+      bodyAttribute: 'description',
+      parts: { Objective: 'objective' },
+    };
+    const { items } = extract(noLead, facet);
+
+    expect(items[0]!.attributes.description).toBeUndefined();
+    expect(items[0]!.attributes.objective).toBe('The first thing.');
+  });
+
+  it('reads a document with no sections at all exactly as it did before parts could be named', () => {
+    const flat: ParsedDocument = {
+      file: 'inline://index.md',
+      data: {},
+      body: ['', '# Beta', '', 'Beta handles the second thing.'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'overview', factKind: 'Module', extractor: 'document', criteria: [],
+      bodyAttribute: 'description',
+      parts: { 'What it owns': 'owns' },
+    };
+    expect(extract(flat, facet)).toEqual(extract(flat, { ...facet, parts: undefined }));
+  });
+});

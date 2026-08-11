@@ -27,9 +27,10 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0017](./0017-a-seed-quotes-its-source-and-says-nothing-about-it.md) | A Seed quotes its source exactly, cuts rather than summarises, and carries no message *(refines 0012)* |
 | [0018](./0018-the-interface-vendors-the-house-design-system.md) | The interface vendors the house design system: Tailwind and shadcn primitives *(supersedes 0013's interface row)* |
 | [0019](./0019-criteria-belong-to-a-facet.md) | Well-formedness criteria belong to a Facet, not to a Fact Kind *(refines 0005)* |
-| [0020](./0020-criteria-judge-structure-never-content.md) | Criteria judge structure; only a review judges content *(refines 0019; its reference count corrected by 0023)* |
+| [0020](./0020-criteria-judge-structure-never-content.md) | Criteria judge structure; only a review judges content *(refines 0019; its reference count corrected by 0023; its `parts` built by 0026)* |
 | [0021](./0021-one-facet-defines-the-language.md) | One Facet defines the language *(refines 0019)* |
 | [0022](./0022-a-status-is-declared-per-fact.md) | A status is declared per Fact, and its provenance beside it *(refines 0006 and 0012)* |
 | [0023](./0023-a-reference-resolves-the-way-its-source-resolves-it.md) | A reference resolves the way its source resolves it *(refines 0020 and corrects its count)* |
 | [0024](./0024-a-facet-says-which-tables-are-its-own.md) | A Facet says which tables are its own *(refines 0019 and 0020; its unbuilt channel built by 0025)* |
-| [0025](./0025-a-facet-says-which-headings-are-its-own-and-the-reading-says-what-it-set-aside.md) | A Facet says which headings are its own, and the reading says what it set aside *(refines 0020 and 0024; Seed format 2)* |
+| [0025](./0025-a-facet-says-which-headings-are-its-own-and-the-reading-says-what-it-set-aside.md) | A Facet says which headings are its own, and the reading says what it set aside *(refines 0020 and 0024; Seed format 2; three figures corrected by 0026)* |
+| [0026](./0026-a-fact-is-read-as-the-parts-its-source-already-has.md) | A Fact is read as the parts its source already has *(refines 0020; corrects three figures in 0025)* |

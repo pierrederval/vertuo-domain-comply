@@ -100,6 +100,47 @@ describe('loadLens', () => {
     await expect(loadLens(path)).rejects.toThrow(/x/);
   });
 
+  it('rejects a facet that names the parts of its Facts but reads rows of a table', async () => {
+    // Refused for the same reason as the two rules above: a row has no subheadings
+    // under it, so the declaration would be ignored, and whoever wrote it is looking at
+    // Facts they believe carry parts that were never read.
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'table', columns: { A: 'name' },
+        parts: { Statement: 'statement' },
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/parts/);
+  });
+
+  it('rejects a facet that names no parts at all, which is not the same as naming none', async () => {
+    // The dangerous one. It reads as "no parts named" and is not: the Facet reads by
+    // parts, with no part to read, so every Fact under it keeps only what stands before
+    // its first subheading — nothing at all, for a source that begins at one.
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement',
+        parts: {},
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/names no parts at all/);
+  });
+
+  it('accepts several spellings of one part mapping onto one attribute', async () => {
+    // A corpus spells the same part several ways, and a Lens that could not say so
+    // would force a corpus to be tidied before it could be read.
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement',
+        parts: { 'Why it exists': 'rationale', Rationale: 'rationale' },
+      }],
+    });
+    await expect(loadLens(path)).resolves.toBeDefined();
+  });
+
   it('rejects a Term facet using the document extractor, which has no name to key a Term on', async () => {
     const path = await writeLens({
       ...valid,

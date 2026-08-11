@@ -74,6 +74,14 @@ Parts are what let a Facet ask for *why this Rule exists* without any judgment a
 becomes whether a Part is there (ADR-0020). Which Parts exist is a Lens declaration and never a fixed
 list in the core, because a fixed list of document sections is what LAW-004 forbids by name.
 
+One Part may be spelled several ways, because a corpus drifts: the same Part of a Rule is written under
+one heading by one person and another heading by the next, and both spellings name the one Part. Where a
+source turns out to have written two of them, the Part holds both — a Part is what the source wrote
+there, and dropping one of two passages somebody wrote would be a silent loss (LAW-006, ADR-0026).
+
+A subheading no Part names is not a Part and is not [Set Aside](#set-aside) either. Set aside counts
+one of a Facet's own things, declined; a subheading was never going to be one of them.
+
 Not a "section" — in a corpus a section is commonly the whole document, and one word for both a document
 and a piece of one Fact is the split identity this product detects.
 
