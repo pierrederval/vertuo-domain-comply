@@ -54,10 +54,13 @@ describe('extraction judges nothing', () => {
     // appeared, a criteria change would mean re-extracting every corpus. Checked
     // against the structure rather than the text, because an attribute lifted from
     // a corpus may be called anything at all.
+    //
+    // `setAside` is a count of what this reading declined and is none of the three:
+    // it says how much was left out, not that anything was wrong with it.
     expect([...new Set(keysIn(seed))].sort()).toEqual([
       'attributes', 'bodyStartLine', 'containerId', 'documents', 'excerpt', 'excerptCut',
       'facet', 'items', 'lensId', 'line', 'moduleId', 'owner', 'path', 'readable',
-      'relations', 'status', 'targetRef', 'type', 'version',
+      'relations', 'setAside', 'status', 'targetRef', 'type', 'version',
     ]);
   });
 

@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promi
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { seedDigest } from './digest.js';
-import { seedSchema, type Seed } from './seed.js';
+import { seedSchema, SEED_VERSION, type Seed } from './seed.js';
 
 export interface HeldSeed {
   path: string;
@@ -92,7 +92,34 @@ export async function latestHeldSeed(dir: string, lensId: string): Promise<Shelv
 }
 
 export async function readSeed(path: string): Promise<Seed> {
-  const parsed = seedSchema.safeParse(JSON.parse(await readFile(path, 'utf8')));
+  const body: unknown = JSON.parse(await readFile(path, 'utf8'));
+
+  // Said in a sentence before anything else is checked. Knowledge written down in
+  // another form fails every rule that has changed since, so the reader would meet
+  // a list of complaints about fields they have never heard of — when what happened
+  // is one thing, and there is one thing to do about it.
+  //
+  // Which one thing depends on which way round it is, so the two are not conflated.
+  // Older is the common case and is put right here; newer means this is the older
+  // of two things reading one shelf, and re-reading the source would write the
+  // knowledge down as this understands it and lose what the other recorded. What is
+  // on the shelf is left exactly as it is either way: a Seed is never rewritten
+  // (ADR-0012, ADR-0017).
+  const held = (body as { version?: unknown } | null)?.version;
+  if (typeof held === 'number' && held !== SEED_VERSION) {
+    throw new Error(
+      held < SEED_VERSION
+        ? `The knowledge held at ${path} was written down before this reading learned to ` +
+          `say everything it now says (it was written down as ${held}, and this reads ` +
+          `${SEED_VERSION}). Write it down from source again, and this will read it.`
+        : `The knowledge held at ${path} says more than this reading knows how to read ` +
+          `(it was written down as ${held}, and this reads ${SEED_VERSION}). Something ` +
+          `newer than this wrote it down. Read this shelf with that instead, rather ` +
+          `than writing the knowledge down again from here.`,
+    );
+  }
+
+  const parsed = seedSchema.safeParse(body);
 
   if (!parsed.success) {
     const detail = parsed.error.issues

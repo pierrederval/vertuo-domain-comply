@@ -2,6 +2,7 @@ import type { Corpus, Finding } from '@vertuo/comply-core';
 import type { Lens } from '@vertuo/comply-lens';
 import { composeReading } from '@vertuo/comply-reading';
 import type { Snapshot } from '@vertuo/comply-readiness';
+import type { WhatWasRead } from '@vertuo/comply-seed';
 import { renderFindings, renderMatrix } from './render.js';
 
 export interface Reading {
@@ -27,11 +28,12 @@ export function readCorpus(
   importFindings: Finding[],
   takenAt: string,
   previous: Snapshot | null,
+  read: WhatWasRead,
 ): Reading {
   const reading = composeReading(corpus, lens, importFindings, takenAt, previous);
 
   const text = [
-    renderMatrix(reading.matrix, reading.scores, reading.trend),
+    renderMatrix(reading.matrix, reading.scores, reading.trend, read),
     '',
     renderFindings(reading.findings, lens.adapter.root),
   ].join('\n');

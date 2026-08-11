@@ -4,6 +4,7 @@ import type { FacetState, Matrix } from '@vertuo/comply-readiness';
 import type { ModuleScore } from '@vertuo/comply-readiness';
 import type { TrendRow } from '@vertuo/comply-readiness';
 import type { UnmetCriterion } from '@vertuo/comply-readiness';
+import type { WhatWasRead } from '@vertuo/comply-seed';
 
 const MARK: Record<FacetState, string> = {
   absent: '--',
@@ -71,6 +72,7 @@ export function renderMatrix(
   matrix: Matrix,
   scores: ModuleScore[],
   trendRows: TrendRow[],
+  read: WhatWasRead,
 ): string {
   const nameWidth = Math.max(8, ...matrix.rows.map((r) => r.moduleId.length));
   const facetWidth = Math.max(6, ...matrix.facets.map((f) => f.length + 1));
@@ -105,6 +107,11 @@ export function renderMatrix(
     '-'.repeat(header.length),
     `Approved facets: ${approvedCells}/${totalCells} across ${scores.length} modules.`,
     'Denominator is the facets this Lens declares. Knowledge absent from the corpus entirely is not counted.',
+    // Stated whether or not anything was set aside. A figure that appears only when
+    // it is not zero is one a reader has to already know to look for, and its
+    // absence then reads as nothing having been left out (LAW-006).
+    `Knowledge as found: ${read.read} of ${read.found} read, ${read.setAside} set aside.`,
+    'Set aside is what a facet said was none of its own. It is judged by nothing, and left out of nothing silently.',
     `Legend: ${MARK.approved} approved  ${MARK['well-formed']} well-formed  ${MARK.present} present  ${MARK.absent} absent`,
     ...renderShortfalls(matrix),
   ].join('\n');

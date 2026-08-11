@@ -21,6 +21,7 @@
       "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
     { "name": "rules", "label": "Rules", "factKind": "Rule", "extractor": "heading",
       "bodyAttribute": "statement",
+      "itemPattern": "^R-[0-9]+",
       "describes": "What must hold here. One heading per rule, with somewhere it came from so it can be checked against its source.",
       "criteria": [
         { "type": "requiredAttributes", "attributes": ["name", "statement"] },

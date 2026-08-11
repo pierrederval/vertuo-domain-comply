@@ -61,18 +61,59 @@ export const seedDocumentSchema = z.object({
   status: z.string().nullable(),
   owner: z.string().nullable(),
   items: z.array(seedItemSchema),
+  /**
+   * How many things in this document the Facet reading it declined, having said
+   * they were none of its own — a retired vocabulary beside the words still in
+   * use, a page's own furniture beside the knowledge it carries.
+   *
+   * Recorded here because nothing downstream can recover it: once a thing has
+   * been declined, the reading that declined it is the only place that knows it
+   * was ever there. A reader shown a figure is entitled to know what it is a
+   * figure of, and a reading that leaves things out in silence cannot say
+   * (LAW-006).
+   *
+   * A count and not the things themselves. What was declined is not this
+   * Corpus's knowledge, and writing it down here would be writing down knowledge
+   * this Corpus does not claim — its whereabouts is the source, which the
+   * document's own path already gives.
+   */
+  setAside: z.number().int().nonnegative(),
 });
 
 export const seedSchema = z.object({
   /** The Seed format is a portability contract and is versioned (ADR-0012). */
-  version: z.literal(1),
+  version: z.literal(2),
   /** Which Lens's adapter half produced this Seed. */
   lensId: z.string().min(1),
   /** In discovery order, so interpretation reports what it finds in the order it was found. */
   documents: z.array(seedDocumentSchema),
 });
 
-export const SEED_VERSION = 1;
+export const SEED_VERSION = 2;
+
+/**
+ * What a Seed's reading of the source came to: how much of it was read, and how
+ * much was declined.
+ *
+ * Derived rather than recorded, so the two can never disagree — a total written
+ * down beside the documents it totals is a second opinion waiting to happen.
+ */
+export interface WhatWasRead {
+  read: number;
+  setAside: number;
+  /** The two together: what a reader must be shown the other two against (LAW-006). */
+  found: number;
+}
+
+export function whatWasRead(seed: Seed): WhatWasRead {
+  let read = 0;
+  let setAside = 0;
+  for (const document of seed.documents) {
+    read += document.items.length;
+    setAside += document.setAside;
+  }
+  return { read, setAside, found: read + setAside };
+}
 
 export type SeedRelation = z.infer<typeof seedRelationSchema>;
 export type SeedItem = z.infer<typeof seedItemSchema>;

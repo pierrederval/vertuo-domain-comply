@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, utimes, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -124,6 +124,24 @@ describe('every Corpus on the shelf', () => {
   it('passes over a file that is not a Lens rather than refusing the whole shelf', async () => {
     await shelveLens('lens-a.json');
     await writeFile(join(shelf, 'notes.json'), '{"something": "else"}', 'utf8');
+
+    expect((await listCorpus()).corpus.map((entry) => entry.id)).toEqual(['corpus-a']);
+  });
+
+  it('passes over knowledge written down in an older form rather than refusing the whole shelf', async () => {
+    // One shelf holds several Corpus, and one of them having been written down
+    // before the reading changed shape is not a reason to answer about none of them.
+    // The one thing to do about it is said in the reason, and nothing can say it if
+    // nothing is left standing.
+    await shelveLens('lens-a.json');
+    await shelveLens('lens-b.json');
+    await writeDownKnowledge('lens-a.json');
+    await writeDownKnowledge('lens-b.json');
+
+    const older = join(shelf, 'seeds', (await readdir(join(shelf, 'seeds')))
+      .find((name) => name.startsWith('corpus-b-'))!);
+    const held = JSON.parse(await readFile(older, 'utf8')) as { version: number };
+    await writeFile(older, JSON.stringify({ ...held, version: held.version - 1 }), 'utf8');
 
     expect((await listCorpus()).corpus.map((entry) => entry.id)).toEqual(['corpus-a']);
   });

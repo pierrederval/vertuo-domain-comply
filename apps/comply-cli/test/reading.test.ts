@@ -7,7 +7,7 @@ import { buildCorpus } from '@vertuo/comply-core';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { extractSeed, interpret, loadCorpus } from '@vertuo/comply-ingestion';
 import { loadLens } from '@vertuo/comply-lens';
-import { holdSeed, readSeed } from '@vertuo/comply-seed';
+import { holdSeed, readSeed, whatWasRead } from '@vertuo/comply-seed';
 import { readCorpus } from '../src/reading.js';
 
 /** Fixed, so no baseline exists and the trend column reads the same on every run. */
@@ -33,8 +33,18 @@ function baselinePath(name: string): string {
  * fault in the reading pipeline moves both. So a diff here is only ever accepted
  * after reading it line by line and confirming the sibling did not budge.
  *
+ * A third case is legitimate and is rarer: the reading learning to say something
+ * new. Both files then move by exactly the sentence it learned and by nothing
+ * else, which is as strict a check as a stationary sibling and is read the same
+ * way — line by line, before it is accepted.
+ *
  * `corpus-a.txt` was last regenerated when lens A gained its Invariants Facet
- * (ADR-0019), and `corpus-b.txt` did not change by a byte.
+ * (ADR-0019), and `corpus-b.txt` did not change by a byte. Both were regenerated
+ * when the reading began saying how much it set aside (ADR-0025): two lines
+ * appeared at the foot of each and not one existing line moved, so no knowledge
+ * changed hands — corpus-a's own grid is unchanged even though `alpha/rules.md`
+ * gained a section, because that section is furniture its Lens now says is none
+ * of the Facet's.
  */
 describe.each([
   ['lens-a.json', 'corpus-a.txt'],
@@ -42,9 +52,9 @@ describe.each([
 ])('reading %s', (lensFile, baselineFile) => {
   it('says exactly what it said before', async () => {
     const lens = await loadLens(fixturePath(lensFile));
-    const { corpus, findings } = await loadCorpus(lens);
+    const { corpus, findings, read } = await loadCorpus(lens);
 
-    const { text } = readCorpus(corpus, lens, findings, READ_AT, null);
+    const { text } = readCorpus(corpus, lens, findings, READ_AT, null, read);
 
     expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
   });
@@ -58,9 +68,12 @@ describe.each([
     // that was absolute, a value that was a number, an order that happened to
     // hold in memory — shows up here and nowhere else.
     const held = await holdSeed(await mkdtemp(join(tmpdir(), 'comply-shelf-')), await extractSeed(lens));
-    const { facts, findings } = interpret(await readSeed(held.path), lens);
+    const shelved = await readSeed(held.path);
+    const { facts, findings } = interpret(shelved, lens);
 
-    const { text } = readCorpus(buildCorpus(facts), lens, findings, READ_AT, null);
+    const { text } = readCorpus(
+      buildCorpus(facts), lens, findings, READ_AT, null, whatWasRead(shelved),
+    );
 
     expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
   });

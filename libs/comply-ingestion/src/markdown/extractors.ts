@@ -16,6 +16,27 @@ export interface ExtractedItem {
   endLine: number;
 }
 
+/**
+ * What one document yielded under one Facet.
+ *
+ * The count travels beside the items rather than being inferred later, because
+ * nothing downstream can recover it: once a thing has been declined, the reading
+ * that declined it is the only place that knows it was ever there. A reader who
+ * is shown a figure has to be able to see what it is a figure of, and a reading
+ * that quietly leaves things out cannot offer that (LAW-006).
+ */
+export interface Extraction {
+  items: ExtractedItem[];
+  /**
+   * How many things this Facet declined, having said they were none of its own.
+   *
+   * Declined, not unreadable: something the Facet was never going to read anyway
+   * is not counted here, or the total the items are stated against would include
+   * things no reading of any Facet would have produced.
+   */
+  setAside: number;
+}
+
 const INLINE_LINK = /\[[^\]]*\]\(([^)]+)\)/g;
 /** `[text][ref]` — the explicit reference form only; `ref` must be non-empty. Link definitions are not resolved. */
 const REFERENCE_LINK = /\[[^\]]*\]\[([^\]]+)\]/g;
@@ -34,16 +55,21 @@ function relationsIn(text: string): Relation[] {
   return out;
 }
 
-function extractDocument(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
+function extractDocument(doc: ParsedDocument, facet: FacetSpec): Extraction {
   const attribute = facet.bodyAttribute ?? 'body';
   const text = doc.body.trim();
-  if (text === '') return [];
-  return [{
-    attributes: { [attribute]: text },
-    relations: relationsIn(text),
-    line: doc.bodyStartLine,
-    endLine: doc.bodyStartLine + doc.body.split('\n').length - 1,
-  }];
+  // A whole document is one thing, and a Facet reading one has nothing to choose
+  // between, so there is nothing it could set aside.
+  if (text === '') return { items: [], setAside: 0 };
+  return {
+    items: [{
+      attributes: { [attribute]: text },
+      relations: relationsIn(text),
+      line: doc.bodyStartLine,
+      endLine: doc.bodyStartLine + doc.body.split('\n').length - 1,
+    }],
+    setAside: 0,
+  };
 }
 
 /**
@@ -111,11 +137,12 @@ function splitRowCells(row: string): string[] {
   return cells;
 }
 
-function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
+function extractTable(doc: ParsedDocument, facet: FacetSpec): Extraction {
   const columns = facet.columns ?? {};
   const identifying = facet.identifyingColumns;
   const lines = doc.body.split('\n');
   const items: ExtractedItem[] = [];
+  let setAside = 0;
   let headers: string[] | null = null;
   /**
    * Whether the table now being read is one this Facet said is its own. Decided once,
@@ -135,7 +162,6 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
       theFacetsOwn = identifying === undefined || identifying.every((header) => cells.includes(header));
       continue;
     }
-    if (!theFacetsOwn) continue;
     if (cells.every(isSeparatorCell)) continue;
 
     const attributes: Record<string, AttributeValue> = {};
@@ -147,7 +173,14 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
       attributes[name] = value.replace(/\*\*/g, '');
       relations.push(...relationsIn(value));
     }
+    // Mapped before the table is asked about, so what is counted as set aside is
+    // what this Facet would otherwise have read, and not every row of every table
+    // it passed over. A row it maps nothing from was never going to be an item.
     if (Object.keys(attributes).length > 0) {
+      if (!theFacetsOwn) {
+        setAside += 1;
+        continue;
+      }
       // A row is reachable by name, the same way a heading is. Without this, nothing
       // a corpus writes down as a table can be referred to from anywhere — and a
       // corpus that keeps its Commands, its Events and its words in tables is then
@@ -165,17 +198,27 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
       items.push({ attributes, relations, line, endLine: line });
     }
   }
-  return items;
+  return { items, setAside };
 }
 
-function extractHeading(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
+function extractHeading(doc: ParsedDocument, facet: FacetSpec): Extraction {
   const attribute = facet.bodyAttribute ?? 'body';
+  /**
+   * Which headings this Facet said are its own. A Facet that said nothing gets
+   * every heading, exactly as it did before this could be said.
+   */
+  const theFacetsOwn = facet.itemPattern === undefined ? null : new RegExp(facet.itemPattern);
   const lines = doc.body.split('\n');
   const items: ExtractedItem[] = [];
+  let setAside = 0;
   let current: { name: string; line: number; body: string[] } | null = null;
 
   const flush = (): void => {
     if (current === null) return;
+    if (theFacetsOwn !== null && !theFacetsOwn.test(current.name)) {
+      setAside += 1;
+      return;
+    }
     const text = current.body.join('\n').trim();
     items.push({
       attributes: { name: current.name, slug: slugify(current.name), [attribute]: text },
@@ -196,10 +239,10 @@ function extractHeading(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] 
     }
   }
   flush();
-  return items;
+  return { items, setAside };
 }
 
-export function extract(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
+export function extract(doc: ParsedDocument, facet: FacetSpec): Extraction {
   switch (facet.extractor) {
     case 'document': return extractDocument(doc, facet);
     case 'table': return extractTable(doc, facet);

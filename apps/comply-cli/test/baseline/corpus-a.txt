@@ -6,6 +6,8 @@ bravo     --         ~~         --         --         0/4       n/a    NO OWNER
 ----------------------------------------------------------------------------
 Approved facets: 2/12 across 3 modules.
 Denominator is the facets this Lens declares. Knowledge absent from the corpus entirely is not counted.
+Knowledge as found: 10 of 12 read, 2 set aside.
+Set aside is what a facet said was none of its own. It is judged by nothing, and left out of nothing silently.
 Legend: OK approved  ~~ well-formed  .. present  -- absent
 
 Facets not yet approved:

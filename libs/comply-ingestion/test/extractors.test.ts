@@ -11,7 +11,7 @@ describe('extractors', () => {
     const facet: FacetSpec = {
       name: 'overview', factKind: 'Module', extractor: 'document', criteria: [], bodyAttribute: 'description',
     };
-    const items = extract(doc!, facet);
+    const { items } = extract(doc!, facet);
     expect(items).toHaveLength(1);
     expect(String(items[0]!.attributes.description)).toContain('first thing');
   });
@@ -22,7 +22,7 @@ describe('extractors', () => {
       name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
       columns: { Word: 'name', Meaning: 'definition', 'Also called': 'aliases' },
     };
-    const items = extract(doc!, facet);
+    const { items } = extract(doc!, facet);
     expect(items[0]!.attributes.name).toBe('Widget');
     expect(items[0]!.attributes.definition).toBe('A thing that is made.');
     expect(items[1]!.attributes.name).toBe('Sprocket');
@@ -38,7 +38,7 @@ describe('extractors', () => {
       name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
       columns: { Word: 'name', Meaning: 'definition', 'Also called': 'aliases' },
     };
-    expect(extract(doc!, facet).map((i) => i.attributes.name))
+    expect(extract(doc!, facet).items.map((i) => i.attributes.name))
       .toEqual(['Widget', 'Sprocket', 'Grommet']);
   });
 
@@ -53,7 +53,7 @@ describe('extractors', () => {
       columns: { Word: 'name', Meaning: 'definition', 'Also called': 'aliases' },
       identifyingColumns: ['Word', 'Meaning'],
     };
-    expect(extract(doc!, facet).map((i) => i.attributes.name)).toEqual(['Widget', 'Sprocket']);
+    expect(extract(doc!, facet).items.map((i) => i.attributes.name)).toEqual(['Widget', 'Sprocket']);
   });
 
   it('table extractor asks only for the columns that identify a table, not for every one', () => {
@@ -76,7 +76,7 @@ describe('extractors', () => {
       columns: { Word: 'name', Meaning: 'definition', 'Also called': 'aliases', 'Also known as': 'aliases' },
       identifyingColumns: ['Word', 'Meaning'],
     };
-    const items = extract(doc, facet);
+    const { items } = extract(doc, facet);
     expect(items).toHaveLength(1);
     expect(items[0]!.attributes.aliases).toBe('Gadget');
   });
@@ -86,12 +86,35 @@ describe('extractors', () => {
     const facet: FacetSpec = {
       name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
     };
-    const items = extract(doc!, facet);
-    expect(items).toHaveLength(2);
+    const { items } = extract(doc!, facet);
+    // Three, because the document carries a section of terminology beside its two
+    // rules and this Facet has not said which headings are its own.
+    expect(items).toHaveLength(3);
     expect(items[0]!.attributes.name).toBe('R-1 Widgets are made once');
     expect(items[0]!.relations.map((r) => r.targetRef))
       .toEqual(['r-2-a-sprocket-s-role-in-the-søcket']);
     expect(items[1]!.relations.map((r) => r.targetRef)).toEqual(['widget']);
+  });
+
+  it('reads a fixture document both ways, by what its Facet said (ADR-0001)', async () => {
+    // Both directions against a corpus that is not the DDD one, in one document: the
+    // Facet that says which headings are its own reads two, and the Facet that says
+    // nothing reads all three. A shape held only against the corpus this was built
+    // for is a shape that has leaked into the reading.
+    const doc = await parseDocument(fixturePath('corpus-a/alpha/rules.md'));
+    const base = {
+      name: 'rules', factKind: 'Rule' as const, extractor: 'heading' as const,
+      criteria: [], bodyAttribute: 'statement',
+    };
+
+    const declared = extract(doc!, { ...base, itemPattern: '^R-[0-9]+' });
+    expect(declared.items.map((i) => i.attributes.name))
+      .toEqual(['R-1 Widgets are made once', "R-2 A Sprocket's Rôle in the Søcket"]);
+    expect(declared.setAside).toBe(1);
+
+    const silent = extract(doc!, base);
+    expect(silent.items).toHaveLength(3);
+    expect(silent.setAside).toBe(0);
   });
 
   it('heading extractor gives a heading the anchor its own source would give it', () => {
@@ -109,7 +132,7 @@ describe('extractors', () => {
     const facet: FacetSpec = {
       name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
     };
-    const items = extract(doc, facet);
+    const { items } = extract(doc, facet);
     expect(items[0]!.attributes.slug).toBe('r-2-a-sprocket-s-role-in-the-søcket');
   });
 
@@ -126,7 +149,7 @@ describe('extractors', () => {
     const facet: FacetSpec = {
       name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
     };
-    const items = extract(doc, facet);
+    const { items } = extract(doc, facet);
     expect(items[0]!.attributes.slug).toBe('r-3-widgets-ship');
   });
 
@@ -146,7 +169,7 @@ describe('extractors', () => {
       name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
       columns: { Word: 'name', Meaning: 'definition' },
     };
-    const items = extract(doc, facet);
+    const { items } = extract(doc, facet);
     expect(items).toHaveLength(1);
     expect(items[0]!.attributes.slug).toBe('sprocket-s-role');
   });
@@ -165,7 +188,7 @@ describe('extractors', () => {
       name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
       columns: { Meaning: 'definition' },
     };
-    const items = extract(doc, facet);
+    const { items } = extract(doc, facet);
     expect(items).toHaveLength(1);
     expect(items[0]!.attributes.slug).toBeUndefined();
   });
@@ -186,7 +209,7 @@ describe('extractors', () => {
       name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
       columns: { Word: 'name', Meaning: 'definition' },
     };
-    const items = extract(doc, facet);
+    const { items } = extract(doc, facet);
     expect(items).toHaveLength(1);
     expect(items[0]!.attributes.name).toBe('Widget');
     expect(items[0]!.attributes.definition).toBe('A thing that is made.');
@@ -208,10 +231,184 @@ describe('extractors', () => {
       name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
       columns: { Word: 'name', Meaning: 'definition' },
     };
-    const items = extract(doc, facet);
+    const { items } = extract(doc, facet);
     expect(items).toHaveLength(1);
     expect(items[0]!.attributes.name).toBe('A|B');
     expect(items[0]!.attributes.definition).toBe('Foo');
+  });
+
+  it('heading extractor reads only the headings a Facet says are its own', () => {
+    // A page carries its own furniture beside the knowledge: a section of
+    // terminology, a note about who last looked the page over. Read as knowledge,
+    // each one is a rule with a name and a paragraph — padding a denominator
+    // LAW-006 requires be honest, and giving nobody anything to act on.
+    const doc: ParsedDocument = {
+      file: 'inline://furniture.md',
+      data: {},
+      body: [
+        '',
+        '## R-1 Widgets are made once',
+        '',
+        'Once.',
+        '',
+        '## Terminology',
+        '',
+        'A Widget is a thing that is made.',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
+      itemPattern: '^R-[0-9]+',
+    };
+    expect(extract(doc, facet).items.map((i) => i.attributes.name))
+      .toEqual(['R-1 Widgets are made once']);
+  });
+
+  it('heading extractor reads every heading when a Facet says nothing about which are its own', () => {
+    const doc: ParsedDocument = {
+      file: 'inline://furniture.md',
+      data: {},
+      body: ['', '## R-1 Widgets are made once', '', 'Once.', '', '## Terminology', '', 'A Widget.'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
+    };
+    expect(extract(doc, facet).items.map((i) => i.attributes.name))
+      .toEqual(['R-1 Widgets are made once', 'Terminology']);
+  });
+
+  it('heading extractor matches a heading as the document writes it, markup and all', () => {
+    // Somebody writing a Lens is looking at the source, so what they describe is
+    // what the source says. An annotation carried in place is part of that, and a
+    // heading annotated as provisional is not thereby something else.
+    const doc: ParsedDocument = {
+      file: 'inline://annotated.md',
+      data: {},
+      body: ['', '## R-4 Widgets Ship <Note kind="later" />', '', 'Later.'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
+      itemPattern: '^R-[0-9]+',
+    };
+    expect(extract(doc, facet).items).toHaveLength(1);
+  });
+
+  it('says how many headings it set aside, so nothing is left out in silence (LAW-006)', () => {
+    const doc: ParsedDocument = {
+      file: 'inline://furniture.md',
+      data: {},
+      body: [
+        '', '## R-1 Once', '', 'Once.',
+        '', '## Terminology', '', 'A Widget.',
+        '', '## Where This Came From', '', 'Somebody said so.',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
+      itemPattern: '^R-[0-9]+',
+    };
+    const read = extract(doc, facet);
+    expect(read.items).toHaveLength(1);
+    expect(read.setAside).toBe(2);
+  });
+
+  it('says how many rows it set aside, so nothing is left out in silence (LAW-006)', () => {
+    const doc: ParsedDocument = {
+      file: 'inline://two-tables.md',
+      data: {},
+      body: [
+        '',
+        '| Word | Meaning |',
+        '| --- | --- |',
+        '| Widget | A thing that is made. |',
+        '',
+        '| Word | What it used to mean |',
+        '| --- | --- |',
+        '| Grommet | A thing nobody makes any more. |',
+        '| Cog | A thing that was replaced. |',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
+      columns: { Word: 'name', Meaning: 'definition' },
+      identifyingColumns: ['Word', 'Meaning'],
+    };
+    const read = extract(doc, facet);
+    expect(read.items).toHaveLength(1);
+    expect(read.setAside).toBe(2);
+  });
+
+  it('sets nothing aside when a Facet says nothing about what is its own', () => {
+    const doc: ParsedDocument = {
+      file: 'inline://plain.md',
+      data: {},
+      body: ['', '| Word | Meaning |', '| --- | --- |', '| Widget | A thing. |'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
+      columns: { Word: 'name', Meaning: 'definition' },
+    };
+    expect(extract(doc, facet).setAside).toBe(0);
+  });
+
+  it('does not count as set aside a row it could never have read anyway', () => {
+    // Set aside means declined, not unreadable. A row in a table this Facet says is
+    // none of its own, whose columns this Facet maps nothing from, was never going
+    // to be one of its items — counting it would inflate the total the figure above
+    // is stated against, which is the arithmetic LAW-006 exists to protect.
+    const doc: ParsedDocument = {
+      file: 'inline://nothing-mapped.md',
+      data: {},
+      body: [
+        '',
+        '| Word | Meaning |',
+        '| --- | --- |',
+        '| Widget | A thing. |',
+        '',
+        '| Shape | Colour |',
+        '| --- | --- |',
+        '| Round | Red |',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
+      columns: { Word: 'name', Meaning: 'definition' },
+      identifyingColumns: ['Word', 'Meaning'],
+    };
+    const read = extract(doc, facet);
+    expect(read.items).toHaveLength(1);
+    expect(read.setAside).toBe(0);
+  });
+
+  it('reads the same number of things however much its Facet asks of them (ADR-0016)', () => {
+    // Item-hood is decided by what the document holds and what the Facet says is its
+    // own — never by what counts as enough. Were it otherwise, tightening a criterion
+    // would move a Fact count, and two readings of one Corpus could not be compared.
+    const doc: ParsedDocument = {
+      file: 'inline://criteria.md',
+      data: {},
+      body: ['', '## R-1 Once', '', 'Once.', '', '## R-2 Twice', '', 'Twice.'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const lenient: FacetSpec = {
+      name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
+      itemPattern: '^R-[0-9]+',
+    };
+    const strict: FacetSpec = {
+      ...lenient,
+      criteria: [
+        { type: 'requiredAttributes', attributes: ['name', 'statement', 'somethingAbsent'] },
+        { type: 'minSources', count: 9 },
+      ],
+    };
+    expect(extract(doc, strict)).toEqual(extract(doc, lenient));
   });
 
   it('heading extractor collects reference-style links as relations', () => {
@@ -229,7 +426,7 @@ describe('extractors', () => {
     const facet: FacetSpec = {
       name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
     };
-    const items = extract(doc, facet);
+    const { items } = extract(doc, facet);
     expect(items).toHaveLength(1);
     expect(items[0]!.relations.map((r) => r.targetRef)).toEqual(['other-rule']);
   });

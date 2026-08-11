@@ -9,6 +9,7 @@ import { buildMatrix } from '@vertuo/comply-readiness';
 import { scoreMatrix } from '@vertuo/comply-readiness';
 import { buildCorpus } from '@vertuo/comply-core';
 import type { Fact } from '@vertuo/comply-core';
+import type { WhatWasRead } from '@vertuo/comply-seed';
 
 /** Minimal inline Lens: one Module facet, one Term facet, a two-rung ladder. */
 const inlineLens: Lens = {
@@ -29,6 +30,13 @@ const inlineLens: Lens = {
   statusMappings: [],
 };
 
+/**
+ * What the reading of the source came to, for the tests that build their Facts by
+ * hand and never read a source at all. Two read and none set aside is the honest
+ * figure for two hand-built Facts, and is stated rather than left out.
+ */
+const HAND_BUILT: WhatWasRead = { read: 2, setAside: 0, found: 2 };
+
 function fact(overrides: Partial<Fact> & Pick<Fact, 'id' | 'kind' | 'moduleId' | 'facet'>): Fact {
   return {
     containerId: 'inline',
@@ -44,9 +52,9 @@ function fact(overrides: Partial<Fact> & Pick<Fact, 'id' | 'kind' | 'moduleId' |
 describe('rendering', () => {
   it('shows every score against its denominator (LAW-006)', async () => {
     const lens = await loadLens(fixturePath('lens-a.json'));
-    const { corpus } = await loadCorpus(lens);
+    const { corpus, read } = await loadCorpus(lens);
     const matrix = buildMatrix(corpus, lens);
-    const out = renderMatrix(matrix, scoreMatrix(matrix), []);
+    const out = renderMatrix(matrix, scoreMatrix(matrix), [], read);
 
     expect(out).toContain('alpha');
     // Alpha has two of the four Facets its Lens declares approved. Both numbers,
@@ -55,21 +63,46 @@ describe('rendering', () => {
     expect(out).toContain('avery');
   });
 
+  it('says what it set aside, against how much it found (LAW-006)', async () => {
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus, read } = await loadCorpus(lens);
+    const matrix = buildMatrix(corpus, lens);
+    const out = renderMatrix(matrix, scoreMatrix(matrix), [], read);
+
+    // Two: a word the business retired, and a section of terminology the rules page
+    // carries. Neither is knowledge this Corpus claims, and a reader who is not told
+    // they were there has no way to know the reading chose anything.
+    expect(read.setAside).toBe(2);
+    expect(out).toContain(`${read.read} of ${read.found} read, 2 set aside`);
+  });
+
+  it('says nothing was set aside rather than saying nothing (LAW-006)', () => {
+    const facts: Fact[] = [
+      fact({ id: 'm1', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),
+    ];
+    const matrix = buildMatrix(buildCorpus(facts), inlineLens);
+    const out = renderMatrix(matrix, scoreMatrix(matrix), [], { read: 1, setAside: 0, found: 1 });
+
+    // A figure that appears only when it is not zero is one a reader has to already
+    // know to look for, and its absence then reads as nothing having been left out.
+    expect(out).toContain('0 set aside');
+  });
+
   it('marks a module with no owner rather than leaving it blank (ADR-0010)', async () => {
     const lens = await loadLens(fixturePath('lens-a.json'));
-    const { corpus } = await loadCorpus(lens);
+    const { corpus, read } = await loadCorpus(lens);
     const matrix = buildMatrix(corpus, lens);
-    expect(renderMatrix(matrix, scoreMatrix(matrix), [])).toContain('NO OWNER');
+    expect(renderMatrix(matrix, scoreMatrix(matrix), [], read)).toContain('NO OWNER');
   });
 
   it('renders a module with no trend baseline as "n/a", never as the "·" used for a genuine zero delta', async () => {
     const lens = await loadLens(fixturePath('lens-a.json'));
-    const { corpus } = await loadCorpus(lens);
+    const { corpus, read } = await loadCorpus(lens);
     const matrix = buildMatrix(corpus, lens);
     const scores = scoreMatrix(matrix);
 
     // No trend row at all for this run's modules (e.g. a first-ever run).
-    const noBaseline = renderMatrix(matrix, scores, []);
+    const noBaseline = renderMatrix(matrix, scores, [], read);
     expect(noBaseline).toContain('n/a');
     expect(noBaseline).not.toMatch(/·/);
 
@@ -77,6 +110,7 @@ describe('rendering', () => {
     const explicitNull = renderMatrix(
       matrix, scores,
       scores.map((s) => ({ moduleId: s.moduleId, approvedDelta: null })),
+      read,
     );
     expect(explicitNull).toContain('n/a');
     expect(explicitNull).not.toMatch(/·/);
@@ -85,6 +119,7 @@ describe('rendering', () => {
     const zeroDelta = renderMatrix(
       matrix, scores,
       scores.map((s) => ({ moduleId: s.moduleId, approvedDelta: 0 })),
+      read,
     );
     expect(zeroDelta).toMatch(/·/);
   });
@@ -129,7 +164,7 @@ describe('rendering', () => {
       }),
     ];
     const matrix = buildMatrix(buildCorpus(facts), inlineLens);
-    const out = renderMatrix(matrix, scoreMatrix(matrix), []);
+    const out = renderMatrix(matrix, scoreMatrix(matrix), [], HAND_BUILT);
 
     expect(out).toContain('Facets not yet approved:');
     expect(out).toContain('m1 / items');
@@ -178,7 +213,7 @@ describe('rendering', () => {
       }),
     ];
     const matrix = buildMatrix(buildCorpus(facts), strict);
-    const out = renderMatrix(matrix, scoreMatrix(matrix), []);
+    const out = renderMatrix(matrix, scoreMatrix(matrix), [], HAND_BUILT);
 
     expect(out).toContain('missing: definition');
     expect(out).toContain('backed by 1 of the 2 sources this Lens asks for');
@@ -203,7 +238,7 @@ describe('rendering', () => {
       }),
     ];
     const matrix = buildMatrix(buildCorpus(facts), inlineLens);
-    const out = renderMatrix(matrix, scoreMatrix(matrix), []);
+    const out = renderMatrix(matrix, scoreMatrix(matrix), [], HAND_BUILT);
 
     expect(out).toContain('m1 / items');
     expect(out).toContain('approved maturity level');
@@ -226,7 +261,7 @@ describe('rendering', () => {
       }),
     ];
     const matrix = buildMatrix(buildCorpus(facts), inlineLens);
-    const out = renderMatrix(matrix, scoreMatrix(matrix), []);
+    const out = renderMatrix(matrix, scoreMatrix(matrix), [], HAND_BUILT);
 
     expect(out).not.toContain('Facets not yet approved');
   });

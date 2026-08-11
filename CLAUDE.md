@@ -124,7 +124,7 @@ corpse. If a Lens over a second corpus is added, check what its source says abou
 It lives on a shelf of its own and is never added to the fixtures shelf. Tests run against the
 fixtures, and a test that needs a sibling checkout is a test that fails on a machine without one.
 
-Five things about it are worth knowing before changing it:
+Six things about it are worth knowing before changing it:
 
 - **Commands and Domain Events are both Messages, judged differently** (ADR-0019). A Command needs an
   actor; an Event needs the Rule it came from. This Lens is why criteria stopped being keyed by Fact Kind.
@@ -139,9 +139,9 @@ Five things about it are worth knowing before changing it:
 - **A reference resolves the way the pages a reader reads resolve it** (ADR-0023). `slugify` folds
   accents, keeps a letter that decomposes into nothing, drops markup a heading carries, and separates on
   everything else. It once reduced a heading with `[^a-z0-9]+`, which is how 747 of the 772 broken
-  references it reported about a French corpus came to be its own defect. The 25 that remain are the
-  reading's defect too, for three reasons ADR-0023 names — so the reference count is still not a corpus
-  reading, and the genuine figure is zero.
+  references it reported about a French corpus came to be its own defect. The 24 that remain are the
+  reading's defect too, for the reasons ADR-0023 and ADR-0025 name — so the reference count is still not a
+  corpus reading, and the genuine figure is zero.
 - **A document holds several tables and only some of them are the Facet's** (ADR-0024). Four Facets name
   the columns that identify theirs, which is how 107 rows — payloads, retired words, a note about what the
   backend does — stopped being read as Domain Events, Commands and Terms. Two traps if you touch those
@@ -149,6 +149,14 @@ Five things about it are worth knowing before changing it:
   heads it `Étape`, so its four rows are set aside rather than read; and `state-machines` names nothing
   on purpose, because its own tables already separate — what is wrong there is 18 guards spelled `Gardien`,
   which is a column mapping and not a table.
+- **A page's furniture is written at the same level as its knowledge** (ADR-0025). Business Rules names
+  `itemPattern`, which is how 39 headings — `Terminologie`, `Statut de Revue PM`, `Liens vers d'Autres
+  Connaissances` — stopped being read as rules; 183 remain and the grid does not move by a mark, because
+  what those 39 were padding is a denominator and not a shortfall. Three traps: `experience` carries the
+  same furniture and names nothing on purpose, because no description separates its other 13 headings
+  without becoming a list of them; `Statut de Revue PM` is where this corpus writes its review status, so
+  #45 will be looking for exactly what is set aside here; and the reading now states what it set aside,
+  which is why the Seed is at version 2 and an older shelf has to be written down again.
 
 The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
 Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above

@@ -3,7 +3,7 @@ import { buildCorpus } from '@vertuo/comply-core';
 import { extractSeed, interpret } from '@vertuo/comply-ingestion';
 import { loadLens } from '@vertuo/comply-lens';
 import { readPreviousSnapshot, writeSnapshot } from '@vertuo/comply-readiness';
-import { holdSeed, readSeed, type Seed } from '@vertuo/comply-seed';
+import { holdSeed, readSeed, whatWasRead, type Seed } from '@vertuo/comply-seed';
 import { readCorpus } from './reading.js';
 
 /**
@@ -63,7 +63,9 @@ async function reportCommand(lensPath: string, seedPath: string | undefined): Pr
 
   const takenAt = new Date().toISOString();
   const previous = await readPreviousSnapshot(RUNS_DIR, lens.id, takenAt);
-  const reading = readCorpus(buildCorpus(facts), lens, findings, takenAt, previous);
+  const reading = readCorpus(
+    buildCorpus(facts), lens, findings, takenAt, previous, whatWasRead(seed),
+  );
   await writeSnapshot(RUNS_DIR, reading.snapshot);
 
   console.log(reading.text);
@@ -78,8 +80,18 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (command === 'extract') await extractCommand(lensPath);
-  else await reportCommand(lensPath, seedPath);
+  // Every failure this runner raises is already written as a sentence somebody can
+  // act on — a Lens that cannot be followed, knowledge on the shelf written down in
+  // an older form. Left to the runtime, each of those arrives underneath a stack
+  // trace through this workspace's own internals, and the sentence somebody wrote
+  // for a person to read is the one line they have to find in it.
+  try {
+    if (command === 'extract') await extractCommand(lensPath);
+    else await reportCommand(lensPath, seedPath);
+  } catch (failure) {
+    console.error(failure instanceof Error ? failure.message : String(failure));
+    process.exitCode = 1;
+  }
 }
 
 await main();

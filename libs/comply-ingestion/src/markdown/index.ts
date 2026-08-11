@@ -2,7 +2,9 @@ import { relative } from 'node:path';
 import { buildCorpus, type Corpus } from '@vertuo/comply-core';
 import type { Finding } from '@vertuo/comply-core';
 import type { Lens } from '@vertuo/comply-lens';
-import { SEED_VERSION, type Seed, type SeedDocument } from '@vertuo/comply-seed';
+import {
+  SEED_VERSION, whatWasRead, type Seed, type SeedDocument, type WhatWasRead,
+} from '@vertuo/comply-seed';
 import type { SeedAdapter } from '../adapter.js';
 import { interpret } from '../interpret.js';
 import { discoverDocuments } from './discover.js';
@@ -43,7 +45,7 @@ export async function extractSeed(lens: Lens): Promise<Seed> {
     if (parsed === null) {
       documents.push({
         path, containerId, readable: false, bodyStartLine: null,
-        moduleId: null, facet: null, status: null, owner: null, items: [],
+        moduleId: null, facet: null, status: null, owner: null, items: [], setAside: 0,
       });
       continue;
     }
@@ -55,6 +57,12 @@ export async function extractSeed(lens: Lens): Promise<Seed> {
     const facetName = text(parsed.data[facetKey]);
     const facet = lens.facets.find((f) => f.name === facetName);
 
+    // A document whose facet matches nothing declared has nothing set aside, not a
+    // whole document's worth of it. No Facet read it, so no Facet declined anything
+    // in it — whether a facet nobody declared is a defect is interpretation's
+    // judgment, and it is made there.
+    const read = facet === undefined ? { items: [], setAside: 0 } : extract(parsed, facet);
+
     documents.push({
       path,
       containerId,
@@ -64,7 +72,8 @@ export async function extractSeed(lens: Lens): Promise<Seed> {
       facet: facetName,
       status: text(parsed.data[statusKey]),
       owner: ownerKey === undefined ? null : text(parsed.data[ownerKey]),
-      items: facet === undefined ? [] : extract(parsed, facet).map((item) => {
+      setAside: read.setAside,
+      items: read.items.map((item) => {
         const excerpt = excerptOf(parsed, item.line, item.endLine);
         return {
           line: item.line,
@@ -91,7 +100,11 @@ export const markdownAdapter: SeedAdapter = { extract: extractSeed };
  */
 export async function loadCorpus(
   lens: Lens,
-): Promise<{ corpus: Corpus; findings: Finding[] }> {
-  const { facts, findings } = interpret(await extractSeed(lens), lens);
-  return { corpus: buildCorpus(facts), findings };
+): Promise<{ corpus: Corpus; findings: Finding[]; read: WhatWasRead }> {
+  const seed = await extractSeed(lens);
+  const { facts, findings } = interpret(seed, lens);
+  // Carried out with the Corpus rather than left to be asked for. What a reading
+  // set aside is only knowable from the Seed, and a caller handed a Corpus and no
+  // figure has no way to tell a reader what it was not shown (LAW-006).
+  return { corpus: buildCorpus(facts), findings, read: whatWasRead(seed) };
 }

@@ -263,7 +263,9 @@ export function buildServer(shelf: string): FastifyInstance {
     const { corpus, passedOver } = await readShelf(shelf);
 
     for (const skipped of passedOver) {
-      server.log.warn({ file: skipped.file, reason: skipped.reason }, 'not read as a Lens');
+      // A Lens that cannot be followed and knowledge written down in an older form
+      // both land here, so what is said covers either.
+      server.log.warn({ file: skipped.file, reason: skipped.reason }, 'this Corpus was passed over');
     }
 
     const takenAt = new Date().toISOString();
