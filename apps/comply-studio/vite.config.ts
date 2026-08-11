@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import tailwind from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -5,7 +7,16 @@ import { defineConfig } from 'vite';
 const API = 'http://127.0.0.1:4301';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwind()],
+  /*
+   * `@/` is what the vendored components import each other by, which is the
+   * convention they arrive with (ADR-0018). Kept identical here, in the test
+   * runner, and in `tsconfig.json`, so a component resolves the same way
+   * whether it is served, tested, or type-checked.
+   */
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   server: {
     port: 4302,
     /*

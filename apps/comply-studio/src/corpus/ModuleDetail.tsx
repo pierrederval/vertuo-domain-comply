@@ -1,4 +1,3 @@
-import { Link } from 'react-router';
 import type {
   CorpusModule,
   Knowledge,
@@ -8,22 +7,20 @@ import type {
   Place,
   UnmetCriterion,
 } from '@vertuo/comply-contract';
-import { Age } from '../components/Age.js';
 import { Figure } from '../components/Figure.js';
 import {
   Aside,
   Conspicuous,
   NothingToShow,
-  Page,
-  Panel,
-  PanelHeading,
-  Stack,
+  Readings,
+  Surface,
 } from '../components/layout.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { count } from '../words.js';
 
 /** Somewhere a person can go and check the claim for themselves (LAW-009). */
 function Where({ at }: { at: Place }) {
-  return <span className="place">{`${at.file}, line ${at.line}`}</span>;
+  return <span className="font-mono text-sm">{`${at.file}, line ${at.line}`}</span>;
 }
 
 /**
@@ -60,6 +57,9 @@ function Reason({ shortfall }: { shortfall: UnmetCriterion }) {
   }
 }
 
+/** The bullets a reason or a place is read as. */
+const LISTED = 'list-disc pl-6 marker:text-muted-foreground';
+
 /**
  * What stands between this Facet and approval.
  *
@@ -72,7 +72,7 @@ function Reason({ shortfall }: { shortfall: UnmetCriterion }) {
 function Standing({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
   if (facet.state === 'absent') {
     return (
-      <p className="standing">
+      <p>
         <Conspicuous>Nothing is written down here.</Conspicuous>{' '}
         {'Somebody has to write it down before there is anything to approve.'}
       </p>
@@ -80,20 +80,14 @@ function Standing({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
   }
 
   if (facet.state === 'approved') {
-    return (
-      <p className="standing">
-        {`Everything written down here is at or above “${ladder.approvedAtOrAbove}”.`}
-      </p>
-    );
+    return <p>{`Everything written down here is at or above “${ladder.approvedAtOrAbove}”.`}</p>;
   }
 
   if (facet.state === 'well-formed') {
     return (
       <>
-        <p className="standing">
-          {'What is written down here is enough. What it needs is somebody to approve it.'}
-        </p>
-        <p className="standing">
+        <p>{'What is written down here is enough. What it needs is somebody to approve it.'}</p>
+        <p>
           {`Not yet at “${ladder.approvedAtOrAbove}”: ${facet.notYetApproved} of ${count(facet.knowledge.length, 'piece')} of knowledge here.`}
         </p>
       </>
@@ -102,8 +96,8 @@ function Standing({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
 
   return (
     <>
-      <p className="standing">{'What is written down here is not yet enough:'}</p>
-      <ul className="shortfalls">
+      <p>{'What is written down here is not yet enough:'}</p>
+      <ul className={LISTED}>
         {facet.shortOf.map((shortfall, at) => (
           <Reason key={`${shortfall.criterion}-${at}`} shortfall={shortfall} />
         ))}
@@ -118,12 +112,19 @@ function Standing({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
  * Where, and not what it is called. Nothing in a Lens promises a piece of
  * knowledge a name; where it is written down is the one thing every Corpus has,
  * and it is also the only thing on this page a reader can act on directly.
+ *
+ * The rung each piece sits at is drawn beside where it is, and never in place of
+ * it. How far along a piece of knowledge is and how well backed it is are two
+ * separate readings, and conflating them is what made coverage uncomputable in
+ * the first place (LAW-005).
  */
 function Written({ knowledge }: { knowledge: Knowledge[] }) {
   return (
     <>
-      <p className="written">{`Written down in ${count(knowledge.length, 'place')}:`}</p>
-      <ul className="knowledge">
+      <p className="text-sm text-muted-foreground">
+        {`Written down in ${count(knowledge.length, 'place')}:`}
+      </p>
+      <ul className={LISTED}>
         {knowledge.map((piece) => (
           <li key={`${piece.at.file}:${piece.at.line}`}>
             <Where at={piece.at} />{' '}
@@ -132,7 +133,7 @@ function Written({ knowledge }: { knowledge: Knowledge[] }) {
               // (LAW-010). A Corpus that graded nothing here said something.
               <Conspicuous>this Corpus does not say how far along it is</Conspicuous>
             ) : (
-              <span className="maturity">{`at “${piece.maturity}”`}</span>
+              <span className="text-sm text-muted-foreground">{`at “${piece.maturity}”`}</span>
             )}
           </li>
         ))}
@@ -143,12 +144,26 @@ function Written({ knowledge }: { knowledge: Knowledge[] }) {
 
 function Declared({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
   return (
-    <Panel>
-      <PanelHeading>{facet.facet}</PanelHeading>
-      <p className={`facet-state state-${facet.state}`}>{facet.state}</p>
-      <Standing facet={facet} ladder={ladder} />
-      {facet.state !== 'absent' && <Written knowledge={facet.knowledge} />}
-    </Panel>
+    <Card>
+      <CardHeader>
+        <CardTitle>{facet.facet}</CardTitle>
+        {/*
+          The one state that is nothing at all still gets a mark. A Facet drawn as
+          blank cannot be told from one the page forgot, and an unwritten Facet is
+          the work this page exists to name.
+        */}
+        <p
+          data-facet-state={facet.state}
+          className={`text-sm lowercase ${facet.state === 'absent' ? 'text-mark' : 'text-muted-foreground'}`}
+        >
+          {facet.state}
+        </p>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <Standing facet={facet} ladder={ladder} />
+        {facet.state !== 'absent' && <Written knowledge={facet.knowledge} />}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -157,40 +172,44 @@ function Declared({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
  *
  * The other reading, kept apart from the Facets above: those say how much is
  * written down and approved, these say what contradicts what. Nothing on this
- * page derives a third figure from the pair (spec §4).
+ * page derives a third figure from the pair.
  */
 function Against({ findings, lookedFor }: { findings: ModuleFinding[]; lookedFor: string[] }) {
   return (
-    <Panel>
-      <PanelHeading>Findings</PanelHeading>
-      {findings.length === 0 ? (
-        // Never a bare "none". It can only ever mean none that these Checks
-        // would have found, so they are named (LAW-006).
-        <NothingToShow>
-          {`Nothing was found against this Module by the ${count(lookedFor.length, 'Check')} that ran: ${lookedFor.join(', ')}.`}
-        </NothingToShow>
-      ) : (
-        <ul className="findings">
-          {findings.map((finding) => (
-            <li key={`${finding.at.file}:${finding.at.line}:${finding.says}`}>
-              <p className="says">{finding.says}</p>
-              <Where at={finding.at} />
-              {finding.alsoAt.map((also) => (
-                <span key={`${also.file}:${also.line}`} className="also">
-                  {' also '}
-                  <Where at={also} />
-                </span>
-              ))}
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
+    <Card>
+      <CardHeader>
+        <CardTitle>Findings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {findings.length === 0 ? (
+          // Never a bare "none". It can only ever mean none that these Checks
+          // would have found, so they are named (LAW-006).
+          <NothingToShow>
+            {`Nothing was found against this Module by the ${count(lookedFor.length, 'Check')} that ran: ${lookedFor.join(', ')}.`}
+          </NothingToShow>
+        ) : (
+          <ul className={`${LISTED} flex flex-col gap-4`}>
+            {findings.map((finding) => (
+              <li key={`${finding.at.file}:${finding.at.line}:${finding.says}`}>
+                <p>{finding.says}</p>
+                <Where at={finding.at} />
+                {finding.alsoAt.map((also) => (
+                  <span key={`${also.file}:${also.line}`} className="text-sm text-muted-foreground">
+                    {' also '}
+                    <Where at={also} />
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 /**
- * One Module, where a figure becomes a list of specific work (spec §5.4).
+ * One Module, where a figure becomes a list of specific work.
  *
  * The grid says how far along a Module is. This says what to do about it, and
  * for each Facet which of the two things to do: write something down, or get
@@ -198,37 +217,33 @@ function Against({ findings, lookedFor }: { findings: ModuleFinding[]; lookedFor
  * the ones with nothing under them — an unwritten Facet is the work, not a row
  * to leave out.
  *
+ * Which Module this is, and which Corpus it sits in, are the shell's to say. It
+ * carries both in the trail with the age of the reading, so nothing here repeats
+ * them.
+ *
  * Nothing here knows what any of it is called. Every Facet name, every step of
  * the ladder, every missing thing named in a reason arrives in the payload, so
  * this draws a Module of a Corpus it has never met without being changed
  * (LAW-004).
  */
 export function ModuleDetail({ module }: { module: CorpusModule }) {
-  const { corpus, reading } = module;
+  const { reading } = module;
 
   if (reading.outcome !== 'read') {
     return (
-      <Page title={module.id}>
-        <p className="whence">
-          {'In '}
-          <Link to={`/corpus/${encodeURIComponent(corpus.id)}`}>{corpus.name}</Link>
-        </p>
-        <NothingToShow>Nothing has been written down from this source yet.</NothingToShow>
-      </Page>
+      <Card className="border-dashed shadow-none">
+        <CardContent>
+          <NothingToShow>Nothing has been written down from this source yet.</NothingToShow>
+        </CardContent>
+      </Card>
     );
   }
 
   const { facets, ladder, findings, lookedFor } = reading;
 
   return (
-    <Page title={module.id}>
-      <p className="whence">
-        {'In '}
-        <Link to={`/corpus/${encodeURIComponent(corpus.id)}`}>{corpus.name}</Link>
-        {', read from source '}
-        <Age at={reading.sourceReadAt} />
-      </p>
-      <p className="answers-for">
+    <Surface>
+      <p className="text-sm text-muted-foreground">
         {reading.owner === null ? (
           // LAW-007: a Module nobody answers for is a defect, and the Findings
           // below have nobody to reach.
@@ -238,33 +253,35 @@ export function ModuleDetail({ module }: { module: CorpusModule }) {
         ) : (
           <>
             {'Answered for by '}
-            <span className="owner">{reading.owner}</span>
+            <span className="text-foreground">{reading.owner}</span>
           </>
         )}
       </p>
 
-      <div className="readings">
-        <Figure
-          reading="Readiness"
-          counts="Facets approved"
-          value={reading.approved}
-          outOf={`of ${count(reading.declaredFacets, 'Facet')}`}
-        />
-        <Figure
-          reading="Integrity"
-          counts="Open Findings"
-          value={findings.length}
-          outOf={`from ${count(lookedFor.length, 'Check')}`}
-          detail={lookedFor.join(', ')}
-        />
-      </div>
+      <Readings>
+        {[
+          <Figure
+            key="readiness"
+            reading="Readiness"
+            counts="Facets approved"
+            value={reading.approved}
+            outOf={`of ${count(reading.declaredFacets, 'Facet')}`}
+          />,
+          <Figure
+            key="integrity"
+            reading="Integrity"
+            counts="Open Findings"
+            value={findings.length}
+            outOf={`from ${count(lookedFor.length, 'Check')}`}
+            detail={lookedFor.join(', ')}
+          />,
+        ]}
+      </Readings>
 
-      <Stack>
-        {facets.map((facet) => (
-          <Declared key={facet.facet} facet={facet} ladder={ladder} />
-        ))}
-        <Against findings={findings} lookedFor={lookedFor} />
-      </Stack>
+      {facets.map((facet) => (
+        <Declared key={facet.facet} facet={facet} ladder={ladder} />
+      ))}
+      <Against findings={findings} lookedFor={lookedFor} />
 
       <Aside>
         {`Every figure here is counted out of the ${count(reading.declaredFacets, 'Facet')} the Lens “${reading.lensId}” declares. Knowledge nobody has written down anywhere is not counted here, and cannot be.`}
@@ -272,6 +289,6 @@ export function ModuleDetail({ module }: { module: CorpusModule }) {
       <Aside>
         {`Approved means at or above “${ladder.approvedAtOrAbove}” on this Corpus’s ladder: ${ladder.levels.join(' → ')}.`}
       </Aside>
-    </Page>
+    </Surface>
   );
 }

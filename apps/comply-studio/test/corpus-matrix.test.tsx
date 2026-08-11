@@ -109,13 +109,14 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
       if (detail.reading.outcome !== 'read') throw new Error('the source was written down');
       const drawn = draw(detail);
 
-      expect(drawn).toContain(detail.name);
+      // The Corpus's own name is the shell's to draw, once, at the top; this
+      // page draws what is in it. Asserted in `shell.test.tsx`.
       for (const facet of detail.reading.facets) expect(drawn).toContain(facet);
       // Every Module, including one with nothing in it. A row left out is a
       // Module nobody is ever reminded of.
       for (const module of detail.reading.modules) expect(drawn).toContain(module.id);
 
-      const cells = drawn.match(/class="cell[^"]*"/g) ?? [];
+      const cells = drawn.match(/data-cell="[^"]*"/g) ?? [];
       expect(cells).toHaveLength(detail.reading.facets.length * detail.reading.modules.length);
     }
   });
@@ -137,7 +138,7 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
     expect(drawn).toContain('c-one');
     expect(drawn).toMatch(/No Module has anything under/);
     // The Facet that some Module has filled is not called out with it.
-    expect(drawn.match(/class="facet unstarted"/g)).toHaveLength(1);
+    expect(drawn.match(/data-facet="unstarted"/g)).toHaveLength(1);
   });
 
   it('marks a Module nobody answers for, rather than leaving it blank', () => {
@@ -146,7 +147,7 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
     // LAW-007: every Finding against this Module routes to nobody, which is a
     // defect and not an empty space.
     expect(drawn).toContain('someone');
-    expect(drawn).toContain('class="conspicuous"');
+    expect(drawn).toContain('data-conspicuous');
     expect(drawn).toMatch(/nobody/i);
   });
 
@@ -173,12 +174,12 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
 
     // A first-ever reading is not a figure that held steady, and neither is a
     // figure that moved. Three facts, three ways of saying them.
-    expect(nothingToCompare).toContain('class="movement none"');
-    expect(nothingToCompare).not.toContain('class="movement steady"');
-    expect(compared).toContain('class="movement steady"');
-    expect(compared).toContain('class="movement gained"');
+    expect(nothingToCompare).toContain('data-movement="none"');
+    expect(nothingToCompare).not.toContain('data-movement="steady"');
+    expect(compared).toContain('data-movement="steady"');
+    expect(compared).toContain('data-movement="gained"');
     expect(compared).toContain('▲ 2');
-    expect(compared).not.toContain('class="movement none"');
+    expect(compared).not.toContain('data-movement="none"');
   });
 
   it('shows the two readings on this page as two figures, never fused', () => {
@@ -190,7 +191,7 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
     expect(drawn).toContain('from 2 Checks');
     // The grid is Readiness. Nothing folds Integrity into a cell, a row, or a
     // column of it, and no third figure stands for the pair (spec §4).
-    expect(drawn.match(/class="figure"/g)).toHaveLength(2);
+    expect(drawn.match(/data-figure=""/g)).toHaveLength(2);
     expect(drawn).not.toContain('%');
     expect(drawn).not.toMatch(/\bscore\b/i);
     expect(drawn).not.toMatch(/\bgrade\b/i);
@@ -205,15 +206,12 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
     // The grid is the one thing here that grows with a Corpus, and it grows
     // sideways. A page that slides under a reader hides the Module column, which
     // is the one column every other one is read against (criterion 8, spec §12).
-    expect(draw(OTHER)).toMatch(/class="grid-scroll"[^>]*>\s*<table/);
+    expect(draw(OTHER)).toMatch(/data-grid-scroll=""[^>]*>\s*<table/);
   });
 
-  it('says how old the reading is', () => {
-    const drawn = draw(corpus({}));
-
-    expect(drawn).toContain('Read from source');
-    expect(drawn).toContain('2026-01-01T08:00:00.000Z');
-  });
+  // How old the reading is belongs to the shell, which keeps it in view at every
+  // destination inside a Corpus rather than only on this one. Asserted in
+  // `shell.test.tsx`.
 
   it('leads from each Module to what to do about it', () => {
     const drawn = draw(corpus({}));
@@ -234,7 +232,7 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
     const drawn = draw(unread);
     expect(drawn).toContain('Nothing has been written down from this source yet');
     expect(drawn).not.toContain('<table');
-    expect(drawn).not.toContain('class="figure"');
+    expect(drawn).not.toContain('data-figure');
   });
 
   it('holds no word belonging to any one Corpus', () => {

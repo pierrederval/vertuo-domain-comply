@@ -1,389 +1,104 @@
+@import 'tailwindcss';
+
+/*
+ * The vendored components carry `dark:` utilities. Binding that variant to a
+ * `.dark` ancestor, which nothing here ever sets, is what keeps them off: dark
+ * mode is not designed yet, and left on the reader's system preference the
+ * components would go dark while every value below stayed light. Half a theme
+ * is worse than one.
+ */
+@custom-variant dark (&:is(.dark *));
+
 /*
  * Every value the Studio draws with, in one place.
  *
- * Custom properties rather than a theme object, so that when the shared design
- * system becomes reachable (ADR-0013) its tokens can be dropped in behind these
- * names without touching a component (spec §3.7).
+ * The names on the left are this product's; the names in `@theme inline` are the
+ * ones the vendored components are written against (ADR-0018). The indirection is
+ * the whole point: a component asks for `bg-card`, and what `card` *is* stays a
+ * decision made here rather than a colour repeated at forty call sites.
+ *
+ * The palette is the Studio's own paper-and-ink, not the design system's neutral
+ * default. ADR-0013's interface row is superseded; its token layer is not, and
+ * these are the values it already carried.
  */
 :root {
+  --paper: #fbfbfa;
   --ink: #1c1f23;
   --ink-quiet: #5c646e;
-  --paper: #fbfbfa;
   --panel: #ffffff;
   --line: #e2e4e8;
-  --mark: #8a5a00;
   --focus: #2b5fd9;
 
-  --step-1: 0.75rem;
-  --step-2: 1rem;
-  --step-3: 1.5rem;
-  --step-4: 2.5rem;
+  /*
+   * What something a person has to act on is drawn with. LAW-007: a Module
+   * nobody answers for is a defect and not a blank, so absence gets a mark of
+   * its own rather than an empty cell.
+   */
+  --mark: #8a5a00;
 
-  --text-small: 0.8125rem;
-  --text-body: 0.9375rem;
-  --text-large: 1.25rem;
-  --text-figure: 1.75rem;
+  /*
+   * The four states a Facet can be in, as four named values.
+   *
+   * Named rather than written at the call site, because a cell's colour *is* its
+   * meaning: the next person to adjust a shade needs to know they are adjusting
+   * absence. Quiet, but never invisible — a cell drawn as nothing at all cannot
+   * be told from a Facet the grid forgot, and absence is what this page is most
+   * often read for.
+   */
+  --cell-approved: var(--ink);
+  --cell-well-formed: var(--ink-quiet);
+  --cell-present: var(--ink-quiet);
+  --cell-absent: #b3b9c1;
 
-  --edge: 6px;
-  --hairline: 1px solid var(--line);
+  --radius: 0.375rem;
 }
 
-* {
-  box-sizing: border-box;
+@theme inline {
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-muted: var(--paper);
+  --color-muted-foreground: var(--ink-quiet);
+  --color-card: var(--panel);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--panel);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--panel);
+  --color-secondary: var(--paper);
+  --color-secondary-foreground: var(--ink);
+  --color-accent: var(--paper);
+  --color-accent-foreground: var(--ink);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--focus);
+
+  --color-mark: var(--mark);
+
+  --color-cell-approved: var(--cell-approved);
+  --color-cell-well-formed: var(--cell-well-formed);
+  --color-cell-present: var(--cell-present);
+  --color-cell-absent: var(--cell-absent);
+
+  /*
+   * The shelf, which is the sidebar. Same paper as everything else: the Studio
+   * has one surface and the rail is part of it, not a separate dark product.
+   */
+  --color-sidebar: var(--panel);
+  --color-sidebar-foreground: var(--ink);
+  --color-sidebar-primary: var(--ink);
+  --color-sidebar-primary-foreground: var(--panel);
+  --color-sidebar-accent: var(--paper);
+  --color-sidebar-accent-foreground: var(--ink);
+  --color-sidebar-border: var(--line);
+  --color-sidebar-ring: var(--focus);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
 }
 
 body {
-  margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font: var(--text-body) / 1.5 system-ui, -apple-system, sans-serif;
-}
-
-.studio {
-  max-width: 60rem;
-  margin: 0 auto;
-  padding: var(--step-3);
-}
-
-.navigation {
-  display: flex;
-  gap: var(--step-3);
-  padding-bottom: var(--step-2);
-  border-bottom: var(--hairline);
-}
-
-.destination {
-  color: var(--ink-quiet);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.destination:hover,
-.destination:focus-visible {
-  color: var(--ink);
-  outline-color: var(--focus);
-}
-
-.destination.here {
-  color: var(--ink);
-  box-shadow: inset 0 -2px 0 var(--ink);
-}
-
-.page-title {
-  margin: var(--step-4) 0 var(--step-3);
-  font-size: var(--text-large);
-  font-weight: 600;
-}
-
-.stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--step-2);
-}
-
-.panel {
-  background: var(--panel);
-  border: var(--hairline);
-  border-radius: var(--edge);
-  padding: var(--step-3);
-}
-
-.panel-heading {
-  margin: 0;
-  font-size: var(--text-body);
-  font-weight: 600;
-}
-
-.read-at {
-  margin: var(--step-1) 0 var(--step-3);
-  color: var(--ink-quiet);
-  font-size: var(--text-small);
-}
-
-.age {
-  border-bottom: 1px dotted var(--line);
-  cursor: help;
-}
-
-/*
- * Two readings, side by side and equally weighted. Neither is ever drawn larger
- * than the other, and nothing sits between them: a figure in that position would
- * read as the pair combined, and no such figure exists.
- */
-.readings {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: var(--step-3);
-}
-
-.figure {
-  display: grid;
-  gap: 2px;
-}
-
-.figure-reading {
-  font-size: var(--text-small);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-quiet);
-}
-
-.figure-counts {
-  font-size: var(--text-small);
-  color: var(--ink-quiet);
-}
-
-.figure-value {
-  font-size: var(--text-figure);
-  font-weight: 600;
-  line-height: 1.1;
-}
-
-/* Never smaller than the figure needs to stay legible: it is half of what the
-   figure means, not a footnote to it. */
-.figure-out-of {
-  font-size: var(--text-small);
-  color: var(--ink-quiet);
-}
-
-.aside,
-.nothing-to-show {
-  margin: var(--step-1) 0 0;
-  color: var(--ink-quiet);
-}
-
-.conspicuous {
-  color: var(--mark);
-  font-weight: 600;
-}
-
-.panel-heading a {
-  color: inherit;
-  text-decoration: none;
-  box-shadow: inset 0 -1px 0 var(--line);
-}
-
-.panel-heading a:hover,
-.panel-heading a:focus-visible {
-  box-shadow: inset 0 -1px 0 var(--ink);
-  outline-color: var(--focus);
-}
-
-/*
- * The grid grows sideways with a Corpus and slides inside its own edges when it
- * does. The page never slides: doing so would take the Module column with it,
- * which is the column every other one is read against.
- */
-.grid-scroll {
-  overflow-x: auto;
-  margin-top: var(--step-3);
-}
-
-.grid {
-  border-collapse: collapse;
-  white-space: nowrap;
-}
-
-.grid th,
-.grid td {
-  border-bottom: var(--hairline);
-  padding: var(--step-1) var(--step-2);
-  text-align: left;
-  font-weight: 400;
-}
-
-.grid thead th {
-  font-size: var(--text-small);
-  font-weight: 600;
-  color: var(--ink-quiet);
-  vertical-align: bottom;
-}
-
-/*
- * A Facet no Module has anything under. Marked in the head of its own column,
- * because the whole reason the grid is drawn this way is that a column reads as
- * one fact and a list of Modules cannot show it at all.
- */
-.facet.unstarted {
-  color: var(--mark);
-}
-
-/*
- * The Module column stays put while the rest slides under it. It is the column
- * every other one is read against, and a row of marks with nothing at the left
- * of it says which state something is in without saying what.
- */
-.grid th:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: var(--panel);
-}
-
-.module {
-  display: grid;
-  gap: 1px;
-}
-
-.module-id {
-  /* Hugs its own name: an underline running the width of the column would read
-     as a rule under the row rather than as somewhere to go. */
-  justify-self: start;
-  font-weight: 600;
-  color: inherit;
-  text-decoration: none;
-  box-shadow: inset 0 -1px 0 var(--line);
-}
-
-.module-id:hover,
-.module-id:focus-visible {
-  box-shadow: inset 0 -1px 0 var(--ink);
-  outline-color: var(--focus);
-}
-
-.owner,
-.module .conspicuous {
-  font-size: var(--text-small);
-}
-
-.owner {
-  color: var(--ink-quiet);
-}
-
-.cell {
-  text-align: center;
-  font-size: var(--text-large);
-  line-height: 1;
-}
-
-.cell abbr {
-  text-decoration: none;
-  cursor: help;
-}
-
-/*
- * Quiet, but never invisible. A cell drawn as nothing at all cannot be told from
- * a Facet the grid forgot to draw, and absence is the thing this page is most
- * often read for.
- */
-.cell-absent {
-  color: #b3b9c1;
-}
-
-.cell-present,
-.cell-well-formed {
-  color: var(--ink-quiet);
-}
-
-.cell-approved {
-  color: var(--ink);
-}
-
-.tally,
-.moved {
-  font-size: var(--text-small);
-  color: var(--ink-quiet);
-}
-
-.movement.none {
-  text-decoration: none;
-  cursor: help;
-}
-
-.movement.gained,
-.movement.lost {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--step-3);
-  margin: var(--step-2) 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--text-small);
-  color: var(--ink-quiet);
-}
-
-.legend .mark {
-  font-size: var(--text-body);
-  color: var(--ink);
-}
-
-/*
- * One Module, a Facet at a time.
- *
- * Read top to bottom rather than across, because there is one column of meaning
- * here: for each Facet, what stands between it and approval. The grid is the
- * surface read in two directions; this is the one that answers *and then what*.
- */
-.whence,
-.answers-for {
-  margin: 0 0 var(--step-1);
-  font-size: var(--text-small);
-  color: var(--ink-quiet);
-}
-
-.answers-for {
-  margin-bottom: var(--step-3);
-}
-
-.facet-state {
-  margin: 0 0 var(--step-1);
-  font-size: var(--text-small);
-  color: var(--ink-quiet);
-  text-transform: lowercase;
-}
-
-/*
- * The one state that is nothing at all still gets a mark. A Facet drawn as
- * blank cannot be told from one the page forgot, and an unwritten Facet is the
- * work this page exists to name.
- */
-.facet-state.state-absent {
-  color: var(--mark);
-}
-
-.standing {
-  margin: 0 0 var(--step-1);
-}
-
-.shortfalls,
-.knowledge,
-.findings {
-  margin: 0 0 var(--step-2);
-  padding-left: var(--step-3);
-}
-
-.shortfalls li,
-.knowledge li {
-  margin-bottom: 0.25rem;
-}
-
-.findings li {
-  margin-bottom: var(--step-2);
-}
-
-.findings .says {
-  margin: 0 0 0.25rem;
-}
-
-.written {
-  margin: var(--step-2) 0 var(--step-1);
-  font-size: var(--text-small);
-  color: var(--ink-quiet);
-}
-
-.place {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--text-small);
-}
-
-.maturity,
-.also {
-  font-size: var(--text-small);
-  color: var(--ink-quiet);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font: 0.9375rem / 1.5 system-ui, -apple-system, sans-serif;
 }

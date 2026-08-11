@@ -86,7 +86,7 @@ describe('one Module, drilled into', () => {
 
     for (const facet of MODULE.reading.facets) {
       expect(drawn).toContain(facet.facet);
-      expect(drawn).toContain(`state-${facet.state}`);
+      expect(drawn).toContain(`data-facet-state="${facet.state}"`);
     }
   });
 
@@ -197,7 +197,7 @@ describe('one Module, drilled into', () => {
     const answered = draw(like({ owner: 'someone' }));
 
     expect(nobody).toContain('Nobody answers for this Module');
-    expect(nobody).toContain('class="conspicuous"');
+    expect(nobody).toContain('data-conspicuous');
     expect(answered).toContain('someone');
     expect(answered).not.toContain('Nobody answers for this Module');
   });
@@ -245,15 +245,16 @@ describe('one Module, drilled into', () => {
     expect(drawn).toContain('of 4 Facets');
     expect(drawn).toContain('Open Findings');
     expect(drawn).toContain('from 2 Checks');
-    expect(drawn.match(/class="figure"/g)).toHaveLength(2);
+    expect(drawn.match(/data-figure=""/g)).toHaveLength(2);
     expect(drawn).not.toContain('%');
     expect(drawn).not.toMatch(/\bscore\b/i);
     expect(drawn).not.toMatch(/\bgrade\b/i);
   });
 
-  it('leads back to the Corpus the Module is part of', () => {
-    expect(draw(MODULE)).toContain('href="/corpus/c1"');
-  });
+  // Which Corpus this Module sits in, and the way back to it, are the shell's:
+  // it carries both in the trail. Asserted in `shell.test.tsx`, including for a
+  // Corpus whose source has never been read, so the way back never depends on
+  // there being a reading.
 
   it('says plainly that nothing has been written down, rather than that the Module is missing', () => {
     const unread = corpusModuleSchema.parse({
@@ -264,10 +265,7 @@ describe('one Module, drilled into', () => {
     const drawn = draw(unread);
 
     expect(drawn).toContain('Nothing has been written down from this source yet');
-    expect(drawn).not.toContain('class="figure"');
-    // Still says where the reader is, so the way back does not depend on there
-    // being a reading.
-    expect(drawn).toContain('href="/corpus/c1"');
+    expect(drawn).not.toContain('data-figure');
   });
 
   it('holds no word belonging to any one Corpus', () => {

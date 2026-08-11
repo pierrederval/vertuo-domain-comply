@@ -164,6 +164,14 @@ computes, so a build can still fail when readiness falls.
 
 ### 3.7 The design system
 
+> **Superseded by ADR-0018** and by `2026-08-11-studio-app-shell-design.md`. The premise below is
+> false: there is no shared design-system package anywhere to become reachable. `vertuo-front` vendors
+> shadcn under `src/components/ui`, and `vertuo-playground-ai`'s `libs/system-ui` is mirrored from it —
+> the house design system is a convention each repository vendors, and that convention is Tailwind plus
+> shadcn primitives. This section forbade, as a deviation, what the house standard is. Its token
+> argument held and is what made the swap cheap. Left as written, per the rule that a decision is
+> amended in its own change and never edited to match current practice.
+
 ADR-0013 commits the interface to the shared design-system package. It is not reachable from this
 repository: there is no `.npmrc`, no registry, and no such dependency in the workspace. The Studio
 therefore ships a thin local component layer — roughly a dozen components over CSS custom properties,

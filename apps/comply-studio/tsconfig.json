@@ -3,7 +3,13 @@
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": { "@/*": ["./src/*"] }
   },
+  /*
+   * `vitest.config.ts` is left out on purpose: the test runner brings its own,
+   * older Vite, so type-checking both configs in one pass compares two Vite
+   * plugin types and fails on a disagreement that nothing at run time has.
+   */
   "include": ["src", "test", "vite.config.ts"]
 }
