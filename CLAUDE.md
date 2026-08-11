@@ -111,21 +111,35 @@ and says how to find what is holding them.
 
 ## The DDD Corpus
 
-`lenses/vertuo-domain.json` reads the real `vertuo-domain` repository: 13 Modules, one per domain
-folder, and seven Facets — Overview, Glossary, Business Rules, Commands, Events, Workflows, State
-Machines. Its `root` is relative, so the two repositories have to be checked out as siblings.
+`lenses/vertuo-domain-fr.json` reads the real `vertuo-domain-fr` repository: 20 documented Modules under
+three tiers, and eight Facets — Overview, Glossary, Business Rules, Commands, Domain Events, Workflows,
+State Machines, Experience. Its `root` is relative, so the two repositories have to be checked out as
+siblings.
+
+**The corpus is French, and there is no other one.** A `lenses/vertuo-domain.json` used to sit beside it
+reading a sibling of the same name; that repository's final commit marks it superseded by
+`vertuo-domain-fr`, and the Lens was deleted rather than left where somebody would run it and measure a
+corpse. If a Lens over a second corpus is added, check what its source says about itself first.
 
 It lives on a shelf of its own and is never added to the fixtures shelf. Tests run against the
 fixtures, and a test that needs a sibling checkout is a test that fails on a machine without one.
 
-Two things about it are worth knowing before changing it:
+Four things about it are worth knowing before changing it:
 
-- **Commands and Events are both Messages, judged differently** (ADR-0019). A Command needs an actor; an
-  Event needs the Rule it came from. This Lens is why criteria stopped being keyed by Fact Kind.
+- **Commands and Domain Events are both Messages, judged differently** (ADR-0019). A Command needs an
+  actor; an Event needs the Rule it came from. This Lens is why criteria stopped being keyed by Fact Kind.
 - **Business Rules is read heading by heading, not as a document.** Read as a document, every
-  `business-rules.md#br-004-…` link in the Commands and Events tables resolves to nothing, and the
-  reading manufactures around two hundred broken-reference Findings that are the Lens's fault and not
-  the corpus's. A tool that invents defects is worse than one that misses them.
+  `business-rules.md#br-004-…` link in the Commands, Events and Workflows tables resolves to nothing, and
+  the reading manufactures hundreds of broken-reference Findings that are the Lens's fault and not the
+  corpus's. A tool that invents defects is worse than one that misses them.
+- **Two Facets share the Term Kind** — Glossary and Experience — and only one of them is the dictionary
+  (ADR-0021). Today nothing enforces that: Experience stays out of the dictionary only because it names
+  its body attribute `description`. Rename it to `definition` and 17 screen descriptions silently become
+  word definitions.
+- **A heading's spelling is not the anchor.** `slugify` deletes accented letters and apostrophes as
+  punctuation, where the corpus's own anchor rules fold them — so 763 of the 772 broken references it
+  reports are its own defect (ADR-0020). Do not read the reference count as a corpus reading until that
+  is fixed.
 
 The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
 Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above
