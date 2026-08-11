@@ -91,6 +91,8 @@ Run all of these from the repository root.
 | `pnpm dev` | Both processes below at once; one Ctrl-C stops both |
 | `pnpm api` | Serve that shelf, read-only, on port 4301 |
 | `pnpm studio` | The Studio, on port 4302, answering from the API |
+| `pnpm shelf:domain` | Write down what is at source in `vertuo-domain`, onto the `lenses` shelf |
+| `pnpm dev:domain` | The same two processes, serving that shelf instead of the fixtures |
 
 `pnpm dev` is the usual way in: the Studio is unreadable without the API behind it, and starting one
 of a pair by hand is how a person ends up reading a page that is answering from yesterday's process.
@@ -101,6 +103,24 @@ Neither port moves if it is taken — both refuse to start and say so. A develop
 quietly took the next port leaves two of itself running, and the one being read is then the one that
 was not just changed, which reads as a change that did nothing. `COMPLY_PORT` moves the API
 deliberately.
+
+## The DDD Corpus
+
+`lenses/vertuo-domain.json` reads the real `vertuo-domain` repository: 13 Modules, one per domain
+folder, and seven Facets — Overview, Glossary, Business Rules, Commands, Events, Workflows, State
+Machines. Its `root` is relative, so the two repositories have to be checked out as siblings.
+
+It lives on a shelf of its own and is never added to the fixtures shelf. Tests run against the
+fixtures, and a test that needs a sibling checkout is a test that fails on a machine without one.
+
+Two things about it are worth knowing before changing it:
+
+- **Commands and Events are both Messages, judged differently** (ADR-0019). A Command needs an actor; an
+  Event needs the Rule it came from. This Lens is why criteria stopped being keyed by Fact Kind.
+- **Business Rules is read heading by heading, not as a document.** Read as a document, every
+  `business-rules.md#br-004-…` link in the Commands and Events tables resolves to nothing, and the
+  reading manufactures around two hundred broken-reference Findings that are the Lens's fault and not
+  the corpus's. A tool that invents defects is worse than one that misses them.
 
 The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
 Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above

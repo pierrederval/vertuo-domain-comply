@@ -3,18 +3,26 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "comply": "tsx apps/comply-cli/src/main.ts",
     "shelf:fixtures": "COMPLY_SHELF=libs/comply-fixtures/corpus pnpm comply extract libs/comply-fixtures/corpus/lens-a.json && COMPLY_SHELF=libs/comply-fixtures/corpus pnpm comply extract libs/comply-fixtures/corpus/lens-b.json",
+    "shelf:domain": "COMPLY_SHELF=lenses pnpm comply extract lenses/vertuo-domain.json",
     "dev": "COMPLY_SHELF=\"$PWD/libs/comply-fixtures/corpus\" turbo dev",
+    "dev:domain": "COMPLY_SHELF=\"$PWD/lenses\" turbo dev",
     "api": "COMPLY_SHELF=libs/comply-fixtures/corpus tsx apps/comply-api/src/main.ts",
     "studio": "pnpm --filter @vertuo/comply-studio dev"
   },
-  "pnpm": { "onlyBuiltDependencies": ["esbuild"] },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "tsx": "^4.19.2",

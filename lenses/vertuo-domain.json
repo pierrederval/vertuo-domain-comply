@@ -1,0 +1,57 @@
+{
+  "id": "vertuo-domain",
+  "name": "Vertuoza",
+  "adapter": {
+    "kind": "markdown-frontmatter",
+    "root": "../../vertuo-domain/domains",
+    "moduleIdKey": "domain",
+    "facetKey": "section",
+    "statusKey": "status"
+  },
+  "facets": [
+    { "name": "overview", "label": "Overview", "factKind": "Module", "extractor": "document",
+      "bodyAttribute": "description",
+      "describes": "What this area of the business owns, what it consumes from elsewhere, and what it deliberately does not own.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["description"] }] },
+
+    { "name": "glossary", "label": "Glossary", "factKind": "Term", "extractor": "table",
+      "columns": { "Term": "name", "Definition": "definition", "Aliases or Notes": "aliases" },
+      "describes": "The words this area uses and what each one means here. One row per word, with the aliases it is also known by, so two names for one thing can be found.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
+
+    { "name": "business-rules", "label": "Business Rules", "factKind": "Rule", "extractor": "heading",
+      "bodyAttribute": "statement",
+      "describes": "What must hold in this area. One heading per rule, which is also what the Commands and Events tables link to when they cite the rule they came from.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] },
+
+    { "name": "commands", "label": "Commands", "factKind": "Message", "extractor": "table",
+      "columns": { "Command": "name", "Actor": "actor", "Intent": "definition",
+        "Main Rules": "rules", "Resulting Events": "events" },
+      "describes": "Requests that something happen. Each needs who may ask for it and what it is meant to achieve; without an actor, a command says nothing about who is allowed to do it.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "actor", "definition"] }] },
+
+    { "name": "events", "label": "Events", "factKind": "Message", "extractor": "table",
+      "columns": { "Event": "name", "Meaning": "definition", "Related Rule": "rule" },
+      "describes": "Business facts that have already happened, which other areas react to. Each needs what it means and the Rule it came from, so a reader can trace why it exists.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition", "rule"] }] },
+
+    { "name": "workflows", "label": "Workflows", "factKind": "Rule", "extractor": "heading",
+      "bodyAttribute": "statement",
+      "describes": "How work actually moves through this area, end to end. One heading per workflow.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] },
+
+    { "name": "state-machines", "label": "State Machines", "factKind": "Transition", "extractor": "table",
+      "columns": { "Transition": "name", "Guard": "guard" },
+      "describes": "Which state something may move to from which, and what has to be true for it to move. One row per transition, with the guard that permits it.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "guard"] }] }
+  ],
+  "maturity": {
+    "levels": ["candidate", "reviewed", "agreed"],
+    "approvedAtOrAbove": "agreed"
+  },
+  "statusMappings": [
+    { "match": "Candidate - Derived From Current Backend Behavior",
+      "maturity": "candidate",
+      "sources": ["current backend behaviour"] }
+  ]
+}
