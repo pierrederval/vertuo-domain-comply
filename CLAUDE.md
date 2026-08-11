@@ -124,7 +124,7 @@ corpse. If a Lens over a second corpus is added, check what its source says abou
 It lives on a shelf of its own and is never added to the fixtures shelf. Tests run against the
 fixtures, and a test that needs a sibling checkout is a test that fails on a machine without one.
 
-Seven things about it are worth knowing before changing it:
+Eight things about it are worth knowing before changing it:
 
 - **Commands and Domain Events are both Messages, judged differently** (ADR-0019). A Command needs an
   actor; an Event needs the Rule it came from. This Lens is why criteria stopped being keyed by Fact Kind.
@@ -172,6 +172,19 @@ Seven things about it are worth knowing before changing it:
   business wants the rule and the other what the code was found to do, and the test that tells a drift
   from a second Part is whether one source ever writes both. And **`columns` still lets the last of two
   colliding headers win** where `parts` keeps both; no table in either corpus collides, so it is latent.
+- **190 Facts already say where they came from, and none says where it stands** (ADR-0029). A Facet names
+  the attribute holding either, so `sourcesAttribute: "traceability"` on `overview` and `business-rules`
+  reads what 177 of 183 rules and 13 of 20 overviews had already written: the Corpus went from naming **2
+  distinct places across 1506 Facts** to naming 550, and 416 Facts are corroborated twice or more instead
+  of 253. Not one line of the report moved, because no Facet here declares `minSources`. Three traps.
+  **`Statut de Revue PM` is not a per-Fact status** — it is a `##` section repeating the frontmatter, once
+  per document, which is why ADR-0025 set it aside and why `statusAttribute` is named nowhere in this
+  Lens; naming it would claim a grain the corpus does not have. **A Part written as a bullet list arrives
+  as one string**, so Sources are read one per line, verbatim apart from the list mark — 468 of those 646
+  lines are a bare backticked path and 178 are a path plus a note, so unwrapping the backticks would fold
+  half the set and leave half alone. And **`statusAttribute` buys this corpus nothing until it is
+  written**: per-Fact status does not exist at source, and landing it is 1506 transcriptions in
+  `vertuo-domain-fr`, not a change here.
 
 The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
 Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above

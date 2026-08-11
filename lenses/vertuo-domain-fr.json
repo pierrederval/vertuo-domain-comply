@@ -36,6 +36,7 @@
         "Questions de Révision PM": "reviewQuestions",
         "Réponses de Revue PM": "reviewAnswers"
       },
+      "sourcesAttribute": "traceability",
       "describes": "Ce que ce Domain possède, ce qu'il consomme ailleurs, et ce qu'il ne possède délibérément pas. Un Domain sans Objectif écrit ne peut être ni discuté ni délimité, et un Domain sans Aggregates écrits ne dit pas autour de quoi il est construit.",
       "criteria": [{ "type": "requiredAttributes", "attributes": ["description", "aggregates"] }] },
 
@@ -64,6 +65,7 @@
         "Questions de Révision PM": "reviewQuestions",
         "Réponses de Revue PM": "reviewAnswers"
       },
+      "sourcesAttribute": "traceability",
       "describes": "Ce qui doit tenir dans ce Domain. Un titre par règle, qui dit ce qui tient, ce qui en résulte et pourquoi elle existe, et qui est aussi la cible des liens que citent les tables Commands, Events et Workflows.",
       "criteria": [{ "type": "requiredAttributes",
         "attributes": ["name", "statement", "outcome", "rationale"] }] },

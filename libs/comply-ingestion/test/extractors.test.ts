@@ -87,9 +87,9 @@ describe('extractors', () => {
       name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
     };
     const { items } = extract(doc!, facet);
-    // Three, because the document carries a section of terminology beside its two
+    // Four, because the document carries a section of terminology beside its three
     // rules and this Facet has not said which headings are its own.
-    expect(items).toHaveLength(3);
+    expect(items).toHaveLength(4);
     expect(items[0]!.attributes.name).toBe('R-1 Widgets are made once');
     expect(items[0]!.relations.map((r) => r.targetRef))
       .toEqual(['r-2-a-sprocket-s-role-in-the-søcket']);
@@ -98,8 +98,8 @@ describe('extractors', () => {
 
   it('reads a fixture document both ways, by what its Facet said (ADR-0001)', async () => {
     // Both directions against a corpus that is not the DDD one, in one document: the
-    // Facet that says which headings are its own reads two, and the Facet that says
-    // nothing reads all three. A shape held only against the corpus this was built
+    // Facet that says which headings are its own reads three, and the Facet that says
+    // nothing reads all four. A shape held only against the corpus this was built
     // for is a shape that has leaked into the reading.
     const doc = await parseDocument(fixturePath('corpus-a/alpha/rules.md'));
     const base = {
@@ -109,11 +109,15 @@ describe('extractors', () => {
 
     const declared = extract(doc!, { ...base, itemPattern: '^R-[0-9]+' });
     expect(declared.items.map((i) => i.attributes.name))
-      .toEqual(['R-1 Widgets are made once', "R-2 A Sprocket's Rôle in the Søcket"]);
+      .toEqual([
+        'R-1 Widgets are made once',
+        "R-2 A Sprocket's Rôle in the Søcket",
+        'R-3 A Crate carries one kind of thing',
+      ]);
     expect(declared.setAside).toBe(1);
 
     const silent = extract(doc!, base);
-    expect(silent.items).toHaveLength(3);
+    expect(silent.items).toHaveLength(4);
     expect(silent.setAside).toBe(0);
   });
 

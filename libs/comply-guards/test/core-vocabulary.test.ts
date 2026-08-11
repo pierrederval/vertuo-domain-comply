@@ -19,10 +19,14 @@ const CORE_ROOTS = [
 describe('LAW-004: the core knows no business', () => {
   it('finds no fixture vocabulary in core source', async () => {
     const violations = await checkCoreVocabulary(CORE_ROOTS, [
-      'alpha', 'beta', 'bravo', 'widget', 'sprocket', 'cog', 'grommet',
+      'alpha', 'beta', 'bravo', 'widget', 'sprocket', 'cog', 'grommet', 'crate',
       'lever', 'fulcrum', 'pulley', 'avery', 'quinn',
       'overview', 'terms', 'aggregates', 'rules', 'definitions', 'constraints', 'terminology',
       'agreed', 'guessed',
+      // The attributes lens A says its rules state their standing and their sources in
+      // (ADR-0022). Which attribute carries either is a sentence a Lens says, so the
+      // core knows neither name.
+      'standing', 'checkedAgainst',
     ]);
     expect(violations).toEqual([]);
   });

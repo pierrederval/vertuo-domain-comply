@@ -127,4 +127,26 @@ describe('well-formedness engine', () => {
     ];
     expect(evaluateFacet(facts, LIFECYCLE)).toEqual([]);
   });
+
+  it('asks a fact to state where it stands only where a Facet says so (ADR-0022)', () => {
+    // Requiredness is a sentence a Lens says and never one this engine says. A corpus
+    // whose review genuinely happens a document at a time is read by a Facet that asks
+    // for nothing here, and nothing in the core has an opinion about that (ADR-0001).
+    const asked: FacetSpec = {
+      ...RULES,
+      statusAttribute: 'standing',
+      criteria: [{ type: 'requiredAttributes', attributes: ['name', 'statement', 'standing'] }],
+    };
+    const silent: FacetSpec = { ...RULES, statusAttribute: 'standing', criteria: [] };
+    const saysNothing = fact({ attributes: { name: 'R-1', statement: 'It holds.' } });
+
+    expect(evaluateFact(saysNothing, asked)).toEqual([
+      { criterion: 'requiredAttributes', missing: ['standing'] },
+    ]);
+    expect(evaluateFact(saysNothing, silent)).toEqual([]);
+    expect(evaluateFact(
+      fact({ attributes: { ...saysNothing.attributes, standing: 'Agreed' } }),
+      asked,
+    )).toEqual([]);
+  });
 });
