@@ -76,6 +76,30 @@ describe('loadLens', () => {
     await expect(loadLens(path)).rejects.toThrow(/identifyingColumns/);
   });
 
+  it('rejects a facet that describes which headings are its own but reads no headings', async () => {
+    // Refused for the same reason as the rule above: ignored, the declaration
+    // reads as though it were in force.
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'table', columns: { A: 'name' },
+        itemPattern: '^R-',
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/itemPattern/);
+  });
+
+  it('rejects a description of its headings that this reading cannot follow', async () => {
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement',
+        itemPattern: '^R-[0-9',
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/x/);
+  });
+
   it('rejects a Term facet using the document extractor, which has no name to key a Term on', async () => {
     const path = await writeLens({
       ...valid,

@@ -55,11 +55,30 @@ export async function readShelf(dir: string): Promise<Shelf> {
     }
 
     const held = await latestHeldSeed(join(dir, SEEDS), lens.id);
-    corpus.push({
-      lens,
-      seed: held === null ? null : await readSeed(held.path),
-      sourceReadAt: held?.heldAt ?? null,
-    });
+
+    // One Corpus whose knowledge cannot be read is one Corpus passed over, and the
+    // reason travels with it. Left to throw, a single shelf holding knowledge written
+    // down in an older form takes down the reading of every other Corpus beside it —
+    // and the one thing to do about it goes unsaid, because nothing is left standing
+    // to say it.
+    //
+    // Where a reason goes from here is the server's business, and today it goes only
+    // to its own log. A reader is told a Corpus is on the shelf or is not, never why
+    // one is missing, which is a gap this did not open and does not close.
+    let seed: Seed | null = null;
+    if (held !== null) {
+      try {
+        seed = await readSeed(held.path);
+      } catch (cause) {
+        passedOver.push({
+          file: entry.name,
+          reason: cause instanceof Error ? cause.message : String(cause),
+        });
+        continue;
+      }
+    }
+
+    corpus.push({ lens, seed, sourceReadAt: held?.heldAt ?? null });
   }
 
   corpus.sort((a, b) => (a.lens.id < b.lens.id ? -1 : a.lens.id > b.lens.id ? 1 : 0));

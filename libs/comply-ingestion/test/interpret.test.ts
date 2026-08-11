@@ -26,7 +26,7 @@ function seedOf(...documents: Partial<SeedDocument>[]): Seed {
     lensId: 'temp-corpus',
     documents: documents.map((document) => ({
       path: 'm/doc.md', containerId: 'm', readable: true, bodyStartLine: 6,
-      moduleId: 'm', facet: 'notes', status: 'settled', owner: null,
+      moduleId: 'm', facet: 'notes', status: 'settled', owner: null, setAside: 0,
       items: [{ line: 8, attributes: { name: 'A' }, relations: [], excerpt: '## A', excerptCut: false }],
       ...document,
     })),

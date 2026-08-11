@@ -220,6 +220,26 @@ decided by the Lens when the Seed is read, never by whatever wrote it.
 A Seed is a technical artifact, never a business-facing surface. It is not a Change Request and does
 not represent anyone's decision (ADR-0012).
 
+### Set Aside
+
+Something a Facet declined, having said it was none of its own: a table headed differently from the
+Facet's, a heading that is the page's furniture rather than its knowledge. What a Facet's own things
+look like is a sentence the Lens says (ADR-0024, ADR-0025).
+
+**Set aside is not the same as absent, and not the same as unreadable.** Absent means the business has
+not written it down. Unreadable means the reading failed. Set aside means it is written down, it was
+read, and it is not this Facet's — it is a payload beside the Domain Event it belongs to, a word the
+business retired beside the ones it still uses.
+
+**Nothing is set aside in silence.** A reading states how many things it set aside against how many it
+found, whether or not the figure is zero (LAW-006). A count and never the things themselves: what was
+declined is not this Corpus's knowledge, and recording it would be recording knowledge the Corpus does
+not claim.
+
+**Whether something is set aside is decided before any criterion is applied**, so tightening what counts
+as enough can never change how many things there are and two readings of one Corpus stay comparable
+(ADR-0016).
+
 ### Excerpt
 
 The source text a Fact was read from, travelling with it so a reader can check the claim without

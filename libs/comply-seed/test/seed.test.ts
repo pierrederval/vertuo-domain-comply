@@ -9,6 +9,7 @@ import {
   seedDigest,
   seedSchema,
   SEED_VERSION,
+  whatWasRead,
   type Seed,
 } from '../src/index.js';
 
@@ -29,6 +30,7 @@ function seed(overrides: Partial<Seed> = {}): Seed {
         items: [
           { line: 8, attributes: { a: 'one' }, relations: [], excerpt: '| one |', excerptCut: false },
         ],
+        setAside: 0,
       },
     ],
     ...overrides,
@@ -93,15 +95,57 @@ describe('a Seed as an artifact', () => {
 
   it('refuses a Seed carrying a reading rather than trusting it', async () => {
     // A maturity level or a source list in a Seed would mean extraction had judged.
-    const parsed = seedSchema.safeParse({ version: 1, lensId: 'l1', documents: [{}] });
+    const parsed = seedSchema.safeParse({ version: SEED_VERSION, lensId: 'l1', documents: [{}] });
     expect(parsed.success).toBe(false);
   });
 
   it('says which Seed cannot be read, and why', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'comply-seed-'));
     const path = join(dir, 'broken.json');
-    await writeFile(path, JSON.stringify({ version: 1, lensId: '' }), 'utf8');
+    await writeFile(path, JSON.stringify({ version: SEED_VERSION, lensId: '' }), 'utf8');
     await expect(readSeed(path)).rejects.toThrow(/cannot be read/);
+  });
+
+  it('says in a sentence that knowledge was written down in an older form, and what to do', async () => {
+    // The alternative is a list of complaints about fields somebody has never heard
+    // of, when what happened is one thing with one thing to do about it. Every rule
+    // that came in since the older form fails at once, and none of them is the news.
+    const dir = await mkdtemp(join(tmpdir(), 'comply-seed-'));
+    const path = join(dir, 'older.json');
+    await writeFile(path, JSON.stringify({ ...seed(), version: SEED_VERSION - 1 }), 'utf8');
+
+    await expect(readSeed(path)).rejects.toThrow(/Write it down from source again/);
+    await expect(readSeed(path)).rejects.toThrow(path);
+  });
+
+  it('does not tell somebody to write down again knowledge that says more than it reads', async () => {
+    // The other way round is a different situation with a different answer: this is
+    // the older of two things reading one shelf, and re-reading the source here would
+    // write the knowledge down as this understands it and lose what the other
+    // recorded. Conflating the two costs whoever follows the instruction a Seed.
+    const dir = await mkdtemp(join(tmpdir(), 'comply-seed-'));
+    const path = join(dir, 'newer.json');
+    await writeFile(path, JSON.stringify({ ...seed(), version: SEED_VERSION + 1 }), 'utf8');
+
+    await expect(readSeed(path)).rejects.toThrow(/says more than this reading knows how to read/);
+    await expect(readSeed(path)).rejects.not.toThrow(/Write it down from source again/);
+  });
+});
+
+describe('what a reading of the source came to', () => {
+  it('says how much was read against how much was found, never one without the other (LAW-006)', () => {
+    const counted = whatWasRead(seed({
+      documents: [
+        { ...seed().documents[0]!, setAside: 4 },
+        { ...seed().documents[0]!, path: 'x/z.md', items: [], setAside: 2 },
+      ],
+    }));
+
+    expect(counted).toEqual({ read: 1, setAside: 6, found: 7 });
+  });
+
+  it('says nothing was set aside rather than leaving it to be assumed', () => {
+    expect(whatWasRead(seed())).toEqual({ read: 1, setAside: 0, found: 1 });
   });
 });
 

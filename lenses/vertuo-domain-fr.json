@@ -23,6 +23,7 @@
 
     { "name": "business-rules", "label": "Business Rules", "factKind": "Rule", "extractor": "heading",
       "bodyAttribute": "statement",
+      "itemPattern": "^BR-[0-9]{3}",
       "describes": "Ce qui doit tenir dans ce Domain. Un titre par règle, qui est aussi la cible des liens que citent les tables Commands, Events et Workflows.",
       "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] },
 

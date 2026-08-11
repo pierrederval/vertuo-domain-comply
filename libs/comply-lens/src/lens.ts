@@ -74,6 +74,29 @@ export const facetSpecSchema = z.object({
    * every Facet did before this could be said.
    */
   identifyingColumns: z.array(z.string().min(1)).min(1).optional(),
+  /**
+   * For 'heading': which headings under this Facet are its own elements
+   * (ADR-0025).
+   *
+   * A page carries its own furniture beside the knowledge — a section of
+   * terminology, a note about who last looked the page over, a list of what it
+   * links to. Every one of those belongs on the page. None of them is one of the
+   * things the Facet is a Facet of, and read as though it were, each becomes
+   * something with a name and a paragraph that pads a denominator LAW-006
+   * requires be honest.
+   *
+   * Matched against the heading as the document writes it, markup and all: the
+   * person writing this is looking at the source, so what they describe is what
+   * the source says.
+   *
+   * Whether a heading is one of this Facet's is decided here and never by
+   * `criteria`, so tightening what counts as enough can never change how many
+   * things there are and two readings of one Corpus stay comparable (ADR-0016).
+   *
+   * Optional. A Facet that says nothing reads every heading it finds, which is
+   * what every Facet did before this could be said.
+   */
+  itemPattern: z.string().min(1).optional(),
   /** For 'document' and 'heading': the attribute the body lands in. */
   bodyAttribute: z.string().optional(),
   /**
@@ -159,6 +182,37 @@ export const lensSchema = z
           `facet "${facet.name}" names identifyingColumns but reads "${facet.extractor}", ` +
           `not rows of a table; only a facet reading rows can say which tables are its own`,
       });
+    }
+
+    // Describing which headings are a Facet's own means nothing to a Facet that reads
+    // no headings, and is refused for the same reason as the rule above it.
+    for (const [index, facet] of lens.facets.entries()) {
+      if (facet.itemPattern === undefined) continue;
+      if (facet.extractor !== 'heading') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, 'itemPattern'],
+          message:
+            `facet "${facet.name}" describes which headings are its own but reads ` +
+            `"${facet.extractor}", not headings; only a facet reading headings can say ` +
+            `which of them are its elements`,
+        });
+        continue;
+      }
+      try {
+        new RegExp(facet.itemPattern);
+      } catch {
+        // Refused where it is written, rather than thrown from the middle of a
+        // reading: what is wrong is one line of this file, and the person who can
+        // put it right is the person holding it.
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, 'itemPattern'],
+          message:
+            `facet "${facet.name}" describes its headings as "${facet.itemPattern}", ` +
+            `which is not a description this reading can follow`,
+        });
+      }
     }
 
     // A Term facet must map onto the core's semantic slots for a term's canonical name

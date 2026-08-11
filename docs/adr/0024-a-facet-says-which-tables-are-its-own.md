@@ -77,7 +77,9 @@ Signification | Attributs` — was also being read, on the strength of one share
   their headers is mapped. What remains wrong there is a spelling, not a table — 18 transitions head their
   guard column `Gardien` or `Garde (appliquée par le backend)`, so they are read with a name and no guard.
   That is a column mapping and belongs with one.
-- **The reading does not yet say how many tables it set aside.** Six tables leaving 107 rows behind is a
+- **The reading does not yet say how many tables it set aside.** *(Built in ADR-0025: the reading now
+  states 1506 read of 1652 found, 146 set aside — these 107 rows and 39 headings.)* Six tables leaving
+  107 rows behind is a
   reading a person should be told about, and LAW-006 asks that nothing be silently excluded. There is no
   channel for it: saying so per document means a Seed that records it, and the Seed's next version is
   already spoken for (ADR-0022). #41 carries the same obligation for headings and will build the one
