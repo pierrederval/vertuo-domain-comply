@@ -4,6 +4,7 @@
   "tasks": {
     "typecheck": { "dependsOn": ["^typecheck"] },
     "test": { "dependsOn": ["^typecheck"] },
-    "@vertuo/comply-guards#test": { "dependsOn": ["^typecheck"], "cache": false }
+    "@vertuo/comply-guards#test": { "dependsOn": ["^typecheck"], "cache": false },
+    "dev": { "cache": false, "persistent": true, "env": ["COMPLY_SHELF", "COMPLY_PORT"] }
   }
 }

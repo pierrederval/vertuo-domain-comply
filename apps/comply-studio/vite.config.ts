@@ -2,12 +2,18 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 /** Where the read-only surface answers from in development. */
-const API = 'http://127.0.0.1:4000';
+const API = 'http://127.0.0.1:4301';
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 4302,
+    /*
+     * Refused rather than moved. A Studio that quietly took the next free port
+     * leaves two of itself running, and the one a person is reading is then the
+     * one they did not just change — which reads as a change that did nothing.
+     */
+    strictPort: true,
     proxy: {
       /*
        * The Studio and the server answer at the same address on purpose: the
