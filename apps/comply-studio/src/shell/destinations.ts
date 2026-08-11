@@ -26,12 +26,7 @@ export const DESTINATIONS: Destination[] = [
     beingBuilt: 'What needs work in this Corpus, and what changed in it, is being built.',
   },
   { at: 'readiness', label: 'Readiness' },
-  {
-    at: 'inbox',
-    label: 'Inbox',
-    beingBuilt:
-      'The Findings in this Corpus that route to one person, unowned ones first, are being built.',
-  },
+  { at: 'inbox', label: 'Inbox' },
 ];
 
 /** Where a Corpus opens when a reader arrives with nothing more specific in mind. */

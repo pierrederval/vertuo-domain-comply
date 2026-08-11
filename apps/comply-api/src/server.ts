@@ -9,14 +9,18 @@ import {
 import {
   corpusDetailSchema,
   corpusFactSchema,
+  corpusInboxSchema,
   corpusListSchema,
   corpusModuleSchema,
   notHeldSchema,
+  type CitedPlace,
   type CorpusDetail,
   type CorpusFact,
+  type CorpusInbox,
   type CorpusModule,
   type CorpusReading,
   type CorpusSummary,
+  type InboxFinding,
   type IntegrityFigure,
   type ModuleFacet,
   type ModuleFinding,
@@ -24,6 +28,7 @@ import {
   type Movement,
   type Place,
   type ReadinessFigure,
+  type RoutedFindings,
   type SourceText,
   type WrittenPart,
 } from '@vertuo/comply-contract';
@@ -388,6 +393,125 @@ function oneFact(
 }
 
 /**
+ * Which Module writes knowledge at each place this Corpus writes any.
+ *
+ * Keyed on the place, because a place names at most one piece of knowledge — the
+ * assumption ADR-0030 wrote down, and the same one that makes a place an address.
+ * Built once and looked up, rather than searched per Finding: the DDD Corpus writes
+ * 1506 places and its Findings cite 155 of them.
+ */
+function whoWritesWhere(reading: Reading, root: string): Map<string, string> {
+  const written = new Map<string, string>();
+
+  for (const fact of reading.corpus.facts) {
+    const at = placeOf(root, fact.origin);
+    written.set(`${at.file}:${at.line}`, fact.moduleId ?? fact.id);
+  }
+
+  return written;
+}
+
+/**
+ * One place a Finding concerns, with the source text there and the Module that
+ * wrote it.
+ *
+ * The Module is resolved from the place and never from the Finding, because the two
+ * disagree and often: a Finding routes to the Module it is *about* and cites the
+ * place the words are *written*, and a Module referred to but never written reaches
+ * Findings citing places written under somebody else entirely. An address built out
+ * of the Finding's own Module would be refused, correctly, by the surface that opens
+ * a place.
+ *
+ * Nothing for either where there is nothing. A Finding may cite a place precisely to
+ * say that nothing is written at it, and that is the answer rather than a fault.
+ */
+function citedAt(
+  seed: Seed,
+  written: Map<string, string>,
+  root: string,
+  origin: SourceLocation,
+): CitedPlace {
+  const at = placeOf(root, origin);
+
+  return {
+    at,
+    writtenUnder: written.get(`${at.file}:${at.line}`) ?? null,
+    quoted: quotedAt(seed, at),
+  };
+}
+
+/**
+ * One Corpus's Findings as a queue apiece, the ones reaching nobody first.
+ *
+ * The one surface where every Finding is accounted for. A Module's page shows only
+ * its own, and a Finding belonging to no Module appears on no Module's page at all —
+ * so a Finding this dropped would be a Finding nowhere in the product shows.
+ *
+ * Who answers for each comes from the reading's own Modules and never from the
+ * Finding, so this and the grid cannot come to disagree about who answers for a
+ * Module. Nothing is judged here: what was found, and against what, were both
+ * decided where the reading was taken (spec §5.2).
+ */
+function inboxOf(shelved: ShelvedCorpus, takenAt: string): CorpusInbox {
+  const { lens, seed, sourceReadAt } = shelved;
+  const corpus = { id: lens.id, name: lens.name ?? lens.id };
+  const reading = readNow(shelved, takenAt);
+
+  // Nothing has been written down, so there was nothing to look at — which is a
+  // different answer from a Corpus nothing was found in, and would otherwise tell
+  // a reader their knowledge is clean when nobody has read it.
+  if (reading === null || seed === null || sourceReadAt === null) {
+    return { corpus, reading: { outcome: 'nothing-written-down-yet' } };
+  }
+
+  const { root } = lens.adapter;
+  const written = whoWritesWhere(reading, root);
+  const answersFor = new Map(reading.matrix.rows.map((row) => [row.moduleId, row.owner]));
+
+  // The queue reaching nobody first, then one per person in the order they first
+  // answer for a Module here — this Corpus's own order, and not one invented. An
+  // order by how much each holds would be a ranking, which is a figure by another
+  // name.
+  const queues = new Map<string | null, InboxFinding[]>([[null, []]]);
+  for (const row of reading.matrix.rows) {
+    if (row.owner !== null && !queues.has(row.owner)) queues.set(row.owner, []);
+  }
+
+  for (const finding of reading.findings) {
+    // A Finding belonging to no Module reaches nobody, and so does one belonging
+    // to a Module nobody answers for. They are different work and go to the same
+    // queue: what the reader is asked for is a person, and there is none.
+    const owner = finding.moduleId === null ? null : answersFor.get(finding.moduleId) ?? null;
+
+    queues.get(owner)!.push({
+      says: finding.message,
+      moduleId: finding.moduleId,
+      cites: citedAt(seed, written, root, finding.origin),
+      alsoCites: (finding.relatedOrigins ?? []).map((also) =>
+        citedAt(seed, written, root, also),
+      ),
+    });
+  }
+
+  const routesTo: RoutedFindings[] = [...queues.entries()]
+    // A person with nothing to answer for has no queue rather than an empty one:
+    // drawn, an empty queue reads as work that has been dealt with.
+    .filter(([, findings]) => findings.length > 0)
+    .map(([owner, findings]) => ({ owner, findings }));
+
+  return {
+    corpus,
+    reading: {
+      outcome: 'read',
+      sourceReadAt: sourceReadAt.toISOString(),
+      lensId: reading.matrix.lensId,
+      routesTo,
+      lookedFor: reading.checks,
+    },
+  };
+}
+
+/**
  * The read-only surface over a shelf.
  *
  * Every route is a GET. Nothing here writes: re-reading the source is the one
@@ -436,6 +560,30 @@ export function buildServer(shelf: string): FastifyInstance {
       if (shelved === undefined) return reply.status(404).send({ id: request.params.id });
 
       return wholeReading(shelved, new Date().toISOString());
+    },
+  );
+
+  server.get(
+    '/corpus/:id/inbox',
+    {
+      schema: {
+        params: z.object({ id: z.string().min(1) }),
+        /**
+         * The whole queue travels, and the surface narrows it to one person. Asked
+         * for per person, the page could not say how many Findings reach nobody
+         * without asking a second time — and two answers about one Corpus is how
+         * the loudest thing on the page comes to disagree with the rest of it.
+         */
+        response: { 200: corpusInboxSchema, 404: z.object({ id: z.string().min(1) }) },
+      },
+    },
+    async (request, reply) => {
+      const { corpus } = await readShelf(shelf);
+      const shelved = corpus.find((entry) => entry.lens.id === request.params.id);
+
+      if (shelved === undefined) return reply.status(404).send({ id: request.params.id });
+
+      return inboxOf(shelved, new Date().toISOString());
     },
   );
 

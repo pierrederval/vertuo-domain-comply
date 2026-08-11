@@ -265,8 +265,8 @@ describe('one Module, whole', () => {
     const reading = await readModuleReading('third-shape', grid.modules[0]!.id);
 
     // The Corpus has the Finding; the only Module in it does not. A Finding that
-    // routes to nobody reaches the Inbox, which is #23, and showing it here
-    // would make it look answered for.
+    // routes to nobody reaches the Inbox instead, in the queue that reaches
+    // nobody; showing it here would make it look answered for.
     expect(grid.integrity.openFindings).toBeGreaterThan(0);
     expect(reading.findings).toEqual([]);
     expect(reading.lookedFor.length).toBeGreaterThan(0);

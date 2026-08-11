@@ -5,7 +5,6 @@ import type {
   Ladder,
   ModuleFacet,
   ModuleFinding,
-  Place,
   UnmetCriterion,
 } from '@vertuo/comply-contract';
 import { Figure } from '../components/Figure.js';
@@ -16,23 +15,9 @@ import {
   Readings,
   Surface,
 } from '../components/layout.js';
-import { Where } from '../components/Where.js';
+import { opensAt, Where } from '../components/Where.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { count } from '../words.js';
-
-/**
- * Where one piece of knowledge is opened.
- *
- * A place is the address, because it is the only name every Corpus gives a piece of
- * knowledge. Its two halves travel named rather than folded into the address: a
- * document's path holds separators of its own, and one carrying them encoded is an
- * address that works here and is taken apart by the first thing that tidies a path
- * on its way through.
- */
-function opensAt(corpusId: string, moduleId: string, at: Place): string {
-  const held = `/corpus/${encodeURIComponent(corpusId)}/modules/${encodeURIComponent(moduleId)}`;
-  return `${held}/knowledge?in=${encodeURIComponent(at.file)}&line=${at.line}`;
-}
 
 /**
  * One reason a Facet is short on content, in words.
