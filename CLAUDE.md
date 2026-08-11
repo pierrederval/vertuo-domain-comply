@@ -99,10 +99,15 @@ of a pair by hand is how a person ends up reading a page that is answering from 
 The two run under Turborepo as persistent tasks, so nothing new orchestrates them. Either can still
 be run alone when that is what you want.
 
-Neither port moves if it is taken — both refuse to start and say so. A development server that
-quietly took the next port leaves two of itself running, and the one being read is then the one that
-was not just changed, which reads as a change that did nothing. `COMPLY_PORT` moves the API
-deliberately.
+Neither port moves if it is taken. A development server that quietly took the next port leaves two of
+itself running, and the one being read is then the one that was not just changed, which reads as a
+change that did nothing. `COMPLY_PORT` moves the API deliberately.
+
+`pnpm dev` checks both ports before Turborepo starts anything, because refusing is only half of it.
+Left to Vite, the refusal is an unhandled error with a stack trace through its own internals, and
+Turborepo kills the API beside it — so the last thing on screen is two failures and no hint that the
+cause is a pair somebody left running in another terminal. `scripts/check-ports.mjs` names it instead,
+and says how to find what is holding them.
 
 ## The DDD Corpus
 
