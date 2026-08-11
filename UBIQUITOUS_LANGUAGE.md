@@ -63,6 +63,29 @@ detects one thing known by two names cannot itself carry two names for its centr
 A view of one Fact Kind within one Module — for example, that Module's Terms. Which Facets a Corpus
 has is declared by its Lens, never fixed by the core.
 
+### Part
+
+One named piece of a single Fact, read from the sub-structure the source already has. A Rule written
+with its statement, its rationale, and its outcome under separate subheadings has three Parts, and the
+Facet declares which subheading lands in which attribute — exactly as it declares which table column
+does.
+
+Parts are what let a Facet ask for *why this Rule exists* without any judgment about prose: the question
+becomes whether a Part is there (ADR-0020). Which Parts exist is a Lens declaration and never a fixed
+list in the core, because a fixed list of document sections is what LAW-004 forbids by name.
+
+Not a "section" — in a corpus a section is commonly the whole document, and one word for both a document
+and a piece of one Fact is the split identity this product detects.
+
+### Defining Facet
+
+The one Facet whose Facts settle what a word means. A Corpus may carry several Term Facets — a glossary,
+a list of aggregates, a cast of actors — and only one of them is the dictionary; the rest are Terms that
+define nothing (ADR-0021).
+
+Without this, every Term Facet is a rival dictionary, and a word that appears in two of them is reported
+as defined two ways when the two are not making the same claim at all.
+
 ### Module Owner
 
 The named person accountable for one Module's knowledge. Every Module has one. A Module without an
@@ -77,6 +100,10 @@ the Lens. The core defines only the ordering, never the names.
 
 The three questions behind the ladder are always: is it **present**, is it **well-formed**, is it
 **approved**.
+
+A Fact states its own rung. Reading one from the document a Fact happens to live in spreads a single
+sign-off across everything beneath it, and leaves a reader unable to tell a stated claim from an
+inherited one (ADR-0022).
 
 ### Source
 
