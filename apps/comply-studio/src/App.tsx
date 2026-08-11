@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, Navigate, Route, Routes, useParams } from 'react-router';
 import { fetchCorpus, fetchCorpusDetail, fetchModule } from './api.js';
 import { Answering } from './components/Answering.js';
-import { NothingToShow, Page } from './components/layout.js';
+import { NothingToShow } from './components/layout.js';
+import { Card, CardContent } from './components/ui/card.js';
 import { CorpusList } from './corpus/CorpusList.js';
 import { CorpusMatrix } from './corpus/CorpusMatrix.js';
 import { ModuleDetail } from './corpus/ModuleDetail.js';
@@ -40,21 +41,20 @@ function useShelf(): ShelfState {
   return shelf;
 }
 
+/** A sentence where a surface would be, drawn as a surface so it reads as one. */
+function Says({ children }: { children: ReactNode }) {
+  return (
+    <Card className="border-dashed shadow-none">
+      <CardContent>
+        <NothingToShow>{children}</NothingToShow>
+      </CardContent>
+    </Card>
+  );
+}
+
 function EveryCorpus({ shelf }: { shelf: ShelfState }) {
-  if (shelf.trouble !== null) {
-    return (
-      <Page title="Corpus">
-        <NothingToShow>{shelf.trouble}</NothingToShow>
-      </Page>
-    );
-  }
-  if (shelf.corpus === null) {
-    return (
-      <Page title="Corpus">
-        <NothingToShow>Reading the shelf.</NothingToShow>
-      </Page>
-    );
-  }
+  if (shelf.trouble !== null) return <Says>{shelf.trouble}</Says>;
+  if (shelf.corpus === null) return <Says>Reading the shelf.</Says>;
   return <CorpusList corpus={shelf.corpus} />;
 }
 
@@ -88,26 +88,20 @@ function OneModule() {
  * nothing on it reads as a broken one — and a reader who takes an unbuilt
  * surface for a broken one stops trusting the ones that work.
  */
-function BeingBuilt({ label, says }: { label: string; says: string }) {
-  return (
-    <Page title={label}>
-      <NothingToShow>{says}</NothingToShow>
-    </Page>
-  );
+function BeingBuilt({ says }: { says: string }) {
+  return <Says>{says}</Says>;
 }
 
 /** Nothing is kept at the address the reader arrived at. */
 function Nowhere() {
   return (
-    <Page title="Nothing here">
-      <NothingToShow>
-        Nothing is kept at that address.{' '}
-        <Link to="/corpus" className="underline">
-          Every Corpus on the shelf
-        </Link>{' '}
-        is a place to start.
-      </NothingToShow>
-    </Page>
+    <Says>
+      Nothing is kept at that address.{' '}
+      <Link to="/corpus" className="underline underline-offset-4">
+        Every Corpus on the shelf
+      </Link>{' '}
+      is a place to start.
+    </Says>
   );
 }
 
@@ -131,9 +125,7 @@ export function App() {
             <Route
               key={destination.at}
               path={`/corpus/:id/${destination.at}`}
-              element={
-                <BeingBuilt label={destination.label} says={destination.beingBuilt ?? ''} />
-              }
+              element={<BeingBuilt says={destination.beingBuilt ?? ''} />}
             />
           ),
         )}

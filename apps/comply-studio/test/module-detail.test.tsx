@@ -86,7 +86,7 @@ describe('one Module, drilled into', () => {
 
     for (const facet of MODULE.reading.facets) {
       expect(drawn).toContain(facet.facet);
-      expect(drawn).toContain(`state-${facet.state}`);
+      expect(drawn).toContain(`data-facet-state="${facet.state}"`);
     }
   });
 
@@ -251,9 +251,10 @@ describe('one Module, drilled into', () => {
     expect(drawn).not.toMatch(/\bgrade\b/i);
   });
 
-  it('leads back to the Corpus the Module is part of', () => {
-    expect(draw(MODULE)).toContain('href="/corpus/c1"');
-  });
+  // Which Corpus this Module sits in, and the way back to it, are the shell's:
+  // it carries both in the trail. Asserted in `shell.test.tsx`, including for a
+  // Corpus whose source has never been read, so the way back never depends on
+  // there being a reading.
 
   it('says plainly that nothing has been written down, rather than that the Module is missing', () => {
     const unread = corpusModuleSchema.parse({
@@ -265,9 +266,6 @@ describe('one Module, drilled into', () => {
 
     expect(drawn).toContain('Nothing has been written down from this source yet');
     expect(drawn).not.toContain('data-figure');
-    // Still says where the reader is, so the way back does not depend on there
-    // being a reading.
-    expect(drawn).toContain('href="/corpus/c1"');
   });
 
   it('holds no word belonging to any one Corpus', () => {

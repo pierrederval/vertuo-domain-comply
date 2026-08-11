@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { corpusListSchema, type CorpusSummary } from '@vertuo/comply-contract';
 import { AppShell, type ShelfState } from '../src/shell/AppShell.js';
-import { DESTINATIONS } from '../src/shell/destinations.js';
+import { DESTINATIONS, OPENS_AT } from '../src/shell/destinations.js';
 import { whereTheReaderIs } from '../src/shell/where.js';
 
 /**
@@ -38,29 +38,53 @@ function draw(shelf: ShelfState, at = '/corpus'): string {
   );
 }
 
+/** Asked exactly as the shell asks it, from the destinations there actually are. */
+function where(pathname: string) {
+  return whereTheReaderIs(
+    pathname,
+    DESTINATIONS.map((destination) => destination.at),
+    OPENS_AT,
+  );
+}
+
 describe('where the reader is, read off the address', () => {
   it('is nowhere in particular on the shelf', () => {
-    expect(whereTheReaderIs('/corpus')).toEqual({ corpusId: null, moduleId: null });
-    expect(whereTheReaderIs('/')).toEqual({ corpusId: null, moduleId: null });
+    expect(where('/corpus')).toEqual({ corpusId: null, moduleId: null, standingAt: null });
+    expect(where('/')).toEqual({ corpusId: null, moduleId: null, standingAt: null });
   });
 
-  it('is one Corpus, at every destination inside it', () => {
-    for (const at of ['/corpus/corpus-a', '/corpus/corpus-a/readiness', '/corpus/corpus-a/inbox']) {
-      expect(whereTheReaderIs(at)).toEqual({ corpusId: 'corpus-a', moduleId: null });
+  it('is one Corpus, at whichever of its destinations was named', () => {
+    for (const at of DESTINATIONS) {
+      expect(where(`/corpus/corpus-a/${at.at}`)).toEqual({
+        corpusId: 'corpus-a',
+        moduleId: null,
+        standingAt: at.at,
+      });
     }
   });
 
-  it('is one Module inside one Corpus', () => {
-    expect(whereTheReaderIs('/corpus/corpus-a/modules/alpha')).toEqual({
+  it('stands where a Corpus opens when nothing more specific was asked for', () => {
+    expect(where('/corpus/corpus-a')).toEqual({
+      corpusId: 'corpus-a',
+      moduleId: null,
+      standingAt: OPENS_AT,
+    });
+  });
+
+  it('is one Module, and still standing where it was reached from', () => {
+    // A Module is not a destination of its own. Marking none would leave the row
+    // saying the reader is nowhere in the Corpus they are plainly inside.
+    expect(where('/corpus/corpus-a/modules/alpha')).toEqual({
       corpusId: 'corpus-a',
       moduleId: 'alpha',
+      standingAt: OPENS_AT,
     });
   });
 
   it('reads a name back out of the address it travelled in', () => {
     // A Module or Corpus whose name has a space in it is still that name, and the
     // trail shows a reader the name and never the address.
-    expect(whereTheReaderIs('/corpus/field%20service/modules/work%20orders')).toEqual({
+    expect(where('/corpus/field%20service/modules/work%20orders')).toMatchObject({
       corpusId: 'field service',
       moduleId: 'work orders',
     });
@@ -96,6 +120,18 @@ describe('the shell', () => {
     // Back to the Corpus from the Module, which is what makes the trail a trail
     // rather than a caption.
     expect(drawn).toContain('href="/corpus/corpus-a/readiness"');
+    // Still standing where the Module was reached from, so the row of
+    // destinations does not read as nowhere.
+    expect(drawn).toContain('aria-current="page"');
+  });
+
+  it('leads back to the Corpus from a Module of one never read from source', () => {
+    // The way back does not depend on there being a reading. A Module of a Corpus
+    // with nothing written down yet is exactly where a reader most needs it.
+    const drawn = draw(READ, '/corpus/corpus-b/modules/only');
+
+    expect(drawn).toContain('href="/corpus/corpus-b/readiness"');
+    expect(drawn).toContain('only');
   });
 
   it('says how old the reading is wherever a Corpus is being read', () => {

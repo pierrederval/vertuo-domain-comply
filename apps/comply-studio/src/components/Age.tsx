@@ -34,7 +34,11 @@ export function Age({ at, now }: AgeProps) {
   const elapsed = (now ?? new Date()).getTime() - moment.getTime();
 
   return (
-    <time className="age" dateTime={at} title={moment.toISOString()}>
+    <time
+      className="cursor-help border-b border-dotted border-border"
+      dateTime={at}
+      title={moment.toISOString()}
+    >
       {inWords(Math.max(0, elapsed))}
     </time>
   );

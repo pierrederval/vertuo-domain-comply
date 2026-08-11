@@ -1,5 +1,5 @@
 import { Library } from 'lucide-react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
 import type { CorpusSummary } from '@vertuo/comply-contract';
 import { Age } from '../components/Age.js';
 import {
@@ -79,29 +79,36 @@ function Shelf({ shelf, reading }: { shelf: ShelfState; reading: string | null }
  * is somewhere a reader can be sent, bookmark, and come back to. A control that
  * looks like navigation and is not is the one thing worse than either.
  */
-function Destinations({ corpusId }: { corpusId: string }) {
+function Destinations({ corpusId, standingAt }: { corpusId: string; standingAt: string | null }) {
   const held = `/corpus/${encodeURIComponent(corpusId)}`;
 
   return (
     <nav aria-label="This Corpus" className="inline-flex gap-1 rounded-md bg-muted p-1">
-      {DESTINATIONS.map((destination) => (
-        <NavLink
-          key={destination.at}
-          to={`${held}/${destination.at}`}
-          data-destination=""
-          className={({ isActive }) =>
-            [
+      {DESTINATIONS.map((destination) => {
+        // Which one reads as current is decided from where the reader is, not from
+        // whether this link's own address matches: a Module has no destination of
+        // its own and is still somewhere inside one.
+        const here = destination.at === standingAt;
+
+        return (
+          <Link
+            key={destination.at}
+            to={`${held}/${destination.at}`}
+            data-destination=""
+            data-here={here ? '' : undefined}
+            aria-current={here ? 'page' : undefined}
+            className={[
               'rounded-sm px-3 py-1 text-sm font-medium transition-colors',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-              isActive
+              here
                 ? 'bg-card text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground',
-            ].join(' ')
-          }
-        >
-          {destination.label}
-        </NavLink>
-      ))}
+            ].join(' ')}
+          >
+            {destination.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -153,7 +160,11 @@ function Trail({ corpus, moduleId }: { corpus: CorpusSummary | null; moduleId: s
  */
 export function AppShell({ shelf }: { shelf: ShelfState }) {
   const { pathname } = useLocation();
-  const { corpusId, moduleId } = whereTheReaderIs(pathname);
+  const { corpusId, moduleId, standingAt } = whereTheReaderIs(
+    pathname,
+    DESTINATIONS.map((destination) => destination.at),
+    OPENS_AT,
+  );
   const corpus = shelf.corpus?.find((entry) => entry.id === corpusId) ?? null;
   const read = corpus?.reading.outcome === 'read' ? corpus.reading.sourceReadAt : null;
 
@@ -188,7 +199,7 @@ export function AppShell({ shelf }: { shelf: ShelfState }) {
 
         {corpusId !== null && (
           <div className="px-6 pt-6">
-            <Destinations corpusId={corpusId} />
+            <Destinations corpusId={corpusId} standingAt={standingAt} />
           </div>
         )}
 

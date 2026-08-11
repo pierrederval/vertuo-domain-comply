@@ -109,7 +109,8 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
       if (detail.reading.outcome !== 'read') throw new Error('the source was written down');
       const drawn = draw(detail);
 
-      expect(drawn).toContain(detail.name);
+      // The Corpus's own name is the shell's to draw, once, at the top; this
+      // page draws what is in it. Asserted in `shell.test.tsx`.
       for (const facet of detail.reading.facets) expect(drawn).toContain(facet);
       // Every Module, including one with nothing in it. A row left out is a
       // Module nobody is ever reminded of.
@@ -208,12 +209,9 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
     expect(draw(OTHER)).toMatch(/data-grid-scroll=""[^>]*>\s*<table/);
   });
 
-  it('says how old the reading is', () => {
-    const drawn = draw(corpus({}));
-
-    expect(drawn).toContain('Read from source');
-    expect(drawn).toContain('2026-01-01T08:00:00.000Z');
-  });
+  // How old the reading is belongs to the shell, which keeps it in view at every
+  // destination inside a Corpus rather than only on this one. Asserted in
+  // `shell.test.tsx`.
 
   it('leads from each Module to what to do about it', () => {
     const drawn = draw(corpus({}));

@@ -12,11 +12,28 @@ export interface Whereabouts {
   corpusId: string | null;
   /** The Module opened inside it, if one is. */
   moduleId: string | null;
+  /**
+   * Which of the Corpus's destinations reads as the one being stood at.
+   *
+   * A Module is not a destination of its own — it is drilled into from where the
+   * Corpus opens — so a reader inside one is still standing where they descended
+   * from. Marking nothing there would leave the row of destinations saying the
+   * reader is nowhere in the Corpus they are plainly inside.
+   */
+  standingAt: string | null;
 }
 
-const NOWHERE_IN_PARTICULAR: Whereabouts = { corpusId: null, moduleId: null };
+const NOWHERE_IN_PARTICULAR: Whereabouts = {
+  corpusId: null,
+  moduleId: null,
+  standingAt: null,
+};
 
-export function whereTheReaderIs(pathname: string): Whereabouts {
+export function whereTheReaderIs(
+  pathname: string,
+  destinations: readonly string[],
+  opensAt: string,
+): Whereabouts {
   const [, held, corpusId, beneath, moduleId] = pathname.split('/');
 
   if (held !== 'corpus' || corpusId === undefined || corpusId === '') {
@@ -24,11 +41,13 @@ export function whereTheReaderIs(pathname: string): Whereabouts {
   }
 
   const inAModule = beneath === 'modules' && moduleId !== undefined && moduleId !== '';
+  const named = beneath !== undefined && destinations.includes(beneath);
 
   return {
     corpusId: decodeURIComponent(corpusId),
     // Decoded, because a name is what a reader is shown and an address is only
     // how it travelled.
     moduleId: inAModule ? decodeURIComponent(moduleId) : null,
+    standingAt: named ? beneath : opensAt,
   };
 }
