@@ -35,3 +35,4 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0025](./0025-a-facet-says-which-headings-are-its-own-and-the-reading-says-what-it-set-aside.md) | A Facet says which headings are its own, and the reading says what it set aside *(refines 0020 and 0024; Seed format 2; three figures corrected by 0026)* |
 | [0026](./0026-a-fact-is-read-as-the-parts-its-source-already-has.md) | A Fact is read as the parts its source already has *(refines 0020; corrects three figures in 0025)* |
 | [0027](./0027-only-the-dictionary-is-held-to-the-dictionarys-shape.md) | Only the dictionary is held to the dictionary's shape *(implements 0021; corrects one figure in it)* |
+| [0028](./0028-the-build-gate-runs-uncached-and-its-name-is-the-gate.md) | The build gate runs the whole suite uncached, and the job's name is what blocks a merge *(bears on 0013)* |

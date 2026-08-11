@@ -4,12 +4,42 @@ import { REPO_ROOT, scanLiterals, type Violation } from './scan.js';
 
 export interface SurfaceReport {
   /**
+   * The places it was asked about, repo-relative and as given. Kept beside the
+   * files because a place with nothing in it reads identically to a place that
+   * was never named, and only one of those two is a hole (LAW-006).
+   */
+  roots: string[];
+  /**
    * The files the verdict was reached over, repo-relative. Named for the same
    * reason a coverage figure names its denominator (LAW-006): "nothing found"
    * means nothing at all until you know where it was looked for.
    */
   scanned: string[];
   violations: Violation[];
+}
+
+/**
+ * The denominator of a clean verdict, in the words a run says it in: how many
+ * files carried text a reader could meet, and how many of them each place held.
+ *
+ * A guard that finds nothing says nothing, and a guard that looked nowhere says
+ * exactly the same nothing. Which of the two happened is decided entirely by
+ * this figure, so it is stated on every run rather than kept as a number the
+ * tests know and nobody is told. Per place, because that is the resolution the
+ * shrinkage has: a package whose source moves out from under the guard keeps its
+ * directory, raises nothing, and simply falls to none — visible here as a zero
+ * and invisible in a total.
+ */
+export function sayWhatWasScanned(report: SurfaceReport): string {
+  const width = Math.max(...report.roots.map((root) => root.length), 0);
+  const held = (root: string): number =>
+    report.scanned.filter((file) => file.startsWith(`${root}/`)).length;
+
+  const lines = report.roots.map((root) => `  ${root.padEnd(width)} ${held(root)}`);
+  return [
+    `${report.scanned.length} files could carry text a reader meets, in ${report.roots.length} places:`,
+    ...lines,
+  ].join('\n');
 }
 
 /** Where a workspace package keeps the source that can carry a surface. */
@@ -101,5 +131,5 @@ export async function checkSurfaceVocabulary(
       }
     }
   }
-  return { scanned: files, violations };
+  return { roots, scanned: files, violations };
 }

@@ -1,0 +1,51 @@
+# The build gate: the whole suite, on every pull request, before anybody merges.
+#
+# Both vocabulary guards are Vitest tests, so until this existed LAW-004 and
+# LAW-010 were enforced exactly as often as somebody remembered to type
+# `pnpm test`. Nothing here reruns the guards' logic — what was missing was
+# somebody asking them.
+name: build gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: this job reads the tree and reports a verdict, and needs
+# nothing else.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    name: the whole suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No version is written here. pnpm comes from `packageManager` and Node
+      # from `engines.node`, so the workspace declares its toolchain in one
+      # place and this file cannot drift from it.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          # The dependency store only. Nothing here restores `.turbo`: the two
+          # guards read every package in the workspace and can declare no
+          # dependency on what they read, so a task cache keyed on the guard
+          # package's own files replays a pass over a violation planted anywhere
+          # else (#31). That is why `@vertuo/comply-guards#test` is `cache: false`
+          # in turbo.json, and why no cache of task results is carried into this
+          # job to test the point.
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Both, and separately, so a failure says which of the two it was. `test`
+      # depends on the typecheck of a package's dependencies, never on its own.
+      - run: pnpm typecheck
+      - run: pnpm test
