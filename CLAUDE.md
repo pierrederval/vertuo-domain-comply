@@ -124,7 +124,7 @@ corpse. If a Lens over a second corpus is added, check what its source says abou
 It lives on a shelf of its own and is never added to the fixtures shelf. Tests run against the
 fixtures, and a test that needs a sibling checkout is a test that fails on a machine without one.
 
-Six things about it are worth knowing before changing it:
+Seven things about it are worth knowing before changing it:
 
 - **Commands and Domain Events are both Messages, judged differently** (ADR-0019). A Command needs an
   actor; an Event needs the Rule it came from. This Lens is why criteria stopped being keyed by Fact Kind.
@@ -157,6 +157,18 @@ Six things about it are worth knowing before changing it:
   without becoming a list of them; `Statut de Revue PM` is where this corpus writes its review status, so
   #45 will be looking for exactly what is set aside here; and the reading now states what it set aside,
   which is why the Seed is at version 2 and an older shelf has to be written down again.
+- **A Fact is read as the parts its source writes it in, and the level follows from the extractor**
+  (ADR-0026). A Facet reading headings has its Parts one level below; a Facet reading whole documents has
+  the document's own sections. `parts` maps a subheading onto an attribute the way `columns` maps a
+  header, and several spellings may name one Part — which is how `Conditions Dérivées des Sources` and
+  `…de la Source` became one thing. Three traps. **All 20 `index.md` begin at their first section**, so
+  `bodyAttribute` catches nothing there and a Facet asking for it would fail all 20 — which is why
+  `Objectif` is mapped onto `description` and `bodyAttribute` points at `title`; any Facet asking for its
+  `bodyAttribute` needs a Part for its opening section. **`Justification Métier` and `Justification
+  Dérivée du Source` are two Parts, not two spellings** — 27 rules write both, one saying why the
+  business wants the rule and the other what the code was found to do, and the test that tells a drift
+  from a second Part is whether one source ever writes both. And **`columns` still lets the last of two
+  colliding headers win** where `parts` keeps both; no table in either corpus collides, so it is latent.
 
 The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
 Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above

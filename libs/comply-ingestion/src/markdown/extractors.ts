@@ -55,6 +55,102 @@ function relationsIn(text: string): Relation[] {
   return out;
 }
 
+/**
+ * A subheading of the thing a Facet reading whole documents reads: the document
+ * has been cut nowhere, so its own sections are the parts of it.
+ */
+const PART_OF_A_DOCUMENT = /^##\s+(.*)$/;
+/**
+ * A subheading of the thing a Facet reading headings reads: it cuts at one level,
+ * so the parts of what it cut are written one below.
+ */
+const PART_OF_A_HEADING = /^###\s+(.*)$/;
+
+/**
+ * Adds one more reading of one attribute, keeping whatever is already there.
+ *
+ * A source that writes the same part twice — under two of the spellings a Facet
+ * maps onto one attribute, or once before the first part and once under one — has
+ * written both down, and a reading that kept only one would lose the other in
+ * silence (LAW-006).
+ *
+ * Kept as two and never joined into one string: two passages that are not
+ * adjacent in the source, handed to a reader as continuous prose, are not what
+ * the source says (LAW-009, ADR-0017).
+ */
+function alsoRead(
+  attributes: Record<string, AttributeValue>,
+  name: string,
+  text: string,
+): void {
+  const held = attributes[name];
+  if (held === undefined) {
+    attributes[name] = text;
+    return;
+  }
+  attributes[name] = Array.isArray(held) ? [...held, text] : [held, text];
+}
+
+/**
+ * One thing's body, read as the parts its source already writes it in (ADR-0020).
+ *
+ * A Facet that names no parts gets the whole body in one attribute, which is what
+ * every Facet got before this could be said. A Facet that names them gets one
+ * attribute per part, and whatever was written before the first part — a line
+ * classifying the thing, a sentence of preamble — lands in the body attribute,
+ * because it was written under no heading and so belongs to no part.
+ *
+ * A subheading this Facet names no part for contributes nothing and is not
+ * counted as set aside. Set aside means declined: one of this Facet's own things,
+ * refused (ADR-0025). A subheading was never going to be one of them, so nothing
+ * was declined and the figure a reader is shown does not move.
+ */
+function readInParts(
+  lines: string[],
+  partHeading: RegExp,
+  bodyAttribute: string,
+  parts: Record<string, string> | undefined,
+): Record<string, AttributeValue> {
+  const attributes: Record<string, AttributeValue> = {};
+
+  if (parts === undefined) {
+    const whole = lines.join('\n').trim();
+    if (whole !== '') attributes[bodyAttribute] = whole;
+    return attributes;
+  }
+
+  const lead: string[] = [];
+  const found: { attribute: string; text: string }[] = [];
+  let current: { attribute: string | undefined; body: string[] } | null = null;
+
+  const close = (): void => {
+    if (current === null || current.attribute === undefined) return;
+    const text = current.body.join('\n').trim();
+    if (text !== '') found.push({ attribute: current.attribute, text });
+  };
+
+  for (const line of lines) {
+    const heading = partHeading.exec(line);
+    if (heading) {
+      close();
+      current = { attribute: parts[heading[1]!.trim()], body: [] };
+    } else if (current === null) {
+      lead.push(line);
+    } else {
+      current.body.push(line);
+    }
+  }
+  close();
+
+  // The preamble is written before every part, so it is recorded before every part:
+  // an attribute two passages land in holds them in the order the source writes them.
+  const preamble = lead.join('\n').trim();
+  if (preamble !== '') attributes[bodyAttribute] = preamble;
+  for (const { attribute, text } of found) alsoRead(attributes, attribute, text);
+
+  return attributes;
+}
+
 function extractDocument(doc: ParsedDocument, facet: FacetSpec): Extraction {
   const attribute = facet.bodyAttribute ?? 'body';
   const text = doc.body.trim();
@@ -63,7 +159,11 @@ function extractDocument(doc: ParsedDocument, facet: FacetSpec): Extraction {
   if (text === '') return { items: [], setAside: 0 };
   return {
     items: [{
-      attributes: { [attribute]: text },
+      attributes: readInParts(doc.body.split('\n'), PART_OF_A_DOCUMENT, attribute, facet.parts),
+      // Every reference written anywhere in this document, whether or not the section
+      // holding it is mapped to an attribute. A reference is written on the page this
+      // Fact was read from, and reading only the mapped sections would let what a Lens
+      // chooses to name decide which links a reader is told about.
       relations: relationsIn(text),
       line: doc.bodyStartLine,
       endLine: doc.bodyStartLine + doc.body.split('\n').length - 1,
@@ -221,7 +321,13 @@ function extractHeading(doc: ParsedDocument, facet: FacetSpec): Extraction {
     }
     const text = current.body.join('\n').trim();
     items.push({
-      attributes: { name: current.name, slug: slugify(current.name), [attribute]: text },
+      attributes: {
+        name: current.name,
+        slug: slugify(current.name),
+        ...readInParts(current.body, PART_OF_A_HEADING, attribute, facet.parts),
+      },
+      // Every reference written anywhere under this heading, for the reason given
+      // where a whole document is read the same way.
       relations: relationsIn(text),
       line: current.line,
       // The heading line plus everything under it, up to the next heading.

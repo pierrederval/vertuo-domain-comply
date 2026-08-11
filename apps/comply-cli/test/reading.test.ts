@@ -45,6 +45,15 @@ function baselinePath(name: string): string {
  * changed hands — corpus-a's own grid is unchanged even though `alpha/rules.md`
  * gained a section, because that section is furniture its Lens now says is none
  * of the Facet's.
+ *
+ * `corpus-a.txt` moved again by exactly two lines when lens A began reading its
+ * Facts as the parts they are written in (ADR-0026), and `corpus-b.txt` did not
+ * budge. Beta's overview fell from well-formed to present, and its reason changed
+ * from the maturity it has not reached to `missing: owns` — the first case of a
+ * shortfall that names a part of a Fact rather than a whole one. Alpha's rules did
+ * not move despite gaining three subheadings apiece, and the figure at the foot did
+ * not move either, which together are the evidence that parts change what a Fact is
+ * made of and neither how many Facts there are nor what was set aside.
  */
 describe.each([
   ['lens-a.json', 'corpus-a.txt'],

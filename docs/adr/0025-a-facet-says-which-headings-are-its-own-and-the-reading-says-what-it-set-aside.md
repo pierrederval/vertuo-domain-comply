@@ -152,3 +152,15 @@ A finding about a document cites its first Fact, and the first thing in those do
 **Revisit when** a corpus needs to describe its headings by something other than how they begin, or when
 a Facet legitimately reads both rows and headings out of one document. The second is the larger of the
 two and is worth its own change.
+
+## Erratum
+
+The three Readiness Matrix figures above — "189 cells absent, 2 present but not well-formed, 88
+well-formed" — are wrong, and are corrected in ADR-0026. Measured against the same corpus at the same
+commit, the grid is **119 absent, 2 present, 103 well-formed, 0 approved**: 224 cells, 28 modules by 8
+Facets. The recorded three sum to 279, which no reading of eight Facets can produce.
+
+The claim they were offered as evidence for is correct and reproduces exactly — the two readings are
+identical mark for mark, and the 39 headings held no cell back. Every other figure in this ADR
+reproduces as written. Left in place rather than edited, so that nobody who has read or cited these
+numbers finds them quietly different; ADR-0026 carries the correction.

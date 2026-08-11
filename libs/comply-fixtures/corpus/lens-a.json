@@ -12,8 +12,9 @@
   "facets": [
     { "name": "overview", "label": "Overview", "factKind": "Module", "extractor": "document",
       "bodyAttribute": "description",
-      "describes": "What this area of the business is for, in a paragraph somebody outside it can follow.",
-      "criteria": [{ "type": "requiredAttributes", "attributes": ["description"] }] },
+      "parts": { "What it owns": "owns" },
+      "describes": "What this area of the business is for, in a paragraph somebody outside it can follow, and which things belong to it and not to anywhere else.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["description", "owns"] }] },
     { "name": "terms", "label": "Terms", "factKind": "Term", "extractor": "table",
       "columns": { "Word": "name", "Meaning": "definition", "Also called": "aliases" },
       "identifyingColumns": ["Word", "Meaning"],
@@ -22,9 +23,10 @@
     { "name": "rules", "label": "Rules", "factKind": "Rule", "extractor": "heading",
       "bodyAttribute": "statement",
       "itemPattern": "^R-[0-9]+",
-      "describes": "What must hold here. One heading per rule, with somewhere it came from so it can be checked against its source.",
+      "parts": { "Statement": "statement", "Why it exists": "rationale", "Rationale": "rationale" },
+      "describes": "What must hold here. One heading per rule, which says what holds and why it does, with somewhere it came from so it can be checked against its source.",
       "criteria": [
-        { "type": "requiredAttributes", "attributes": ["name", "statement"] },
+        { "type": "requiredAttributes", "attributes": ["name", "statement", "rationale"] },
         { "type": "minSources", "count": 1 }
       ] },
     { "name": "invariants", "label": "Invariants", "factKind": "Rule", "extractor": "heading",
