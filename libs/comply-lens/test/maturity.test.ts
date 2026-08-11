@@ -11,7 +11,6 @@ const lens = {
     { match: 'Guess - From System X', maturity: 'guessed', sources: ['system-x'] },
     { match: 'Agreed', maturity: 'agreed', sources: ['review'] },
   ],
-  criteria: {},
 } satisfies Lens;
 
 describe('maturity decomposition (ADR-0006)', () => {

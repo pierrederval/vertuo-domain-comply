@@ -95,7 +95,7 @@ describe('the whole reading of one Corpus', () => {
       lens.facets.push({
         name: 'unfilled',
         factKind: 'Rule',
-        extractor: 'heading',
+        extractor: 'heading', criteria: [],
         bodyAttribute: 'statement',
       });
     });

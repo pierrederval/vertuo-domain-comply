@@ -98,8 +98,8 @@ export function buildMatrix(corpus: Corpus, lens: Lens): Matrix {
       }
 
       const unmet = distinct([
-        ...facts.flatMap((f) => evaluateFact(f, lens)),
-        ...evaluateFacet(facts, facet.factKind, lens),
+        ...facts.flatMap((f) => evaluateFact(f, facet)),
+        ...evaluateFacet(facts, facet),
       ]);
 
       const notYetApproved = facts.filter((f) => !isApproved(lens, f.maturityLevel)).length;

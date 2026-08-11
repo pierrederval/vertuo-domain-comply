@@ -15,11 +15,10 @@ const valid = {
   id: 'p',
   adapter: { kind: 'markdown-frontmatter', root: './corpus', moduleIdKey: 'm', facetKey: 'f', statusKey: 's' },
   facets: [
-    { name: 'anything', factKind: 'Term', extractor: 'table', columns: { A: 'name', B: 'definition' } },
+    { name: 'anything', factKind: 'Term', extractor: 'table', criteria: [], columns: { A: 'name', B: 'definition' } },
   ],
   maturity: { levels: ['a', 'b'], approvedAtOrAbove: 'b' },
   statusMappings: [],
-  criteria: {},
 };
 
 describe('loadLens', () => {
@@ -50,7 +49,7 @@ describe('loadLens', () => {
     const path = await writeLens({
       ...valid,
       facets: [
-        { name: 'glossary', factKind: 'Term', extractor: 'table', columns: { Word: 'term', Meaning: 'meaning' } },
+        { name: 'glossary', factKind: 'Term', extractor: 'table', criteria: [], columns: { Word: 'term', Meaning: 'meaning' } },
       ],
     });
     await expect(loadLens(path)).rejects.toThrow(/glossary/);
@@ -67,7 +66,7 @@ describe('loadLens', () => {
   it('rejects a Term facet using the document extractor, which has no name to key a Term on', async () => {
     const path = await writeLens({
       ...valid,
-      facets: [{ name: 'glossary-notes', factKind: 'Term', extractor: 'document', bodyAttribute: 'definition' }],
+      facets: [{ name: 'glossary-notes', factKind: 'Term', extractor: 'document', criteria: [], bodyAttribute: 'definition' }],
     });
     await expect(loadLens(path)).rejects.toThrow(/glossary-notes/);
     await expect(loadLens(path)).rejects.toThrow(/document/);

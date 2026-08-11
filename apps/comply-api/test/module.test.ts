@@ -16,11 +16,15 @@ const WRITTEN_DOWN_AT = new Date('2026-01-01T09:00:00.000Z');
 let shelf: string;
 let server: FastifyInstance;
 
+interface DeclaredFacet {
+  name: string;
+  criteria: unknown[];
+}
+
 interface DeclaredLens {
   id: string;
   adapter: { root: string };
-  facets: unknown[];
-  criteria: Record<string, unknown[]>;
+  facets: DeclaredFacet[];
 }
 
 /**
@@ -104,13 +108,14 @@ describe('one Module, whole', () => {
   });
 
   it('lists what is missing from a Facet short on content', async () => {
-    // Neither fixture Corpus has a Facet short on content: every cell in both is
-    // absent, sufficient-but-unapproved, or approved. So the state this answer
-    // exists for is made here, by asking more of knowledge nobody has touched —
-    // which is also what §6 means by a reading moving when criteria are
-    // tightened rather than when anything is written.
+    // Asked for here rather than taken from a fixture, because this answer has to
+    // carry two kinds of shortfall against one Facet at once and no fixture has
+    // that. Tightening what a Facet asks for is also what §6 means by a reading
+    // moving because the criteria changed rather than because anything was
+    // written — the knowledge under Terms is untouched.
     await shelveLens('lens-a.json', (lens) => {
-      lens.criteria['Term'] = [
+      const terms = lens.facets.find((facet) => facet.name === 'terms')!;
+      terms.criteria = [
         { type: 'requiredAttributes', attributes: ['name', 'definition', 'nobody-writes-this'] },
         { type: 'minSources', count: 4 },
       ];
@@ -245,7 +250,7 @@ describe('one Module, whole', () => {
           facetKey: 'f',
           statusKey: 's',
         },
-        facets: [{ name: 'ff', factKind: 'Term', extractor: 'heading', bodyAttribute: 'definition' }],
+        facets: [{ name: 'ff', factKind: 'Term', extractor: 'heading', criteria: [], bodyAttribute: 'definition' }],
         maturity: { levels: ['low', 'high'], approvedAtOrAbove: 'high' },
         statusMappings: [{ match: 'now', maturity: 'high', sources: ['x'] }],
         owners: { mm: 'someone' },

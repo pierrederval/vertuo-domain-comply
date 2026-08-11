@@ -12,11 +12,10 @@ const inlineLens: Lens = {
   id: 'inline',
   adapter: { kind: 'markdown-frontmatter', root: '.', moduleIdKey: 'area', facetKey: 'kind', statusKey: 'state' },
   facets: [
-    { name: 'terms', factKind: 'Term', extractor: 'table', columns: { Word: 'name', Meaning: 'definition' } },
+    { name: 'terms', factKind: 'Term', extractor: 'table', criteria: [], columns: { Word: 'name', Meaning: 'definition' } },
   ],
   maturity: { levels: ['draft', 'agreed'], approvedAtOrAbove: 'agreed' },
   statusMappings: [],
-  criteria: {},
 };
 
 function termFact(partial: {

@@ -26,3 +26,4 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0016](./0016-a-reading-is-recorded-when-its-inputs-change.md) | A recorded reading is a cache, keyed by the Seed and Lens that produced it *(amends 0014)* |
 | [0017](./0017-a-seed-quotes-its-source-and-says-nothing-about-it.md) | A Seed quotes its source exactly, cuts rather than summarises, and carries no message *(refines 0012)* |
 | [0018](./0018-the-interface-vendors-the-house-design-system.md) | The interface vendors the house design system: Tailwind and shadcn primitives *(supersedes 0013's interface row)* |
+| [0019](./0019-criteria-belong-to-a-facet.md) | Well-formedness criteria belong to a Facet, not to a Fact Kind *(refines 0005)* |

@@ -1,16 +1,18 @@
-MODULE    overview terms    rules    APPROVED  TREND  OWNER
------------------------------------------------------------
-alpha     OK       OK       ~~       2/3       n/a    avery
-beta      ~~       --       --       0/3       n/a    NO OWNER
-bravo     --       ~~       --       0/3       n/a    NO OWNER
------------------------------------------------------------
-Approved facets: 2/9 across 3 modules.
+MODULE    overview   terms      rules      invariants APPROVED  TREND  OWNER
+----------------------------------------------------------------------------
+alpha     OK         OK         ~~         ..         2/4       n/a    avery
+beta      ~~         --         --         --         0/4       n/a    NO OWNER
+bravo     --         ~~         --         --         0/4       n/a    NO OWNER
+----------------------------------------------------------------------------
+Approved facets: 2/12 across 3 modules.
 Denominator is the facets this Lens declares. Knowledge absent from the corpus entirely is not counted.
 Legend: OK approved  ~~ well-formed  .. present  -- absent
 
 Facets not yet approved:
   alpha / rules
       not at the approved maturity level
+  alpha / invariants
+      backed by 1 of the 2 sources this Lens asks for
   beta / overview
       not at the approved maturity level
   bravo / terms

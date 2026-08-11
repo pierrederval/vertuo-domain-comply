@@ -10,22 +10,32 @@
     "ownerKey": "stewart"
   },
   "facets": [
-    { "name": "overview", "factKind": "Module", "extractor": "document", "bodyAttribute": "description" },
-    { "name": "terms", "factKind": "Term", "extractor": "table",
-      "columns": { "Word": "name", "Meaning": "definition", "Also called": "aliases" } },
-    { "name": "rules", "factKind": "Rule", "extractor": "heading", "bodyAttribute": "statement" }
+    { "name": "overview", "label": "Overview", "factKind": "Module", "extractor": "document",
+      "bodyAttribute": "description",
+      "describes": "What this area of the business is for, in a paragraph somebody outside it can follow.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["description"] }] },
+    { "name": "terms", "label": "Terms", "factKind": "Term", "extractor": "table",
+      "columns": { "Word": "name", "Meaning": "definition", "Also called": "aliases" },
+      "describes": "The words this area uses, and what each one means here. One row per word.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
+    { "name": "rules", "label": "Rules", "factKind": "Rule", "extractor": "heading",
+      "bodyAttribute": "statement",
+      "describes": "What must hold here. One heading per rule, with somewhere it came from so it can be checked against its source.",
+      "criteria": [
+        { "type": "requiredAttributes", "attributes": ["name", "statement"] },
+        { "type": "minSources", "count": 1 }
+      ] },
+    { "name": "invariants", "label": "Invariants", "factKind": "Rule", "extractor": "heading",
+      "bodyAttribute": "statement",
+      "describes": "What must never happen. The same Fact Kind as a Rule and held to a higher bar, because an invariant nobody has corroborated twice is not yet enough to build on.",
+      "criteria": [
+        { "type": "requiredAttributes", "attributes": ["name", "statement"] },
+        { "type": "minSources", "count": 2 }
+      ] }
   ],
   "maturity": { "levels": ["blank", "guessed", "agreed"], "approvedAtOrAbove": "agreed" },
   "statusMappings": [
     { "match": "Guess - From System X", "maturity": "guessed", "sources": ["system-x"] },
     { "match": "Agreed", "maturity": "agreed", "sources": ["system-x", "review"] }
-  ],
-  "criteria": {
-    "Module": [{ "type": "requiredAttributes", "attributes": ["description"] }],
-    "Term": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }],
-    "Rule": [
-      { "type": "requiredAttributes", "attributes": ["name", "statement"] },
-      { "type": "minSources", "count": 1 }
-    ]
-  }
+  ]
 }
