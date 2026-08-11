@@ -22,6 +22,30 @@ export const criterionSchema = z.discriminatedUnion('type', [
 export const facetSpecSchema = z.object({
   /** Corpus-specific facet name. Never interpreted by the core. */
   name: z.string().min(1),
+  /**
+   * What to call this Facet where a person reads it. Optional: a Facet that
+   * declares none is called by its name, which is a word somebody chose too.
+   * Drawn and never interpreted.
+   *
+   * Declared here rather than lifted from the source, because a surface has to
+   * name a Facet that **no document exists for**. A Facet absent across every
+   * Module is the reading the grid is drawn to make visible, and it cannot be
+   * named from documents that are not there.
+   */
+  label: z.string().min(1).optional(),
+  /**
+   * What belongs under this Facet, in the business's own words.
+   *
+   * A Facet name arrives from the source, so it is whatever word that corpus
+   * happened to use — `events`, `br`, `state-machines`. A reader who does not
+   * already know what belongs under one cannot learn it from the name, and a
+   * product whose claim is that it shows a person what to write down next
+   * cannot answer that with a slug.
+   *
+   * Optional, and a Facet that declares none says nothing extra. Never
+   * interpreted: this is drawn, and no reading depends on it.
+   */
+  describes: z.string().min(1).optional(),
   factKind: factKindSchema,
   extractor: extractorNameSchema,
   /** For 'table': column header -> attribute name. */

@@ -94,8 +94,12 @@ describe('the whole reading of one Corpus', () => {
     await shelveLens('lens-a.json', (lens) => {
       lens.facets.push({
         name: 'unfilled',
+        // A column with nothing in it is the one a reader most needs named, so it
+        // is declared with a label like any other.
+        label: 'Unfilled',
         factKind: 'Rule',
-        extractor: 'heading', criteria: [],
+        extractor: 'heading',
+        criteria: [],
         bodyAttribute: 'statement',
       });
     });
@@ -103,10 +107,13 @@ describe('the whole reading of one Corpus', () => {
 
     const reading = await readGrid('corpus-a');
 
-    expect(reading.facets).toContain('unfilled');
+    const declared = reading.facets.map((facet) => facet.name);
+    expect(declared).toContain('unfilled');
+    // Named even with nothing under it, which no document could have supplied.
+    expect(reading.facets.at(-1)!.label).toBe('Unfilled');
     for (const module of reading.modules) {
-      expect(module.cells.map((cell) => cell.facet)).toEqual(reading.facets);
-      expect(module.declaredFacets).toBe(reading.facets.length);
+      expect(module.cells.map((cell) => cell.facet)).toEqual(declared);
+      expect(module.declaredFacets).toBe(declared.length);
     }
     // Nobody has written anything under it, in any Module, which is the finding.
     const unfilled = reading.modules.map((module) => module.cells.at(-1)!.state);

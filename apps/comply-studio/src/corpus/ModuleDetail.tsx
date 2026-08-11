@@ -146,7 +146,7 @@ function Declared({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{facet.facet}</CardTitle>
+        <CardTitle>{facet.label}</CardTitle>
         {/*
           The one state that is nothing at all still gets a mark. A Facet drawn as
           blank cannot be told from one the page forgot, and an unwritten Facet is
@@ -158,6 +158,21 @@ function Declared({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
         >
           {facet.state}
         </p>
+        {/*
+          What belongs under this Facet, in the business's own words, above what
+          stands between it and approval. Drawn in every state including absent:
+          somebody with nothing written here is exactly who needs telling what
+          goes here, and telling them once something exists is telling them after
+          they needed it.
+
+          A Facet whose Lens says nothing draws nothing. An empty space where a
+          sentence goes reads as a sentence somebody forgot to write.
+        */}
+        {facet.describes !== undefined && (
+          <p data-describes="" className="text-sm text-muted-foreground">
+            {facet.describes}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <Standing facet={facet} ladder={ladder} />

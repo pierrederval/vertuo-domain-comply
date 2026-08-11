@@ -130,7 +130,14 @@ function wholeReading(shelved: ShelvedCorpus, takenAt: string): CorpusDetail {
       sourceReadAt: sourceReadAt.toISOString(),
       lensId: reading.matrix.lensId,
       ladder: { levels: lens.maturity.levels, approvedAtOrAbove: lens.maturity.approvedAtOrAbove },
-      facets: reading.matrix.facets,
+      // Named from the Lens, so a Facet no Module has filled still has something
+      // to be called: an all-absent column is the reading the grid exists to make
+      // visible and it cannot be named from documents that are not there.
+      facets: lens.facets.map((facet) => ({
+        name: facet.name,
+        label: facet.label ?? facet.name,
+        describes: facet.describes,
+      })),
       modules,
       ...figures(reading),
     },
@@ -196,20 +203,24 @@ function oneModule(
       maturity: fact.maturityLevel,
     }));
 
+    // What this Facet is called and what belongs under it, in every state it can
+    // be in — a Facet with nothing written under it is where a reader most needs
+    // to be told what belongs there.
+    const named = {
+      facet: cell.facet,
+      label: declared.label ?? declared.name,
+      describes: declared.describes,
+    };
+
     switch (cell.state) {
       case 'absent':
-        return { facet: cell.facet, state: 'absent' };
+        return { ...named, state: 'absent' };
       case 'present':
-        return { facet: cell.facet, state: 'present', knowledge, shortOf: cell.unmet };
+        return { ...named, state: 'present', knowledge, shortOf: cell.unmet };
       case 'well-formed':
-        return {
-          facet: cell.facet,
-          state: 'well-formed',
-          knowledge,
-          notYetApproved: cell.notYetApproved,
-        };
+        return { ...named, state: 'well-formed', knowledge, notYetApproved: cell.notYetApproved };
       case 'approved':
-        return { facet: cell.facet, state: 'approved', knowledge };
+        return { ...named, state: 'approved', knowledge };
     }
   });
 

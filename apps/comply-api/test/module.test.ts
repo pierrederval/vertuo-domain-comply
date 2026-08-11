@@ -96,7 +96,9 @@ describe('one Module, whole', () => {
 
         // The page and the grid answer the same about the same Module, because
         // both are arrangements of one reading.
-        expect(reading.facets.map((facet) => facet.facet)).toEqual(grid.facets);
+        expect(reading.facets.map((facet) => facet.facet)).toEqual(
+          grid.facets.map((facet) => facet.name),
+        );
         expect(reading.facets.map((facet) => facet.state)).toEqual(
           row.cells.map((cell) => cell.state),
         );

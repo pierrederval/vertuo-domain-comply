@@ -16,7 +16,7 @@ const DETAIL = {
     sourceReadAt: '2026-01-01T00:00:00.000Z',
     lensId: 'c1',
     ladder: { levels: ['low', 'high'], approvedAtOrAbove: 'high' },
-    facets: ['f1', 'f2'],
+    facets: [{ name: 'f1', label: 'f1' }, { name: 'f2', label: 'f2' }],
     modules: [
       {
         id: 'm1',
