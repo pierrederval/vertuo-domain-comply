@@ -1,19 +1,106 @@
+@import 'tailwindcss';
+
 /*
  * Every value the Studio draws with, in one place.
  *
- * Custom properties rather than a theme object, so that when the shared design
- * system becomes reachable (ADR-0013) its tokens can be dropped in behind these
- * names without touching a component (spec §3.7).
+ * The names on the left are this product's; the names in `@theme inline` are the
+ * ones the vendored components are written against (ADR-0018). The indirection is
+ * the whole point: a component asks for `bg-card`, and what `card` *is* stays a
+ * decision made here rather than a colour repeated at forty call sites.
+ *
+ * The palette is the Studio's own paper-and-ink, not the design system's neutral
+ * default. ADR-0013's interface row is superseded; its token layer is not, and
+ * these are the values it already carried.
  */
 :root {
+  --paper: #fbfbfa;
   --ink: #1c1f23;
   --ink-quiet: #5c646e;
-  --paper: #fbfbfa;
   --panel: #ffffff;
   --line: #e2e4e8;
-  --mark: #8a5a00;
   --focus: #2b5fd9;
 
+  /*
+   * What something a person has to act on is drawn with. LAW-007: a Module
+   * nobody answers for is a defect and not a blank, so absence gets a mark of
+   * its own rather than an empty cell.
+   */
+  --mark: #8a5a00;
+
+  /*
+   * The four states a Facet can be in, as four named values.
+   *
+   * Named rather than written at the call site, because a cell's colour *is* its
+   * meaning: the next person to adjust a shade needs to know they are adjusting
+   * absence. Quiet, but never invisible — a cell drawn as nothing at all cannot
+   * be told from a Facet the grid forgot, and absence is what this page is most
+   * often read for.
+   */
+  --cell-approved: var(--ink);
+  --cell-well-formed: var(--ink-quiet);
+  --cell-present: var(--ink-quiet);
+  --cell-absent: #b3b9c1;
+
+  --radius: 0.375rem;
+}
+
+@theme inline {
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-muted: var(--paper);
+  --color-muted-foreground: var(--ink-quiet);
+  --color-card: var(--panel);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--panel);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--panel);
+  --color-secondary: var(--paper);
+  --color-secondary-foreground: var(--ink);
+  --color-accent: var(--paper);
+  --color-accent-foreground: var(--ink);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--focus);
+
+  --color-mark: var(--mark);
+
+  --color-cell-approved: var(--cell-approved);
+  --color-cell-well-formed: var(--cell-well-formed);
+  --color-cell-present: var(--cell-present);
+  --color-cell-absent: var(--cell-absent);
+
+  /*
+   * The shelf, which is the sidebar. Same paper as everything else: the Studio
+   * has one surface and the rail is part of it, not a separate dark product.
+   */
+  --color-sidebar: var(--panel);
+  --color-sidebar-foreground: var(--ink);
+  --color-sidebar-primary: var(--ink);
+  --color-sidebar-primary-foreground: var(--panel);
+  --color-sidebar-accent: var(--paper);
+  --color-sidebar-accent-foreground: var(--ink);
+  --color-sidebar-border: var(--line);
+  --color-sidebar-ring: var(--focus);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font: 0.9375rem / 1.5 system-ui, -apple-system, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+ * What follows is the layer ADR-0018 replaces, kept only while the surfaces
+ * above it are moved across one at a time. Each block goes when the last thing
+ * rendering it goes; nothing new should reach for one of these names.
+ * ------------------------------------------------------------------------- */
+
+:root {
   --step-1: 0.75rem;
   --step-2: 1rem;
   --step-3: 1.5rem;
@@ -26,17 +113,6 @@
 
   --edge: 6px;
   --hairline: 1px solid var(--line);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font: var(--text-body) / 1.5 system-ui, -apple-system, sans-serif;
 }
 
 .studio {
@@ -262,22 +338,20 @@ body {
   cursor: help;
 }
 
-/*
- * Quiet, but never invisible. A cell drawn as nothing at all cannot be told from
- * a Facet the grid forgot to draw, and absence is the thing this page is most
- * often read for.
- */
 .cell-absent {
-  color: #b3b9c1;
+  color: var(--cell-absent);
 }
 
-.cell-present,
+.cell-present {
+  color: var(--cell-present);
+}
+
 .cell-well-formed {
-  color: var(--ink-quiet);
+  color: var(--cell-well-formed);
 }
 
 .cell-approved {
-  color: var(--ink);
+  color: var(--cell-approved);
 }
 
 .tally,
@@ -351,11 +425,14 @@ body {
   margin: 0 0 var(--step-1);
 }
 
+/* The bullets these lists are read with. Stated rather than inherited, because
+   the reset that arrives with Tailwind takes list markers away. */
 .shortfalls,
 .knowledge,
 .findings {
   margin: 0 0 var(--step-2);
   padding-left: var(--step-3);
+  list-style: disc;
 }
 
 .shortfalls li,
