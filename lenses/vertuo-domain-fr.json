@@ -17,6 +17,7 @@
 
     { "name": "glossary", "label": "Glossary", "factKind": "Term", "extractor": "table",
       "columns": { "Terme": "name", "Définition": "definition", "Alias ou Notes": "aliases" },
+      "identifyingColumns": ["Terme", "Définition"],
       "describes": "Les mots que ce Domain emploie et ce que chacun signifie ici. Une ligne par mot, avec les alias sous lesquels il est aussi connu, pour que deux noms d'une même chose se retrouvent.",
       "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
 
@@ -28,11 +29,13 @@
     { "name": "commands", "label": "Commands", "factKind": "Message", "extractor": "table",
       "columns": { "Command": "name", "Actor": "actor", "Intention": "definition",
         "Règles Principales": "rules", "Domain Events Résultants": "events" },
+      "identifyingColumns": ["Command", "Actor", "Intention"],
       "describes": "Les demandes qu'une chose arrive. Chacune exige qui peut la demander et ce qu'elle vise ; sans Actor, une Command ne dit rien de qui a le droit de l'exercer.",
       "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "actor", "definition"] }] },
 
     { "name": "events", "label": "Domain Events", "factKind": "Message", "extractor": "table",
       "columns": { "Domain Event": "name", "Signification": "definition", "Règle Associée": "rule" },
+      "identifyingColumns": ["Domain Event", "Signification"],
       "describes": "Les faits métier déjà survenus, auxquels d'autres Domains réagissent. Chacun exige sa signification et la Règle dont il découle, pour qu'un lecteur puisse retracer pourquoi il existe.",
       "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition", "rule"] }] },
 
@@ -40,6 +43,7 @@
       "columns": { "Étape": "name", "Description": "statement",
         "Règles Appliquées": "rules", "Règles": "rules",
         "Domain Events": "events", "Domain Events Candidats": "events" },
+      "identifyingColumns": ["Étape", "Description"],
       "describes": "Comment le travail traverse réellement ce Domain, de bout en bout. Une ligne par étape, avec les Règles qu'elle applique et les Domain Events qu'elle produit.",
       "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] },
 

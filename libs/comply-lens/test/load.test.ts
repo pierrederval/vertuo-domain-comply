@@ -63,6 +63,19 @@ describe('loadLens', () => {
     await expect(loadLens(path)).rejects.toThrow(/definitions/);
   });
 
+  it('rejects a facet that names the columns identifying its table but reads no tables', async () => {
+    // Silently ignored, the declaration reads as though it were in force, and a reader
+    // is looking at a count that includes everything it was written to leave out.
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement',
+        identifyingColumns: ['A'],
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/identifyingColumns/);
+  });
+
   it('rejects a Term facet using the document extractor, which has no name to key a Term on', async () => {
     const path = await writeLens({
       ...valid,

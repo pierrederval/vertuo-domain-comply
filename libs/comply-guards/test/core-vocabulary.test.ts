@@ -19,7 +19,7 @@ const CORE_ROOTS = [
 describe('LAW-004: the core knows no business', () => {
   it('finds no fixture vocabulary in core source', async () => {
     const violations = await checkCoreVocabulary(CORE_ROOTS, [
-      'alpha', 'beta', 'bravo', 'widget', 'sprocket', 'cog',
+      'alpha', 'beta', 'bravo', 'widget', 'sprocket', 'cog', 'grommet',
       'lever', 'fulcrum', 'pulley', 'avery', 'quinn',
       'overview', 'terms', 'rules', 'definitions', 'constraints',
       'agreed', 'guessed',

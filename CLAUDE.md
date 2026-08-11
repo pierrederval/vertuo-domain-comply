@@ -124,7 +124,7 @@ corpse. If a Lens over a second corpus is added, check what its source says abou
 It lives on a shelf of its own and is never added to the fixtures shelf. Tests run against the
 fixtures, and a test that needs a sibling checkout is a test that fails on a machine without one.
 
-Four things about it are worth knowing before changing it:
+Five things about it are worth knowing before changing it:
 
 - **Commands and Domain Events are both Messages, judged differently** (ADR-0019). A Command needs an
   actor; an Event needs the Rule it came from. This Lens is why criteria stopped being keyed by Fact Kind.
@@ -142,6 +142,13 @@ Four things about it are worth knowing before changing it:
   references it reported about a French corpus came to be its own defect. The 25 that remain are the
   reading's defect too, for three reasons ADR-0023 names — so the reference count is still not a corpus
   reading, and the genuine figure is zero.
+- **A document holds several tables and only some of them are the Facet's** (ADR-0024). Four Facets name
+  the columns that identify theirs, which is how 107 rows — payloads, retired words, a note about what the
+  backend does — stopped being read as Domain Events, Commands and Terms. Two traps if you touch those
+  declarations: `opportunite/workflows.md` heads its step column `Opération` where every other document
+  heads it `Étape`, so its four rows are set aside rather than read; and `state-machines` names nothing
+  on purpose, because its own tables already separate — what is wrong there is 18 guards spelled `Gardien`,
+  which is a column mapping and not a table.
 
 The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
 Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above

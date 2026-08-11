@@ -113,9 +113,16 @@ function splitRowCells(row: string): string[] {
 
 function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
   const columns = facet.columns ?? {};
+  const identifying = facet.identifyingColumns;
   const lines = doc.body.split('\n');
   const items: ExtractedItem[] = [];
   let headers: string[] | null = null;
+  /**
+   * Whether the table now being read is one this Facet said is its own. Decided once,
+   * at the header row, and never again from a row's own contents — so a row that
+   * happens to be filled in cannot argue its way into a table that was set aside.
+   */
+  let theFacetsOwn = true;
 
   for (const [offset, line] of lines.entries()) {
     const trimmed = line.trim();
@@ -123,7 +130,12 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
 
     const cells = splitRowCells(trimmed.slice(1, trimmed.endsWith('|') ? -1 : undefined));
 
-    if (headers === null) { headers = cells; continue; }
+    if (headers === null) {
+      headers = cells;
+      theFacetsOwn = identifying === undefined || identifying.every((header) => cells.includes(header));
+      continue;
+    }
+    if (!theFacetsOwn) continue;
     if (cells.every(isSeparatorCell)) continue;
 
     const attributes: Record<string, AttributeValue> = {};

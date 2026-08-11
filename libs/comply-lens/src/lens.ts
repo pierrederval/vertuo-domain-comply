@@ -50,6 +50,30 @@ export const facetSpecSchema = z.object({
   extractor: extractorNameSchema,
   /** For 'table': column header -> attribute name. */
   columns: z.record(z.string()).optional(),
+  /**
+   * For 'table': the column headers a table must carry to be one of this Facet's
+   * own (ADR-0024).
+   *
+   * A document routinely holds several tables, and only some of them hold this
+   * Facet's knowledge. The others are a payload, a retired vocabulary, a note about
+   * what the software does today — written down next to the knowledge because that
+   * is where it belongs, not because it is the same thing. Read as this Facet's,
+   * each row becomes something carrying a name and almost nothing else, failing a
+   * criterion it was never meant to be held to, in a queue where nobody can act on
+   * it.
+   *
+   * Only the headers that identify the table are named, never all of them: a corpus
+   * spells the same column several ways, and requiring the whole header row would
+   * refuse a table the moment one word of it moved.
+   *
+   * Whether a table is this Facet's is decided here and never by `criteria`, so
+   * tightening what counts as enough can never change how many things there are and
+   * two readings of one Corpus stay comparable (ADR-0016).
+   *
+   * Optional. A Facet that names none reads every table it finds, which is what
+   * every Facet did before this could be said.
+   */
+  identifyingColumns: z.array(z.string().min(1)).min(1).optional(),
   /** For 'document' and 'heading': the attribute the body lands in. */
   bodyAttribute: z.string().optional(),
   /**
@@ -122,6 +146,21 @@ export const lensSchema = z
         });
       }
     }
+    // Naming the columns that identify a table means nothing to a Facet that reads no
+    // rows. Refused rather than ignored: ignored, the declaration reads as though it
+    // were in force, and whoever wrote it is looking at a count that includes
+    // everything they wrote it to leave out.
+    for (const [index, facet] of lens.facets.entries()) {
+      if (facet.identifyingColumns === undefined || facet.extractor === 'table') continue;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['facets', index, 'identifyingColumns'],
+        message:
+          `facet "${facet.name}" names identifyingColumns but reads "${facet.extractor}", ` +
+          `not rows of a table; only a facet reading rows can say which tables are its own`,
+      });
+    }
+
     // A Term facet must map onto the core's semantic slots for a term's canonical name
     // and its definition, so a language-integrity check can find them without guessing
     // at corpus-specific attribute names.

@@ -31,3 +31,4 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0021](./0021-one-facet-defines-the-language.md) | One Facet defines the language *(refines 0019)* |
 | [0022](./0022-a-status-is-declared-per-fact.md) | A status is declared per Fact, and its provenance beside it *(refines 0006 and 0012)* |
 | [0023](./0023-a-reference-resolves-the-way-its-source-resolves-it.md) | A reference resolves the way its source resolves it *(refines 0020 and corrects its count)* |
+| [0024](./0024-a-facet-says-which-tables-are-its-own.md) | A Facet says which tables are its own *(refines 0019 and 0020)* |
