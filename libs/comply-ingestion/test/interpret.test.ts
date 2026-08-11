@@ -14,10 +14,9 @@ function lens(): Lens {
       kind: 'markdown-frontmatter', root: ROOT,
       moduleIdKey: 'area', facetKey: 'kind', statusKey: 'state', ownerKey: 'stewart',
     },
-    facets: [{ name: 'notes', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement' }],
+    facets: [{ name: 'notes', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement' }],
     maturity: { levels: ['low', 'high'], approvedAtOrAbove: 'high' },
     statusMappings: [{ match: 'settled', maturity: 'high', sources: ['review'] }],
-    criteria: {},
   };
 }
 

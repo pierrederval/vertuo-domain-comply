@@ -12,10 +12,9 @@ function makeLens(root: string): Lens {
   return {
     id: 'temp-corpus',
     adapter: { kind: 'markdown-frontmatter', root, moduleIdKey: 'area', facetKey: 'kind', statusKey: 'state' },
-    facets: [{ name: 'notes', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement' }],
+    facets: [{ name: 'notes', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement' }],
     maturity: { levels: ['low', 'high'], approvedAtOrAbove: 'high' },
     statusMappings: [{ match: 'high', maturity: 'high', sources: [] }],
-    criteria: {},
   };
 }
 
@@ -74,8 +73,7 @@ describe('extraction judges nothing', () => {
       facets: lens.facets.map((f) => (f.factKind === 'Rule' ? { ...f, factKind: 'Message' as const } : f)),
       maturity: { levels: ['x', 'y'], approvedAtOrAbove: 'y' },
       statusMappings: [],
-      criteria: {},
-      owners: { alpha: 'someone-else' },
+        owners: { alpha: 'someone-else' },
     };
 
     expect(seedDigest(await extractSeed(readDifferently))).toBe(seedDigest(await extractSeed(lens)));

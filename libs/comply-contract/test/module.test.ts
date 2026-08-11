@@ -20,15 +20,17 @@ const MODULE = {
     ladder: { levels: ['low', 'high'], approvedAtOrAbove: 'high' },
     owner: null,
     facets: [
-      { facet: 'f1', state: 'absent' },
+      { facet: 'f1', label: 'f1', state: 'absent' },
       {
         facet: 'f2',
+        label: 'f2',
         state: 'present',
         knowledge: [{ at: { file: 'one.md', line: 3 }, maturity: 'low' }],
         shortOf: [{ criterion: 'requiredAttributes', missing: ['a1'] }],
       },
       {
         facet: 'f3',
+        label: 'f3',
         state: 'well-formed',
         knowledge: [
           { at: { file: 'two.md', line: 4 }, maturity: 'low' },
@@ -38,6 +40,7 @@ const MODULE = {
       },
       {
         facet: 'f4',
+        label: 'f4',
         state: 'approved',
         knowledge: [{ at: { file: 'three.md', line: 1 }, maturity: 'high' }],
       },

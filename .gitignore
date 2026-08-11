@@ -5,3 +5,5 @@ libs/comply-fixtures/corpus/runs/
 .superpowers/
 .turbo/
 dist/
+lenses/seeds/
+lenses/runs/

@@ -24,9 +24,10 @@ const MODULE: CorpusModule = corpusModuleSchema.parse({
     ladder: { levels: ['low', 'middling', 'high'], approvedAtOrAbove: 'high' },
     owner: null,
     facets: [
-      { facet: 'f1', state: 'absent' },
+      { facet: 'f1', label: 'f1', state: 'absent' },
       {
         facet: 'f2',
+        label: 'f2',
         state: 'present',
         knowledge: [{ at: { file: 'one.md', line: 3 }, maturity: 'low' }],
         shortOf: [
@@ -36,6 +37,7 @@ const MODULE: CorpusModule = corpusModuleSchema.parse({
       },
       {
         facet: 'f3',
+        label: 'f3',
         state: 'well-formed',
         knowledge: [
           { at: { file: 'two.md', line: 4 }, maturity: 'middling' },
@@ -45,6 +47,7 @@ const MODULE: CorpusModule = corpusModuleSchema.parse({
       },
       {
         facet: 'f4',
+        label: 'f4',
         state: 'approved',
         knowledge: [{ at: { file: 'three.md', line: 1 }, maturity: 'high' }],
       },
@@ -90,6 +93,48 @@ describe('one Module, drilled into', () => {
     }
   });
 
+  it('says what belongs under each Facet, whatever state it is in', () => {
+    const drawn = draw(
+      like({
+        facets: [
+          {
+            facet: 'f1', label: 'Events', state: 'absent',
+            describes: 'Business facts that have already happened.',
+          },
+          {
+            facet: 'f2', label: 'Commands', state: 'approved',
+            describes: 'Requests that something happen, and who may ask.',
+            knowledge: [{ at: { file: 'one.md', line: 1 }, maturity: 'high' }],
+          },
+        ],
+        approved: 1,
+        declaredFacets: 2,
+      }),
+    );
+
+    // Drawn by the label, and told what belongs there — including for the Facet
+    // with nothing written under it, which is exactly the reader who needs it.
+    expect(drawn).toContain('Events');
+    expect(drawn).toContain('Business facts that have already happened.');
+    expect(drawn).toContain('Commands');
+    expect(drawn).toContain('Requests that something happen, and who may ask.');
+    expect(drawn.match(/data-describes=""/g)).toHaveLength(2);
+  });
+
+  it('draws nothing extra for a Facet whose Lens says nothing about it', () => {
+    // An empty space where a sentence goes reads as a sentence somebody forgot.
+    const drawn = draw(
+      like({
+        facets: [{ facet: 'f1', label: 'Events', state: 'absent' }],
+        approved: 0,
+        declaredFacets: 1,
+      }),
+    );
+
+    expect(drawn).toContain('Events');
+    expect(drawn).not.toContain('data-describes');
+  });
+
   it('says what is missing from a Facet short on content', () => {
     const drawn = draw(MODULE);
 
@@ -115,6 +160,7 @@ describe('one Module, drilled into', () => {
         facets: [
           {
             facet: 'f1',
+            label: 'f1',
             state: 'present',
             knowledge: [{ at: { file: 'one.md', line: 1 }, maturity: 'low' }],
             shortOf: [{ criterion: 'requiredAttributes', missing: ['a1'] }],
@@ -129,6 +175,7 @@ describe('one Module, drilled into', () => {
         facets: [
           {
             facet: 'f1',
+            label: 'f1',
             state: 'well-formed',
             knowledge: [{ at: { file: 'one.md', line: 1 }, maturity: 'low' }],
             notYetApproved: 1,
@@ -149,7 +196,7 @@ describe('one Module, drilled into', () => {
 
   it('says nothing is written down under an absent Facet, and shows no shortfall for it', () => {
     const drawn = draw(
-      like({ facets: [{ facet: 'f1', state: 'absent' }], approved: 0, declaredFacets: 1 }),
+      like({ facets: [{ facet: 'f1', label: 'f1', state: 'absent' }], approved: 0, declaredFacets: 1 }),
     );
 
     // It falls short of nothing. Listing criteria it has no content to meet
@@ -165,6 +212,7 @@ describe('one Module, drilled into', () => {
         facets: [
           {
             facet: 'f1',
+            label: 'f1',
             state: 'present',
             knowledge: [{ at: { file: 'one.md', line: 1 }, maturity: 'low' }],
             shortOf: [
@@ -273,7 +321,7 @@ describe('one Module, drilled into', () => {
     const elsewhere = draw(
       like({
         ladder: { levels: ['x', 'y'], approvedAtOrAbove: 'y' },
-        facets: [{ facet: 'g1', state: 'absent' }],
+        facets: [{ facet: 'g1', label: 'g1', state: 'absent' }],
         approved: 0,
         declaredFacets: 1,
       }),

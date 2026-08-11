@@ -10,6 +10,7 @@ describe('document discovery and parsing', () => {
   it('finds every markdown document under a root, sorted for determinism', async () => {
     const files = await discoverDocuments(fixturePath('corpus-a'));
     expect(files.map((f) => f.replace(/.*corpus-a\//, ''))).toEqual([
+      'alpha/invariants.md',
       'alpha/overview.md',
       'alpha/rules.md',
       'alpha/terms.md',

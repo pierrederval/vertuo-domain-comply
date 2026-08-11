@@ -166,7 +166,9 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
   // A Facet nobody has begun anywhere. Read down the column, which is the reading
   // this page exists for.
   const unstarted = facets.filter((facet) =>
-    modules.every((module) => module.cells.find((cell) => cell.facet === facet)?.state === 'absent'),
+    modules.every(
+      (module) => module.cells.find((cell) => cell.facet === facet.name)?.state === 'absent',
+    ),
   );
   const nothingToCompare = modules.some(
     (module) => module.movement.comparedWith === 'no-earlier-reading',
@@ -224,18 +226,32 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
                       <TableHead scope="col">Module</TableHead>
                       {facets.map((facet) => (
                         <TableHead
-                          key={facet}
+                          key={facet.name}
                           scope="col"
                           /*
                             A Facet no Module has anything under is marked in the
                             head of its own column, because the whole reason the
                             grid is drawn this way is that a column reads as one
-                            fact and a list of Modules cannot show it at all.
+                            fact and a list of Modules cannot show it at all. It
+                            keeps its label either way: a column with nothing in
+                            it is the one a reader most needs named.
                           */
                           className={unstarted.includes(facet) ? 'text-mark' : undefined}
                           data-facet={unstarted.includes(facet) ? 'unstarted' : undefined}
                         >
-                          {facet}
+                          {/*
+                            What belongs under a Facet is the Lens's to say, and it
+                            is said in full on the Module page. Here it qualifies
+                            the heading, for a reader working out what a column is
+                            asking of them.
+                          */}
+                          {facet.describes === undefined ? (
+                            facet.label
+                          ) : (
+                            <abbr title={facet.describes} className="cursor-help no-underline">
+                              {facet.label}
+                            </abbr>
+                          )}
                         </TableHead>
                       ))}
                       <TableHead scope="col">Approved</TableHead>
@@ -272,8 +288,8 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
             </Aside>
           )}
           {unstarted.map((facet) => (
-            <Aside key={facet}>
-              <Conspicuous>{`No Module has anything under “${facet}” yet.`}</Conspicuous>{' '}
+            <Aside key={facet.name}>
+              <Conspicuous>{`No Module has anything under “${facet.label}” yet.`}</Conspicuous>{' '}
               {`It is declared by the Lens “${reading.lensId}”, so either nobody has begun it, or this Corpus does not have it and every figure above is counted out of one too many.`}
             </Aside>
           ))}

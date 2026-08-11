@@ -8,8 +8,13 @@
     "statusKey": "level"
   },
   "facets": [
-    { "name": "definitions", "factKind": "Term", "extractor": "heading", "bodyAttribute": "definition" },
-    { "name": "constraints", "factKind": "Rule", "extractor": "heading", "bodyAttribute": "statement" }
+    { "name": "definitions", "factKind": "Term", "extractor": "heading",
+      "bodyAttribute": "definition",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
+    { "name": "constraints", "factKind": "Rule", "extractor": "heading",
+      "bodyAttribute": "statement",
+      "describes": "Ce qui doit toujours tenir dans cette zone.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] }
   ],
   "maturity": { "levels": ["0", "1", "2"], "approvedAtOrAbove": "2" },
   "statusMappings": [
@@ -17,9 +22,5 @@
     { "match": "1", "maturity": "1", "sources": ["import"] },
     { "match": "2", "maturity": "2", "sources": ["import", "signoff"] }
   ],
-  "criteria": {
-    "Term": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }],
-    "Rule": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }]
-  },
   "owners": { "one": "quinn", "two": "quinn" }
 }

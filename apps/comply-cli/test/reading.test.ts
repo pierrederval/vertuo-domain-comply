@@ -26,6 +26,15 @@ function baselinePath(name: string): string {
  * regenerated to make a change pass: a difference here means knowledge was lost
  * on the way through the Seed, which is a design fault and not a stale
  * expectation.
+ *
+ * One difference is legitimate: a fixture Corpus deliberately gaining or losing
+ * knowledge. What tells the two cases apart is the *other* file. A change to one
+ * Lens's own facets moves one baseline and leaves the other byte-identical; a
+ * fault in the reading pipeline moves both. So a diff here is only ever accepted
+ * after reading it line by line and confirming the sibling did not budge.
+ *
+ * `corpus-a.txt` was last regenerated when lens A gained its Invariants Facet
+ * (ADR-0019), and `corpus-b.txt` did not change by a byte.
  */
 describe.each([
   ['lens-a.json', 'corpus-a.txt'],

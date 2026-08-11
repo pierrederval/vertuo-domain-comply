@@ -17,7 +17,7 @@ function corpus(part: Record<string, unknown>): CorpusDetail {
       sourceReadAt: '2026-01-01T08:00:00.000Z',
       lensId: 'c-one',
       ladder: { levels: ['low', 'middle', 'high'], approvedAtOrAbove: 'high' },
-      facets: ['f-one', 'f-two'],
+      facets: [{ name: 'f-one', label: 'f-one' }, { name: 'f-two', label: 'f-two' }],
       modules: [
         {
           id: 'm-one',
@@ -62,7 +62,7 @@ const OTHER: CorpusDetail = corpusDetailSchema.parse({
     sourceReadAt: '2026-01-01T11:00:00.000Z',
     lensId: 'c-two',
     ladder: { levels: ['1', '2'], approvedAtOrAbove: '2' },
-    facets: ['g-one', 'g-two', 'g-three'],
+    facets: [{ name: 'g-one', label: 'g-one' }, { name: 'g-two', label: 'g-two' }, { name: 'g-three', label: 'g-three' }],
     modules: [
       {
         id: 'n-one',
@@ -111,7 +111,8 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
 
       // The Corpus's own name is the shell's to draw, once, at the top; this
       // page draws what is in it. Asserted in `shell.test.tsx`.
-      for (const facet of detail.reading.facets) expect(drawn).toContain(facet);
+      // By the label the Lens gave it, which is the only thing a reader sees.
+      for (const facet of detail.reading.facets) expect(drawn).toContain(facet.label);
       // Every Module, including one with nothing in it. A row left out is a
       // Module nobody is ever reminded of.
       for (const module of detail.reading.modules) expect(drawn).toContain(module.id);
@@ -119,6 +120,43 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
       const cells = drawn.match(/data-cell="[^"]*"/g) ?? [];
       expect(cells).toHaveLength(detail.reading.facets.length * detail.reading.modules.length);
     }
+  });
+
+  it('heads each column with the label the Lens gave it, not the name it keys on', () => {
+    const drawn = draw(
+      corpus({
+        facets: [
+          { name: 'f-one', label: 'Business Rules', describes: 'What must always hold here.' },
+          { name: 'f-two', label: 'State Machines' },
+        ],
+      }),
+    );
+
+    // A Facet name comes from the source, so it is whatever slug that corpus used.
+    // A reader who does not already know what one means cannot learn it from that.
+    expect(drawn).toContain('Business Rules');
+    expect(drawn).toContain('State Machines');
+    expect(drawn).toContain('What must always hold here.');
+    // A Facet whose Lens says nothing about it draws nothing extra: an empty space
+    // where a sentence goes reads as a sentence somebody forgot to write.
+    expect(drawn.match(/<abbr title="What must always hold here\."/g)).toHaveLength(1);
+  });
+
+  it('keeps a Facet no Module has started named, and calls it out by that name', () => {
+    // The column with nothing in it is the one a reader most needs named, and no
+    // document could have supplied the name because there are no documents.
+    const drawn = draw(
+      corpus({
+        facets: [
+          { name: 'f-one', label: 'Terms' },
+          { name: 'f-two', label: 'Transitions' },
+        ],
+      }),
+    );
+
+    expect(drawn).toContain('Transitions');
+    expect(drawn).toMatch(/No Module has anything under “Transitions” yet/);
+    expect(drawn.match(/data-facet="unstarted"/g)).toHaveLength(1);
   });
 
   it('says what each cell is, rather than leaving a mark to be guessed at', () => {

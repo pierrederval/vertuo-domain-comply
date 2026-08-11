@@ -49,6 +49,20 @@ export const movementSchema = z.discriminatedUnion('comparedWith', [
   }),
 ]);
 
+/**
+ * A Facet the Lens declares: what it is keyed on, what to call it, and what
+ * belongs under it.
+ *
+ * `name` is what everything else keys on and `label` is only ever drawn. Kept
+ * apart so that renaming what a Facet is *called* can never quietly become a
+ * different Facet — which would silently move every figure counted against it.
+ */
+export const declaredFacetSchema = z.object({
+  name: z.string().min(1),
+  label: z.string().min(1),
+  describes: z.string().min(1).optional(),
+});
+
 export const moduleCellSchema = z.object({
   facet: z.string().min(1),
   state: facetStateSchema,
@@ -87,7 +101,7 @@ export const wholeReadingSchema = z.discriminatedUnion('outcome', [
     lensId: z.string().min(1),
     ladder: ladderSchema,
     /** Every Facet the Lens declares, including any no Module has filled. */
-    facets: z.array(z.string().min(1)),
+    facets: z.array(declaredFacetSchema),
     /** Every Module, including any with nothing in it. */
     modules: z.array(moduleRowSchema),
     /**
@@ -119,11 +133,13 @@ export const corpusDetailSchema = z
 
     for (const [position, module] of modules.entries()) {
       const under = module.cells.map((cell) => cell.facet);
-      if (under.length !== facets.length || under.some((facet, at) => facet !== facets[at])) {
+      // Compared by name, never by label: a label is drawn and a name is keyed on.
+      const declared = facets.map((facet) => facet.name);
+      if (under.length !== declared.length || under.some((facet, at) => facet !== declared[at])) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['reading', 'modules', position, 'cells'],
-          message: `Module "${module.id}" has cells for [${under.join(', ')}] where the Lens declares [${facets.join(', ')}]`,
+          message: `Module "${module.id}" has cells for [${under.join(', ')}] where the Lens declares [${declared.join(', ')}]`,
         });
       }
       if (module.declaredFacets !== facets.length) {
@@ -136,6 +152,7 @@ export const corpusDetailSchema = z
     }
   });
 
+export type DeclaredFacet = z.infer<typeof declaredFacetSchema>;
 export type FacetState = z.infer<typeof facetStateSchema>;
 export type Ladder = z.infer<typeof ladderSchema>;
 export type Movement = z.infer<typeof movementSchema>;

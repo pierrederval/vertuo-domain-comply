@@ -21,14 +21,12 @@ const inlineLens: Lens = {
     statusKey: 'state',
   },
   facets: [
-    { name: 'summary', factKind: 'Module', extractor: 'document', bodyAttribute: 'description' },
-    { name: 'items', factKind: 'Term', extractor: 'heading', bodyAttribute: 'definition' },
+    { name: 'summary', factKind: 'Module', extractor: 'document', criteria: [], bodyAttribute: 'description' },
+    { name: 'items', factKind: 'Term', extractor: 'heading', bodyAttribute: 'definition',
+      criteria: [{ type: 'requiredAttributes', attributes: ['name', 'definition'] }] },
   ],
   maturity: { levels: ['draft', 'final'], approvedAtOrAbove: 'final' },
   statusMappings: [],
-  criteria: {
-    Term: [{ type: 'requiredAttributes', attributes: ['name', 'definition'] }],
-  },
 };
 
 function fact(overrides: Partial<Fact> & Pick<Fact, 'id' | 'kind' | 'moduleId' | 'facet'>): Fact {
@@ -51,7 +49,9 @@ describe('rendering', () => {
     const out = renderMatrix(matrix, scoreMatrix(matrix), []);
 
     expect(out).toContain('alpha');
-    expect(out).toMatch(/2\/3/);
+    // Alpha has two of the four Facets its Lens declares approved. Both numbers,
+    // always: a bare 2 is the figure LAW-006 refuses.
+    expect(out).toMatch(/2\/4/);
     expect(out).toContain('avery');
   });
 
@@ -143,15 +143,28 @@ describe('rendering', () => {
   it('puts every kind of shortfall into words of its own', () => {
     const strict: Lens = {
       ...inlineLens,
-      facets: [...inlineLens.facets, { name: 'steps', factKind: 'Transition', extractor: 'table' }],
-      criteria: {
-        Term: [
-          { type: 'requiredAttributes', attributes: ['name', 'definition'] },
-          { type: 'minSources', count: 2 },
-          { type: 'minRelations', relation: 'refines', count: 1 },
-        ],
-        Transition: [{ type: 'allStatesReachable', fromAttribute: 'from', toAttribute: 'to' }],
-      },
+      // Every kind of shortfall at once, each asked for by the Facet that would
+      // fall short of it (ADR-0019).
+      facets: [
+        ...inlineLens.facets.map((facet) =>
+          facet.name === 'items'
+            ? {
+                ...facet,
+                criteria: [
+                  { type: 'requiredAttributes' as const, attributes: ['name', 'definition'] },
+                  { type: 'minSources' as const, count: 2 },
+                  { type: 'minRelations' as const, relation: 'refines', count: 1 },
+                ],
+              }
+            : facet,
+        ),
+        {
+          name: 'steps', factKind: 'Transition' as const, extractor: 'table' as const,
+          criteria: [
+            { type: 'allStatesReachable' as const, fromAttribute: 'from', toAttribute: 'to' },
+          ],
+        },
+      ],
     };
     const facts: Fact[] = [
       fact({ id: 'm1', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),

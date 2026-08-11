@@ -13,12 +13,11 @@ function makeLens(root: string): Lens {
     id: 'temp-corpus',
     adapter: { kind: 'markdown-frontmatter', root, moduleIdKey: 'area', facetKey: 'kind', statusKey: 'state' },
     facets: [
-      { name: 'overview', factKind: 'Module', extractor: 'document', bodyAttribute: 'description' },
-      { name: 'terms', factKind: 'Term', extractor: 'table', columns: { Word: 'name', Meaning: 'definition' } },
+      { name: 'overview', factKind: 'Module', extractor: 'document', criteria: [], bodyAttribute: 'description' },
+      { name: 'terms', factKind: 'Term', extractor: 'table', criteria: [], columns: { Word: 'name', Meaning: 'definition' } },
     ],
     maturity: { levels: ['guessed', 'agreed'], approvedAtOrAbove: 'agreed' },
     statusMappings: [{ match: 'Agreed', maturity: 'agreed', sources: ['review'] }],
-    criteria: {},
   };
 }
 

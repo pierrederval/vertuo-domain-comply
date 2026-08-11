@@ -19,14 +19,13 @@ const inlineLens: Lens = {
     statusKey: 'state',
   },
   facets: [
-    { name: 'summary', factKind: 'Module', extractor: 'document', bodyAttribute: 'description' },
-    { name: 'items', factKind: 'Term', extractor: 'heading', bodyAttribute: 'definition' },
+    { name: 'summary', factKind: 'Module', extractor: 'document', bodyAttribute: 'description',
+      criteria: [] },
+    { name: 'items', factKind: 'Term', extractor: 'heading', bodyAttribute: 'definition',
+      criteria: [{ type: 'requiredAttributes', attributes: ['name', 'definition'] }] },
   ],
   maturity: { levels: ['draft', 'reviewed', 'final'], approvedAtOrAbove: 'final' },
   statusMappings: [],
-  criteria: {
-    Term: [{ type: 'requiredAttributes', attributes: ['name', 'definition'] }],
-  },
 };
 
 function fact(overrides: Partial<Fact> & Pick<Fact, 'id' | 'kind' | 'moduleId' | 'facet'>): Fact {
@@ -47,10 +46,33 @@ describe('Readiness Matrix', () => {
     const { corpus } = await loadCorpus(lens);
     const matrix = buildMatrix(corpus, lens);
 
-    expect(matrix.facets).toEqual(['overview', 'terms', 'rules']);
+    expect(matrix.facets).toEqual(['overview', 'terms', 'rules', 'invariants']);
     const alpha = matrix.rows.find((r) => r.moduleId === 'alpha')!;
-    expect(alpha.cells.map((c) => c.state)).toEqual(['approved', 'approved', 'well-formed']);
+    expect(alpha.cells.map((c) => c.state)).toEqual([
+      'approved',
+      'approved',
+      'well-formed',
+      'present',
+    ]);
     expect(alpha.owner).toBe('avery');
+  });
+
+  it('grades two Facets of one Fact Kind by what each of them asks for', async () => {
+    // Rules and Invariants are both Rules, written the same way and corroborated
+    // once by the same status. Enough for the Facet that asks for one Source and
+    // not for the one that asks for two, so the same knowledge lands in two
+    // different states (ADR-0019). Keyed by Fact Kind this could not happen.
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const alpha = buildMatrix(corpus, lens).rows.find((r) => r.moduleId === 'alpha')!;
+
+    const rules = alpha.cells.find((c) => c.facet === 'rules')!;
+    const invariants = alpha.cells.find((c) => c.facet === 'invariants')!;
+
+    expect(rules.state).toBe('well-formed');
+    expect(rules.unmet).toEqual([]);
+    expect(invariants.state).toBe('present');
+    expect(invariants.unmet).toEqual([{ criterion: 'minSources', has: 1, needs: 2 }]);
   });
 
   it('marks a facet absent when the module has no facts for it', async () => {
@@ -69,8 +91,8 @@ describe('Readiness Matrix', () => {
     const scores = scoreMatrix(buildMatrix(corpus, lens));
 
     const alpha = scores.find((s) => s.moduleId === 'alpha')!;
-    expect(alpha.total).toBe(3);
-    expect(alpha.present).toBe(3);
+    expect(alpha.total).toBe(4);
+    expect(alpha.present).toBe(4);
     expect(alpha.approved).toBe(2);
   });
 

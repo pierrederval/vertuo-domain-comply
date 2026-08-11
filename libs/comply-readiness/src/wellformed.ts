@@ -1,5 +1,5 @@
-import type { Fact, FactKind } from '@vertuo/comply-core';
-import type { Lens } from '@vertuo/comply-lens';
+import type { Fact } from '@vertuo/comply-core';
+import type { FacetSpec } from '@vertuo/comply-lens';
 
 /**
  * Why one criterion was not met, as the parts of the reason and never as a
@@ -35,10 +35,18 @@ function attributeIsPresent(fact: Fact, name: string): boolean {
   return Array.isArray(value) ? value.length > 0 : value.trim() !== '';
 }
 
-/** Criteria evaluated against one Fact in isolation. */
-export function evaluateFact(fact: Fact, lens: Lens): UnmetCriterion[] {
+/**
+ * Criteria evaluated against one Fact in isolation.
+ *
+ * Judged against the Facet it was written under rather than against its Fact
+ * Kind (ADR-0019), so two Facets that share a Kind can ask for different things.
+ * Takes the Facet and not the whole Lens: what counts as enough here is the
+ * Facet's own business, and a unit handed the entire Lens invites reaching for
+ * the rest of it.
+ */
+export function evaluateFact(fact: Fact, facet: FacetSpec): UnmetCriterion[] {
   const unmet: UnmetCriterion[] = [];
-  for (const criterion of lens.criteria[fact.kind] ?? []) {
+  for (const criterion of facet.criteria) {
     switch (criterion.type) {
       case 'requiredAttributes': {
         const missing = criterion.attributes.filter((a) => !attributeIsPresent(fact, a));
@@ -76,14 +84,10 @@ export function evaluateFact(fact: Fact, lens: Lens): UnmetCriterion[] {
   return unmet;
 }
 
-/** Criteria that need every Fact in a facet at once. */
-export function evaluateFacet(
-  facts: Fact[],
-  kind: FactKind,
-  lens: Lens,
-): UnmetCriterion[] {
+/** Criteria that need every Fact under a Facet at once. */
+export function evaluateFacet(facts: Fact[], facet: FacetSpec): UnmetCriterion[] {
   const unmet: UnmetCriterion[] = [];
-  for (const criterion of lens.criteria[kind] ?? []) {
+  for (const criterion of facet.criteria) {
     if (criterion.type !== 'allStatesReachable') continue;
     if (facts.length === 0) continue;
 

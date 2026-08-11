@@ -4,30 +4,6 @@ import { FACT_KINDS } from '@vertuo/comply-core';
 export const factKindSchema = z.enum(FACT_KINDS);
 export const extractorNameSchema = z.enum(['document', 'table', 'heading']);
 
-export const facetSpecSchema = z.object({
-  /** Corpus-specific facet name. Never interpreted by the core. */
-  name: z.string().min(1),
-  factKind: factKindSchema,
-  extractor: extractorNameSchema,
-  /** For 'table': column header -> attribute name. */
-  columns: z.record(z.string()).optional(),
-  /** For 'document' and 'heading': the attribute the body lands in. */
-  bodyAttribute: z.string().optional(),
-});
-
-export const maturityLadderSchema = z.object({
-  /** Ordered lowest to highest. Names are corpus-specific. */
-  levels: z.array(z.string().min(1)).min(1),
-  approvedAtOrAbove: z.string().min(1),
-});
-
-/** Decomposes one composite corpus status into a level plus provenance (ADR-0006). */
-export const statusMappingSchema = z.object({
-  match: z.string(),
-  maturity: z.string(),
-  sources: z.array(z.string()),
-});
-
 export const criterionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('requiredAttributes'), attributes: z.array(z.string()).min(1) }),
   z.object({ type: z.literal('minSources'), count: z.number().int().nonnegative() }),
@@ -42,6 +18,66 @@ export const criterionSchema = z.discriminatedUnion('type', [
     toAttribute: z.string(),
   }),
 ]);
+
+export const facetSpecSchema = z.object({
+  /** Corpus-specific facet name. Never interpreted by the core. */
+  name: z.string().min(1),
+  /**
+   * What to call this Facet where a person reads it. Optional: a Facet that
+   * declares none is called by its name, which is a word somebody chose too.
+   * Drawn and never interpreted.
+   *
+   * Declared here rather than lifted from the source, because a surface has to
+   * name a Facet that **no document exists for**. A Facet absent across every
+   * Module is the reading the grid is drawn to make visible, and it cannot be
+   * named from documents that are not there.
+   */
+  label: z.string().min(1).optional(),
+  /**
+   * What belongs under this Facet, in the business's own words.
+   *
+   * A Facet name arrives from the source, so it is whatever word that corpus
+   * happened to use — `events`, `br`, `state-machines`. A reader who does not
+   * already know what belongs under one cannot learn it from the name, and a
+   * product whose claim is that it shows a person what to write down next
+   * cannot answer that with a slug.
+   *
+   * Optional, and a Facet that declares none says nothing extra. Never
+   * interpreted: this is drawn, and no reading depends on it.
+   */
+  describes: z.string().min(1).optional(),
+  factKind: factKindSchema,
+  extractor: extractorNameSchema,
+  /** For 'table': column header -> attribute name. */
+  columns: z.record(z.string()).optional(),
+  /** For 'document' and 'heading': the attribute the body lands in. */
+  bodyAttribute: z.string().optional(),
+  /**
+   * What counts as enough under this Facet (ADR-0019).
+   *
+   * Declared here rather than against the Fact Kind, because a corpus routinely
+   * splits one Kind into several Facets that are not the same thing: Commands
+   * and Events are both Messages, and an Event needs the Rule it came from
+   * where a Command needs an actor. Keyed by Kind, either both are asked for
+   * both or neither is asked for anything.
+   *
+   * Empty means nothing is asked for, so anything written down here is enough.
+   */
+  criteria: z.array(criterionSchema).default([]),
+});
+
+export const maturityLadderSchema = z.object({
+  /** Ordered lowest to highest. Names are corpus-specific. */
+  levels: z.array(z.string().min(1)).min(1),
+  approvedAtOrAbove: z.string().min(1),
+});
+
+/** Decomposes one composite corpus status into a level plus provenance (ADR-0006). */
+export const statusMappingSchema = z.object({
+  match: z.string(),
+  maturity: z.string(),
+  sources: z.array(z.string()),
+});
 
 export const adapterSpecSchema = z.object({
   kind: z.literal('markdown-frontmatter'),
@@ -65,7 +101,6 @@ export const lensSchema = z
     facets: z.array(facetSpecSchema),
     maturity: maturityLadderSchema,
     statusMappings: z.array(statusMappingSchema),
-    criteria: z.record(factKindSchema, z.array(criterionSchema)).default({}),
     /** Fallback owner map when the corpus carries no owner key. */
     owners: z.record(z.string()).optional(),
   })

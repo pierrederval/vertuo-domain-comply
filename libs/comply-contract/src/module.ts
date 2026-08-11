@@ -100,21 +100,36 @@ export const knowledgeSchema = z.object({
  * unapproved *cannot* be sent without saying how much of it is unapproved. Which
  * step approval needs is named once, by the ladder alongside.
  */
+/**
+ * What every Facet on this page carries whatever state it is in: what it is keyed
+ * on, what to call it, and what belongs under it.
+ *
+ * `describes` is here in all four states, including `absent`. A Facet with
+ * nothing written under it is exactly where a reader most needs to be told what
+ * belongs there — telling them only once something exists would be telling them
+ * after they no longer need it.
+ */
+const named = {
+  facet: z.string().min(1),
+  label: z.string().min(1),
+  describes: z.string().min(1).optional(),
+};
+
 export const moduleFacetSchema = z.discriminatedUnion('state', [
   z.object({
-    facet: z.string().min(1),
+    ...named,
     /** Nothing is written down here. It falls short of nothing; it is unwritten. */
     state: z.literal('absent'),
   }),
   z.object({
-    facet: z.string().min(1),
+    ...named,
     state: z.literal('present'),
     knowledge: z.array(knowledgeSchema).min(1),
     /** Never empty: this state is *what is written down is not yet enough*. */
     shortOf: z.array(unmetCriterionSchema).min(1),
   }),
   z.object({
-    facet: z.string().min(1),
+    ...named,
     state: z.literal('well-formed'),
     knowledge: z.array(knowledgeSchema).min(1),
     /**
@@ -124,7 +139,7 @@ export const moduleFacetSchema = z.discriminatedUnion('state', [
     notYetApproved: z.number().int().positive(),
   }),
   z.object({
-    facet: z.string().min(1),
+    ...named,
     state: z.literal('approved'),
     knowledge: z.array(knowledgeSchema).min(1),
   }),
