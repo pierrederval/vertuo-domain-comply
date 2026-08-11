@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checkSurfaceVocabulary,
   REPO_ROOT,
+  sayWhatWasScanned,
   surfaceRoots,
   type SurfaceReport,
 } from '../src/index.js';
@@ -189,6 +190,52 @@ describe('LAW-010: business language at the surface', () => {
     await expect(
       checkSurfaceVocabulary(['apps/nothing-is-here/src'], ENGINEERING_VOCABULARY),
     ).rejects.toThrow();
+  });
+});
+
+describe('how much this verdict is about', () => {
+  it('says the figure and every place it is made up of, and says it out loud', async () => {
+    const report = await checkSurfaceVocabulary(await surfaceRoots(), ENGINEERING_VOCABULARY);
+    const said = sayWhatWasScanned(report);
+
+    // Printed here rather than anywhere else, because the figure printed and the
+    // figure asserted are then the same call's answer and cannot drift apart. A
+    // run that says "no engineering vocabulary found" without saying where it
+    // looked is the guard's own version of the silence it exists to break, and
+    // this task is never cached (turbo.json), so what a run prints is what that
+    // run read.
+    console.log(said);
+
+    expect(said).toContain(String(report.scanned.length));
+    for (const root of report.roots) expect(said).toContain(root);
+    for (const surface of SURFACES_TODAY) {
+      const place = surface.slice(0, surface.lastIndexOf('/'));
+      expect(said).toContain(place);
+    }
+  });
+
+  it('says a place it read nothing in, rather than leaving it out of the figure', async () => {
+    // The shrinking denominator LAW-006 is about. A package whose source moved
+    // elsewhere still has its src directory, so nothing raises and nothing is
+    // reported — the guard simply stops covering it, and a list of only the
+    // places with something in them makes that indistinguishable from a clean
+    // pass over everything.
+    const base = await mkdtemp(join(tmpdir(), 'comply-guards-'));
+    try {
+      await mkdir(join(base, 'read/src'), { recursive: true });
+      await writeFile(join(base, 'read/src/label.ts'), 'export const a = "fine";\n', 'utf8');
+      await mkdir(join(base, 'empty/src'), { recursive: true });
+
+      const here = relative(REPO_ROOT, base);
+      const report = await checkSurfaceVocabulary(
+        [`${here}/read/src`, `${here}/empty/src`],
+        ENGINEERING_VOCABULARY,
+      );
+
+      expect(sayWhatWasScanned(report)).toContain(`${here}/empty/src 0`);
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
   });
 });
 
