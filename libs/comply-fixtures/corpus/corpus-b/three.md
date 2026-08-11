@@ -4,6 +4,6 @@ part: definitions
 level: 0
 ---
 
-## Pulley
+## Pulley d'Étage
 
 A wheel that redirects force.

@@ -38,8 +38,85 @@ describe('extractors', () => {
     const items = extract(doc!, facet);
     expect(items).toHaveLength(2);
     expect(items[0]!.attributes.name).toBe('R-1 Widgets are made once');
-    expect(items[0]!.relations.map((r) => r.targetRef)).toEqual(['r-2-sprockets-turn']);
-    expect(items[1]!.relations).toEqual([]);
+    expect(items[0]!.relations.map((r) => r.targetRef))
+      .toEqual(['r-2-a-sprocket-s-role-in-the-søcket']);
+    expect(items[1]!.relations.map((r) => r.targetRef)).toEqual(['widget']);
+  });
+
+  it('heading extractor gives a heading the anchor its own source would give it', () => {
+    // A reader writes the link by copying what the published page puts in the address
+    // bar. An accented letter is folded to its base there, an apostrophe becomes a
+    // separator, and a letter that decomposes into nothing is kept as it stands. Compute
+    // any of the three differently and every link to such a heading is reported broken —
+    // which is the tool inventing a defect the corpus does not have.
+    const doc: ParsedDocument = {
+      file: 'inline://folded.md',
+      data: {},
+      body: ['', "## R-2 A Sprocket's Rôle in the Søcket", '', 'A Sprocket turns.'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
+    };
+    const items = extract(doc, facet);
+    expect(items[0]!.attributes.slug).toBe('r-2-a-sprocket-s-role-in-the-søcket');
+  });
+
+  it('heading extractor reads through markup a heading carries but a reader never sees', () => {
+    // A heading is often annotated in place, and the published page addresses it by the
+    // words it shows, not by the annotation's own text. Fourteen references in the DDD
+    // Corpus are written that way and every one of them works where it is read.
+    const doc: ParsedDocument = {
+      file: 'inline://annotated.md',
+      data: {},
+      body: ['', '## R-3 Widgets Ship <Note kind="later" say="Not yet" />', '', 'Later.'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [], bodyAttribute: 'statement',
+    };
+    const items = extract(doc, facet);
+    expect(items[0]!.attributes.slug).toBe('r-3-widgets-ship');
+  });
+
+  it('table extractor gives a row an anchor, so a row can be referred to', () => {
+    const doc: ParsedDocument = {
+      file: 'inline://anchored-row.md',
+      data: {},
+      body: [
+        '',
+        '| Word | Meaning |',
+        '| --- | --- |',
+        "| Sprocket's Rôle | What a Sprocket is for. |",
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
+      columns: { Word: 'name', Meaning: 'definition' },
+    };
+    const items = extract(doc, facet);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.attributes.slug).toBe('sprocket-s-role');
+  });
+
+  it('table extractor leaves a row nobody could name without an anchor', () => {
+    // An anchor is derived from what the row is called. A row whose Facet maps no
+    // column to a name has nothing to derive one from, and inventing one would put a
+    // target in reach that no author could have written down.
+    const doc: ParsedDocument = {
+      file: 'inline://unnamed-row.md',
+      data: {},
+      body: ['', '| Word | Meaning |', '| --- | --- |', '| Widget | A thing. |'].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
+      columns: { Meaning: 'definition' },
+    };
+    const items = extract(doc, facet);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.attributes.slug).toBeUndefined();
   });
 
   it('table extractor skips GFM alignment separator rows (:---, ---:, :---:)', () => {

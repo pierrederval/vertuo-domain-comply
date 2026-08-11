@@ -136,10 +136,12 @@ Four things about it are worth knowing before changing it:
   (ADR-0021). Today nothing enforces that: Experience stays out of the dictionary only because it names
   its body attribute `description`. Rename it to `definition` and 17 screen descriptions silently become
   word definitions.
-- **A heading's spelling is not the anchor.** `slugify` deletes accented letters and apostrophes as
-  punctuation, where the corpus's own anchor rules fold them — so 763 of the 772 broken references it
-  reports are its own defect (ADR-0020). Do not read the reference count as a corpus reading until that
-  is fixed.
+- **A reference resolves the way the pages a reader reads resolve it** (ADR-0023). `slugify` folds
+  accents, keeps a letter that decomposes into nothing, drops markup a heading carries, and separates on
+  everything else. It once reduced a heading with `[^a-z0-9]+`, which is how 747 of the 772 broken
+  references it reported about a French corpus came to be its own defect. The 25 that remain are the
+  reading's defect too, for three reasons ADR-0023 names — so the reference count is still not a corpus
+  reading, and the genuine figure is zero.
 
 The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
 Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above

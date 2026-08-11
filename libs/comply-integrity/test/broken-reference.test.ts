@@ -45,10 +45,36 @@ describe('broken reference check', () => {
     const { corpus } = await loadCorpus(lens);
     const resolved = corpus.facts
       .flatMap((f) => f.relations)
-      .filter((r) => r.targetRef === 'r-2-sprockets-turn');
+      .filter((r) => r.targetRef === 'r-2-a-sprocket-s-role-in-the-søcket');
     expect(resolved).toHaveLength(1);
     expect(checkBrokenReference(corpus).map((f) => f.message).join())
-      .not.toContain('r-2-sprockets-turn');
+      .not.toContain('r-2-a-sprocket-s-role-in-the-søcket');
+  });
+
+  it('resolves a reference to a heading carrying an accent and an apostrophe', async () => {
+    // Written the way the published page addresses that heading. Reported broken, the
+    // author has nothing to fix: the link already works where a reader clicks it.
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+
+    expect(checkBrokenReference(corpus).map((f) => f.message).join())
+      .not.toContain('role');
+  });
+
+  it('resolves a reference to a fact written down as a row of a table', async () => {
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus } = await loadCorpus(lens);
+    const resolved = corpus.facts.flatMap((f) => f.relations).filter((r) => r.targetRef === 'widget');
+    expect(resolved).toHaveLength(1);
+
+    expect(checkBrokenReference(corpus).map((f) => f.message).join()).not.toContain('widget');
+  });
+
+  it('folds an accent and an apostrophe the same way in a corpus laid out differently (ADR-0001)', async () => {
+    const lens = await loadLens(fixturePath('lens-b.json'));
+    const { corpus } = await loadCorpus(lens);
+
+    expect(checkBrokenReference(corpus)).toEqual([]);
   });
 
   it('resolves a reference to an anchor whose id contains a dot, rather than skipping it as external', () => {

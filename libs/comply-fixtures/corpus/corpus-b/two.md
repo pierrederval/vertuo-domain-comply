@@ -6,4 +6,4 @@ level: 1
 
 ## C1
 
-A Lever must have exactly one Fulcrum.
+A Lever must have exactly one Fulcrum, and never a [Pulley](three.md#pulley-d-etage).
