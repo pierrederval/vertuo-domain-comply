@@ -75,12 +75,23 @@ Run all of these from the repository root.
 | `pnpm comply extract <lens.json>` | Write down what is at source, as a Seed |
 | `pnpm comply report <lens.json>` | Read a Corpus and print where it stands |
 | `pnpm shelf:fixtures` | Put both fixture Corpus on the development shelf |
-| `pnpm api` | Serve that shelf, read-only, on port 4000 |
-| `pnpm studio` | The Studio, on port 5173, answering from the API |
+| `pnpm dev` | Both processes below at once; one Ctrl-C stops both |
+| `pnpm api` | Serve that shelf, read-only, on port 4301 |
+| `pnpm studio` | The Studio, on port 4302, answering from the API |
+
+`pnpm dev` is the usual way in: the Studio is unreadable without the API behind it, and starting one
+of a pair by hand is how a person ends up reading a page that is answering from yesterday's process.
+The two run under Turborepo as persistent tasks, so nothing new orchestrates them. Either can still
+be run alone when that is what you want.
+
+Neither port moves if it is taken — both refuse to start and say so. A development server that
+quietly took the next port leaves two of itself running, and the one being read is then the one that
+was not just changed, which reads as a change that did nothing. `COMPLY_PORT` moves the API
+deliberately.
 
 The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
-Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the two scripts
-above point it at `libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in
+Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above
+point it at `libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in
 development, which is where shape-leakage shows up (ADR-0001).
 
 There is no lint step and no CI workflow yet. Both guards run under `pnpm test`, so on a laptop
