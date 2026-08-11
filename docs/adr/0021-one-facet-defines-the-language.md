@@ -67,3 +67,20 @@ exists. The failure then arrives as invented Findings that look like a corpus pr
 
 **Revisit when** a corpus genuinely holds two dictionaries — most likely one per locale — where the
 right answer is a defining Facet per language rather than one per Corpus.
+
+## Erratum
+
+**The Glossary holds 477 Facts, not the 482 stated twice above.** The figure was right when this was
+written; ADR-0024 landed the same day and set five payload rows aside from that Facet. Nothing here turns
+on it — 477 is the size of the dictionary the 17 screen descriptions would have been judged against.
+
+Appended rather than corrected in place, so a figure somebody has already quoted does not change under
+them. ADR-0027, which builds this decision, carries the correction and the measurements taken while
+building it — including what the one-word rename actually costs, which is four invented contradictions
+this text predicted without naming.
+
+ADR-0027 also decides one thing this ADR did not reach: what a Facet of Terms must map onto now depends on
+whether it is the dictionary. `name` is asked of every one of them; `definition` only of the defining one.
+The paragraph above headed *Why not simply omit a definition column elsewhere* is where that question
+starts — omitting the column was simultaneously the only way out of the dictionary and a thing the schema
+refused.

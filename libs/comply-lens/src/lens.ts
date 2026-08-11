@@ -135,6 +135,35 @@ export const facetSpecSchema = z.object({
    */
   bodyAttribute: z.string().optional(),
   /**
+   * That this is the Facet whose Facts settle what a word means (ADR-0021).
+   *
+   * A corpus routinely writes the same word down under more than one Facet, saying
+   * something different about it each time: a dictionary says what a word means,
+   * and a list of which thing owns the others says which of them is the root. Both
+   * are Terms — same Kind, same readings — and only the first is a dictionary.
+   *
+   * Read as though both were, the second arrives as *this word is defined two
+   * different ways*, which is the defect this product exists to find, reported
+   * about a corpus that does not have it. A tool that invents defects is worse
+   * than one that misses them.
+   *
+   * Exactly one Facet of Terms declares it, and a Lens declaring any Facet of
+   * Terms must name one. A language with two authorities is two languages, which
+   * is the split this product exists to detect, and allowing several would bring
+   * back the precedence question ADR-0019 refused to answer in a hand-authored
+   * Lens: when two of them define one word, which one wins.
+   *
+   * Declared rather than left to be inferred. It was inferable — a Facet mapping
+   * nothing onto `definition` never entered the dictionary — and that is exactly
+   * the hazard: nothing said so, so the constraint held only until somebody
+   * renamed one attribute, and then the reading filled with contradictions that
+   * looked like the corpus's fault.
+   *
+   * Absent, and never written down as false: a Facet either says this about itself
+   * or says nothing, exactly as it does with the parts and the columns above.
+   */
+  definesTerms: z.literal(true).optional(),
+  /**
    * What counts as enough under this Facet (ADR-0019).
    *
    * Declared here rather than against the Fact Kind, because a corpus routinely
@@ -284,19 +313,65 @@ export const lensSchema = z
       }
     }
 
-    // A Term facet must map onto the core's semantic slots for a term's canonical name
-    // and its definition, so a language-integrity check can find them without guessing
-    // at corpus-specific attribute names.
+    // Exactly one Facet of Terms settles what a word means, and it says so about itself
+    // (ADR-0021). Refused either way round: with none, whichever Facet happened to be
+    // written first became the dictionary and nothing said so; with two, one word carries
+    // two settled meanings and there is no rule saying which of them holds.
+    const wordFacets = lens.facets.filter((facet) => facet.factKind === 'Term');
+    const defining = lens.facets.filter((facet) => facet.definesTerms === true);
+    const named = (facets: typeof lens.facets): string =>
+      facets.map((facet) => `"${facet.name}"`).join(', ');
+
+    for (const [index, facet] of lens.facets.entries()) {
+      if (facet.definesTerms !== true || facet.factKind === 'Term') continue;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['facets', index, 'definesTerms'],
+        message:
+          `facet "${facet.name}" declares definesTerms but holds ${facet.factKind}s, not ` +
+          `Terms; only a facet whose facts are words can settle what a word means`,
+      });
+    }
+    if (wordFacets.length > 0 && defining.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['facets'],
+        message:
+          `facets of Terms are declared (${named(wordFacets)}) and none of them declares ` +
+          `definesTerms; exactly one must, because nothing else says which of them settles ` +
+          `what a word means`,
+      });
+    }
+    if (defining.length > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['facets'],
+        message:
+          `facets ${named(defining)} all declare definesTerms; exactly one may, because a ` +
+          `language with two authorities is two languages`,
+      });
+    }
+
+    // The defining facet must map onto the core's semantic slots for a term's canonical
+    // name and its definition, so a language-integrity check can find them without
+    // guessing at corpus-specific attribute names.
+    //
+    // Asked of the defining facet and not of every facet of Terms, because what makes a
+    // Term a Term is having a word and what makes it a dictionary entry is having a
+    // meaning. A list of which thing owns the others holds no meanings, and requiring one
+    // would make a Lens write down that its rows mean something they do not — the exact
+    // untruth naming a dictionary was introduced to stop being necessary.
     for (const [index, facet] of lens.facets.entries()) {
       if (facet.factKind !== 'Term') continue;
       if (facet.extractor === 'table') {
         const targets = new Set(Object.values(facet.columns ?? {}));
-        for (const required of ['name', 'definition']) {
-          if (!targets.has(required)) {
+        const required = facet.definesTerms === true ? ['name', 'definition'] : ['name'];
+        for (const slot of required) {
+          if (!targets.has(slot)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ['facets', index, 'columns'],
-              message: `Term facet "${facet.name}" has no column mapped to "${required}"`,
+              message: `Term facet "${facet.name}" has no column mapped to "${slot}"`,
             });
           }
         }
@@ -306,7 +381,7 @@ export const lensSchema = z
           path: ['facets', index, 'extractor'],
           message: `Term facet "${facet.name}" cannot use the document extractor: a whole document has no name to key a Term on, so no Term would ever be extracted; use "table" or "heading" instead`,
         });
-      } else if (facet.bodyAttribute === undefined) {
+      } else if (facet.definesTerms === true && facet.bodyAttribute === undefined) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['facets', index, 'bodyAttribute'],

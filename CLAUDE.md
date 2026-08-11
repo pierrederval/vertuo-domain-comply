@@ -132,10 +132,13 @@ Seven things about it are worth knowing before changing it:
   `business-rules.md#br-004-…` link in the Commands, Events and Workflows tables resolves to nothing, and
   the reading manufactures hundreds of broken-reference Findings that are the Lens's fault and not the
   corpus's. A tool that invents defects is worse than one that misses them.
-- **Two Facets share the Term Kind** — Glossary and Experience — and only one of them is the dictionary
-  (ADR-0021). Today nothing enforces that: Experience stays out of the dictionary only because it names
-  its body attribute `description`. Rename it to `definition` and 17 screen descriptions silently become
-  word definitions.
+- **Two Facets share the Term Kind** — Glossary and Experience — and Glossary says it is the dictionary
+  (ADR-0021, ADR-0027). It used to be nothing but the word `description` keeping Experience out: renaming
+  it to `definition` cost four invented contradictions, three of them one screen-layer heading written
+  once per screen document and reported as `defined 4 different ways`. Now `definesTerms: true` says which
+  Facet settles a word, a Lens declaring Terms and naming none of them does not load, and that rename is
+  harmless. A Facet of Terms that defines nothing is asked where its name is written and never where its
+  meaning is — asking would make the Lens claim its rows mean something they do not.
 - **A reference resolves the way the pages a reader reads resolve it** (ADR-0023). `slugify` folds
   accents, keeps a letter that decomposes into nothing, drops markup a heading carries, and separates on
   everything else. It once reduced a heading with `[^a-z0-9]+`, which is how 747 of the 772 broken

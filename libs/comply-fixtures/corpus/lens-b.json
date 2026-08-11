@@ -9,6 +9,7 @@
   },
   "facets": [
     { "name": "definitions", "factKind": "Term", "extractor": "heading",
+      "definesTerms": true,
       "bodyAttribute": "definition",
       "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
     { "name": "constraints", "factKind": "Rule", "extractor": "heading",

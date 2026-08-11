@@ -3,10 +3,25 @@ import { fixturePath } from '@vertuo/comply-fixtures';
 import { loadLens } from '@vertuo/comply-lens';
 
 describe('fixture lens A', () => {
-  it('loads and declares four Facets across three Fact Kinds', async () => {
+  it('loads and declares five Facets across three Fact Kinds', async () => {
     const lens = await loadLens(fixturePath('lens-a.json'));
-    expect(lens.facets.map((f) => f.factKind)).toEqual(['Module', 'Term', 'Rule', 'Rule']);
+    expect(lens.facets.map((f) => f.factKind)).toEqual(['Module', 'Term', 'Term', 'Rule', 'Rule']);
     expect(lens.adapter.moduleIdKey).toBe('area');
+  });
+
+  it('names one of its two Facets of Terms as the one that defines the language', async () => {
+    // ADR-0021. Two Facets of Terms with the same word written under both, and the
+    // second of them the dictionary — so a reading that took the first, or took both,
+    // is wrong here rather than in a case somebody has to remember to construct.
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const words = lens.facets.filter((facet) => facet.factKind === 'Term');
+
+    expect(words.map((facet) => facet.name)).toEqual(['aggregates', 'terms']);
+    expect(words.filter((facet) => facet.definesTerms === true).map((facet) => facet.name))
+      .toEqual(['terms']);
+    // And it names its body attribute exactly as the dictionary names its column, which
+    // is the one word that used to be all that kept it out.
+    expect(words[0]!.bodyAttribute).toBe('definition');
   });
 
   it('asks different things of its two Facets of one Fact Kind', async () => {

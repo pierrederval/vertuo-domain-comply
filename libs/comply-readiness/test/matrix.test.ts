@@ -46,9 +46,10 @@ describe('Readiness Matrix', () => {
     const { corpus } = await loadCorpus(lens);
     const matrix = buildMatrix(corpus, lens);
 
-    expect(matrix.facets).toEqual(['overview', 'terms', 'rules', 'invariants']);
+    expect(matrix.facets).toEqual(['overview', 'aggregates', 'terms', 'rules', 'invariants']);
     const alpha = matrix.rows.find((r) => r.moduleId === 'alpha')!;
     expect(alpha.cells.map((c) => c.state)).toEqual([
+      'approved',
       'approved',
       'approved',
       'well-formed',
@@ -91,9 +92,9 @@ describe('Readiness Matrix', () => {
     const scores = scoreMatrix(buildMatrix(corpus, lens));
 
     const alpha = scores.find((s) => s.moduleId === 'alpha')!;
-    expect(alpha.total).toBe(4);
-    expect(alpha.present).toBe(4);
-    expect(alpha.approved).toBe(2);
+    expect(alpha.total).toBe(5);
+    expect(alpha.present).toBe(5);
+    expect(alpha.approved).toBe(3);
   });
 
   it('builds rows for a corpus with no Module facet at all', async () => {
