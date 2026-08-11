@@ -167,6 +167,27 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
     // about, with the way to it (LAW-007).
     expect(mine).toContain('2 Findings in this Corpus route to nobody');
     expect(mine).toContain('data-conspicuous');
+    // One of a thing is not "1 things", and a denominator a reader trips over is
+    // one they discount — which is the whole use this sentence has.
+    const alone = draw(
+      like({
+        routesTo: [
+          {
+            owner: null,
+            findings: [
+              {
+                says: 'the only one of these',
+                moduleId: 'm2',
+                cites: { at: { file: 'two.md', line: 4 }, writtenUnder: 'm2', quoted: null },
+                alsoCites: [],
+              },
+            ],
+          },
+        ],
+      }),
+      'p1',
+    );
+    expect(alone).toContain('1 Finding in this Corpus routes to nobody');
     // Not on nobody's own queue, where it would be the page saying twice what the
     // reader is already looking at.
     expect(queuesIn(nobody)).toEqual(['data-queue=""']);

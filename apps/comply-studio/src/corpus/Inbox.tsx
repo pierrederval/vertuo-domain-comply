@@ -302,7 +302,7 @@ export function Inbox({
       {narrowedTo !== null && narrowedTo !== '' && nobody !== null && (
         <p className="text-sm">
           <Conspicuous>
-            {`${count(nobody.findings.length, 'Finding')} in this Corpus route to nobody.`}
+            {`${count(nobody.findings.length, 'Finding')} in this Corpus ${nobody.findings.length === 1 ? 'routes' : 'route'} to nobody.`}
           </Conspicuous>{' '}
           <Link to={queueAt(corpusId, null)} className="underline underline-offset-4">
             Read them
