@@ -178,5 +178,25 @@ Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise
 point it at `libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in
 development, which is where shape-leakage shows up (ADR-0001).
 
-There is no lint step and no CI workflow yet. Both guards run under `pnpm test`, so on a laptop
-LAW-004 and LAW-010 are enforced; nothing enforces them on a pull request until #32 lands.
+There is no lint step. Every pull request runs the whole suite under
+[`.github/workflows/build-gate.yml`](./.github/workflows/build-gate.yml), so LAW-004 and LAW-010 are
+enforced on a pull request and not only on the laptop of whoever remembered (ADR-0028). Four things about
+it are worth knowing before changing it:
+
+- **The job's name is the gate.** A workflow reports; what blocks a merge is a protection rule on `main`
+  requiring a check called `the whole suite`, which is repository configuration and lives nowhere in this
+  tree — ADR-0028 carries the call that sets it. Rename the job and the rule waits forever for a check
+  nobody reports, which leaves a pull request *pending* rather than red, and on a repository with one
+  maintainer that reads like a slow run.
+- **The run restores no Turborepo cache, on purpose.** The guards read every package and can declare a
+  dependency on none of them, so a task cache serves a pass over a violation planted anywhere else. That is
+  why `@vertuo/comply-guards#test` is `cache: false`, and why the job carries no `.turbo` between runs.
+  A clean run is 44 seconds; there is nothing here worth trading a law for.
+- **No version is written in the workflow.** pnpm comes from `packageManager` and Node from
+  `engines.node`. If this workspace ever needs an exact Node, `engines` is where it says so.
+- **Nothing in CI touches a shelf or the sibling checkout.** The suite builds the fixtures it needs, and a
+  test that required `vertuo-domain-fr` would fail there first.
+
+The surface guard now says what its verdict is about on every run — 76 files in 13 places, each place with
+its own figure, because a package whose source moves out from under the guard keeps its `src` directory and
+simply falls to none (LAW-006).
