@@ -94,6 +94,15 @@ define nothing (ADR-0021).
 Without this, every Term Facet is a rival dictionary, and a word that appears in two of them is reported
 as defined two ways when the two are not making the same claim at all.
 
+A Facet says this about itself, in its Lens, and exactly one in a Lens may. A Lens declaring Term Facets
+and naming no Defining Facet does not load — being chosen by whichever Facet happened to be written first
+is the thing this exists to stop.
+
+**A word is what makes a Term a Term; a meaning is what makes it a dictionary entry.** So every Term Facet
+must say where a Term's name is written, and only the Defining Facet must say where its definition is. A
+list of aggregates holds no definitions, and requiring one would make a Lens claim its rows mean something
+they do not (ADR-0027).
+
 ### Module Owner
 
 The named person accountable for one Module's knowledge. Every Module has one. A Module without an

@@ -54,6 +54,15 @@ function baselinePath(name: string): string {
  * not move despite gaining three subheadings apiece, and the figure at the foot did
  * not move either, which together are the evidence that parts change what a Fact is
  * made of and neither how many Facts there are nor what was set aside.
+ *
+ * `corpus-a.txt` moved a third time when lens A gained a second Facet of Terms — a list
+ * of which thing owns the others (ADR-0021, ADR-0027) — and `corpus-b.txt` did not budge.
+ * Corpus A genuinely gained a document, so a column, a rung on both denominators and one
+ * more Fact read is the whole of it. What must *not* be here is a third reading of the
+ * word Widget: `alpha/aggregates.md` writes that word down and means something else by
+ * it, and the Findings section still says it is defined two different ways. Read by Fact
+ * Kind rather than by the Facet that says it defines the language, this file says three,
+ * which is how that repair is held.
  */
 describe.each([
   ['lens-a.json', 'corpus-a.txt'],

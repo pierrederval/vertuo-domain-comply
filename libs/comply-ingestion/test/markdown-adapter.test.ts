@@ -29,8 +29,12 @@ describe('markdown adapter', () => {
     // moduleIds() lists Module facts only. 'bravo' is declared by a Term document,
     // so it does not appear here — Task 10's allModuleIds() is what surfaces it.
     expect(corpus.moduleIds().sort()).toEqual(['alpha', 'beta']);
+    // Three Widgets: two words meaning different things in two areas, and one saying
+    // which thing owns the others. All three are Terms — the Facet that defines the
+    // language is what tells the third apart, and that is not this reading's business
+    // (ADR-0021).
     expect(corpus.byKind('Term').map((f) => f.attributes.name).sort())
-      .toEqual(['Cog', 'Sprocket', 'Widget', 'Widget']);
+      .toEqual(['Cog', 'Sprocket', 'Widget', 'Widget', 'Widget']);
     expect(corpus.facts.every((f) => f.origin.line > 0)).toBe(true);
   });
 

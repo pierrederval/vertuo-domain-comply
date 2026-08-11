@@ -252,7 +252,7 @@ describe('one Module, whole', () => {
           facetKey: 'f',
           statusKey: 's',
         },
-        facets: [{ name: 'ff', factKind: 'Term', extractor: 'heading', criteria: [], bodyAttribute: 'definition' }],
+        facets: [{ name: 'ff', factKind: 'Term', extractor: 'heading', criteria: [], definesTerms: true, bodyAttribute: 'definition' }],
         maturity: { levels: ['low', 'high'], approvedAtOrAbove: 'high' },
         statusMappings: [{ match: 'now', maturity: 'high', sources: ['x'] }],
         owners: { mm: 'someone' },

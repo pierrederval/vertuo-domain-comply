@@ -21,7 +21,7 @@ describe('LAW-004: the core knows no business', () => {
     const violations = await checkCoreVocabulary(CORE_ROOTS, [
       'alpha', 'beta', 'bravo', 'widget', 'sprocket', 'cog', 'grommet',
       'lever', 'fulcrum', 'pulley', 'avery', 'quinn',
-      'overview', 'terms', 'rules', 'definitions', 'constraints', 'terminology',
+      'overview', 'terms', 'aggregates', 'rules', 'definitions', 'constraints', 'terminology',
       'agreed', 'guessed',
     ]);
     expect(violations).toEqual([]);

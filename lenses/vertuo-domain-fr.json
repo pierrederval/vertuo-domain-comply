@@ -40,6 +40,7 @@
       "criteria": [{ "type": "requiredAttributes", "attributes": ["description", "aggregates"] }] },
 
     { "name": "glossary", "label": "Glossary", "factKind": "Term", "extractor": "table",
+      "definesTerms": true,
       "columns": { "Terme": "name", "Définition": "definition", "Alias ou Notes": "aliases" },
       "identifyingColumns": ["Terme", "Définition"],
       "describes": "Les mots que ce Domain emploie et ce que chacun signifie ici. Une ligne par mot, avec les alias sous lesquels il est aussi connu, pour que deux noms d'une même chose se retrouvent.",
