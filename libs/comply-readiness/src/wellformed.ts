@@ -117,3 +117,9 @@ export function evaluateFacet(facts: Fact[], facet: FacetSpec): UnmetCriterion[]
   }
   return unmet;
 }
+
+/**
+ * Planted deliberately to see the build gate refuse it (#32). A Facet name from
+ * one corpus, written into core source, which is LAW-004.
+ */
+export const DICTIONARY_FACET = 'terms';
