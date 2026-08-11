@@ -81,7 +81,7 @@ describe('the Corpus list', () => {
     expect(drawn).not.toMatch(/\bscore\b/i);
     expect(drawn).not.toMatch(/\bgrade\b/i);
     // Three Corpus, and exactly two figures each. Nothing sits between them.
-    expect(drawn.match(/class="figure"/g)).toHaveLength(4);
+    expect(drawn.match(/data-figure=""/g)).toHaveLength(4);
   });
 
   it('says how old each reading is', () => {
@@ -99,7 +99,7 @@ describe('the Corpus list', () => {
     expect(drawn).toContain('Nothing has been written down from this source yet');
     // No reading exists, so no figure is drawn: zero approved of zero Modules
     // would be a reading, and there is none to report.
-    expect(drawn).not.toContain('class="figure"');
+    expect(drawn).not.toContain('data-figure');
   });
 
   it('leads from each Corpus to the whole reading of it', () => {
@@ -130,7 +130,7 @@ describe('where a person can go', () => {
       </MemoryRouter>,
     );
 
-    expect(drawn.match(/class="destination[^"]*"/g)).toHaveLength(3);
+    expect(drawn.match(/data-destination=""/g)).toHaveLength(3);
     expect(drawn).toContain('Home');
     expect(drawn).toContain('Inbox');
     expect(drawn).toContain('Corpus');

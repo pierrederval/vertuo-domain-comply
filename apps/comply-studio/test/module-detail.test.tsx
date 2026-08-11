@@ -197,7 +197,7 @@ describe('one Module, drilled into', () => {
     const answered = draw(like({ owner: 'someone' }));
 
     expect(nobody).toContain('Nobody answers for this Module');
-    expect(nobody).toContain('class="conspicuous"');
+    expect(nobody).toContain('data-conspicuous');
     expect(answered).toContain('someone');
     expect(answered).not.toContain('Nobody answers for this Module');
   });
@@ -245,7 +245,7 @@ describe('one Module, drilled into', () => {
     expect(drawn).toContain('of 4 Facets');
     expect(drawn).toContain('Open Findings');
     expect(drawn).toContain('from 2 Checks');
-    expect(drawn.match(/class="figure"/g)).toHaveLength(2);
+    expect(drawn.match(/data-figure=""/g)).toHaveLength(2);
     expect(drawn).not.toContain('%');
     expect(drawn).not.toMatch(/\bscore\b/i);
     expect(drawn).not.toMatch(/\bgrade\b/i);
@@ -264,7 +264,7 @@ describe('one Module, drilled into', () => {
     const drawn = draw(unread);
 
     expect(drawn).toContain('Nothing has been written down from this source yet');
-    expect(drawn).not.toContain('class="figure"');
+    expect(drawn).not.toContain('data-figure');
     // Still says where the reader is, so the way back does not depend on there
     // being a reading.
     expect(drawn).toContain('href="/corpus/c1"');

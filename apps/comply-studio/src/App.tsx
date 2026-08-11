@@ -23,6 +23,7 @@ export function Navigation() {
         <NavLink
           key={destination.to}
           to={destination.to}
+          data-destination=""
           className={({ isActive }) => (isActive ? 'destination here' : 'destination')}
         >
           {destination.label}

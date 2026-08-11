@@ -24,7 +24,14 @@ export interface FigureProps {
  */
 export function Figure({ reading, counts, value, outOf, detail }: FigureProps) {
   return (
-    <div className="figure">
+    /*
+     * `data-figure` is what asserts there are exactly two of these and never a
+     * third. It is an attribute rather than the class, because a test that
+     * counted the class would be deleted by whoever next restyled the page, and
+     * a guard that disappears with a stylesheet is worse than no guard: nothing
+     * reports its absence.
+     */
+    <div className="figure" data-figure="">
       <span className="figure-reading">{reading}</span>
       <span className="figure-counts">{counts}</span>
       <strong className="figure-value">{value}</strong>

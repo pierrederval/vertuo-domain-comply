@@ -26,7 +26,9 @@ function markOf(state: FacetState): string {
 
 function Cell({ state }: { state: FacetState }) {
   return (
-    <td className={`cell cell-${state}`}>
+    // `data-cell` carries the state for anything asserting about it, so no test
+    // has to reach for a class name to find out what a cell means.
+    <td className={`cell cell-${state}`} data-cell={state}>
       <abbr title={state}>{markOf(state)}</abbr>
     </td>
   );
@@ -43,18 +45,29 @@ function Cell({ state }: { state: FacetState }) {
 function Moved({ movement }: { movement: Movement }) {
   if (movement.comparedWith === 'no-earlier-reading') {
     return (
-      <abbr className="movement none" title="there is no earlier reading to compare this one with">
+      <abbr
+        className="movement none"
+        data-movement="none"
+        title="there is no earlier reading to compare this one with"
+      >
         —
       </abbr>
     );
   }
   if (movement.approvedDelta === 0) {
-    return <span className="movement steady">held steady</span>;
+    return (
+      <span className="movement steady" data-movement="steady">
+        held steady
+      </span>
+    );
   }
 
   const gained = movement.approvedDelta > 0;
   return (
-    <span className={`movement ${gained ? 'gained' : 'lost'}`}>
+    <span
+      className={`movement ${gained ? 'gained' : 'lost'}`}
+      data-movement={gained ? 'gained' : 'lost'}
+    >
       {`${gained ? '▲' : '▼'} ${Math.abs(movement.approvedDelta)}`}
     </span>
   );
@@ -161,7 +174,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
               take the Module column with it — the column every other one is read
               against.
             */}
-            <div className="grid-scroll">
+            <div className="grid-scroll" data-grid-scroll="">
               <table className="grid">
                 <thead>
                   <tr>
@@ -171,6 +184,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
                         key={facet}
                         scope="col"
                         className={unstarted.includes(facet) ? 'facet unstarted' : 'facet'}
+                        data-facet={unstarted.includes(facet) ? 'unstarted' : undefined}
                       >
                         {facet}
                       </th>

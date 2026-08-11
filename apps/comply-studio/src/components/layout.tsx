@@ -54,5 +54,9 @@ export function NothingToShow({ children }: { children: ReactNode }) {
  * mark of its own rather than an empty cell.
  */
 export function Conspicuous({ children }: { children: ReactNode }) {
-  return <span className="conspicuous">{children}</span>;
+  return (
+    <span className="conspicuous" data-conspicuous="">
+      {children}
+    </span>
+  );
 }
