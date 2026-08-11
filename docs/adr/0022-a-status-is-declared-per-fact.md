@@ -77,3 +77,25 @@ and never one the core says.
 **Revisit when** a corpus arrives where per-Fact status is pure noise — every Fact in a document always
 moving together — and the authoring cost buys no reading. The fallback already handles it; what would
 change is which grain a new Lens reaches for first.
+
+## Erratum
+
+Four figures above are wrong, and are corrected in ADR-0029, which builds this.
+
+The three Fact counts are stale rather than mistaken: 1331 and 315 are **1247** and **253**, and the 52
+Terms in `coeur/devis/glossary.md` are **47**. The reading has since declined 107 table rows (ADR-0024)
+and 39 headings (ADR-0025) that were never any Facet's own, and the difference decomposes exactly — 84
+out of `candidat`, 62 out of `revu`, 84 + 62 = 146, the number the report prints as set aside. The
+argument is unaffected: 47 definitions reviewed by one line of frontmatter is the same wall as 52.
+"Trust stops being constant across 1148 Facts" names a figure matching no reading of this corpus at any
+commit; the Corpus holds 1506 Facts, 190 of which name where they came from.
+
+**The Seed format does not move.** The version planned above is not taken — not 2, which ADR-0025
+reached first, and not the 3 it reserved for this. Where a Fact states its own status it states it in an
+attribute, and `seedItemSchema.attributes` has carried `string | string[]` since it was written, so
+there is nothing new to write down and no new form to write it down in. ADR-0029 records the
+measurement: the Seed comes out byte-identical under an unchanged digest, and a raised version would
+refuse every shelf in order to rewrite one digit.
+
+Left in place rather than edited, so that nobody who has read or cited these numbers finds them quietly
+different.

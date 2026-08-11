@@ -46,9 +46,74 @@ describe('markdown adapter', () => {
     expect(agreed?.maturityLevel).toBe('agreed');
     expect(agreed?.sources).toEqual(['system-x', 'review']);
 
-    const guessed = corpus.facts.find((f) => f.origin.file.includes('alpha/rules.md'));
-    expect(guessed?.maturityLevel).toBe('guessed');
-    expect(guessed?.sources).toEqual(['system-x']);
+    // The two grains, in one document (ADR-0022). The first rule says where it stands
+    // and what it was checked against; the second says neither and is read by its
+    // document, which is how every fact in this corpus was read before it could say so.
+    const rules = corpus.facts.filter((f) => f.origin.file.includes('alpha/rules.md'));
+
+    expect(rules[0]?.maturityLevel).toBe('agreed');
+    expect(rules[0]?.sources).toEqual(['system-x', 'review', 'the crate ledger']);
+
+    expect(rules[1]?.maturityLevel).toBe('guessed');
+    expect(rules[1]?.sources).toEqual(['system-x', 'the crate ledger']);
+  });
+
+  it('reads a corpus whose documents say nothing about where they stand (ADR-0022)', async () => {
+    // Nothing in the frontmatter to read, because every rule states its own. A Lens
+    // forced to name a key here would have to invent one, and the reading would then
+    // complain about a key the corpus never had.
+    const root = await mkdtemp(join(tmpdir(), 'comply-corpus-'));
+    await mkdir(join(root, 'zeta'), { recursive: true });
+    await writeFile(
+      join(root, 'zeta/rules.md'),
+      [
+        '---', 'area: zeta', 'kind: rules', '---', '',
+        '## R-1 It holds', '', '### Statement', '', 'It holds.', '',
+        '### Where it stands', '', 'Agreed', '',
+        '### Checked against', '', '- one.php', '- two.php', '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const base = makeLens(root);
+    const lens: Lens = {
+      ...base,
+      adapter: { ...base.adapter, statusKey: undefined },
+      facets: [{
+        name: 'rules', factKind: 'Rule', extractor: 'heading', criteria: [],
+        bodyAttribute: 'statement',
+        parts: { Statement: 'statement', 'Where it stands': 'standing', 'Checked against': 'checkedAgainst' },
+        statusAttribute: 'standing',
+        sourcesAttribute: 'checkedAgainst',
+      }],
+    };
+
+    const { corpus, findings } = await loadCorpus(lens);
+
+    expect(findings).toEqual([]);
+    expect(corpus.facts).toHaveLength(1);
+    expect(corpus.facts[0]?.maturityLevel).toBe('agreed');
+    expect(corpus.facts[0]?.sources).toEqual(['review', 'one.php', 'two.php']);
+  });
+
+  it('reports a status only one fact stated, at that fact and not at its document', async () => {
+    // The citation this buys before a corpus is rewritten. The document's own status
+    // reads perfectly; one rule in it says something this Lens has no mapping for, and
+    // the reader is sent to that rule's line (LAW-009).
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus, findings } = await loadCorpus(lens);
+
+    const unknown = findings.filter((f) => f.code === 'unknown-status');
+    expect(unknown).toHaveLength(1);
+    expect(unknown[0]!.message).toContain('Half-agreed');
+    expect(unknown[0]!.origin.file).toMatch(/alpha\/rules\.md$/);
+
+    const stated = corpus.facts.find((f) => f.origin.line === unknown[0]!.origin.line);
+    expect(stated?.attributes.name).toBe('R-3 A Crate carries one kind of thing');
+    // Surfaced, not guessed at, and never quietly replaced by the document's.
+    expect(stated?.maturityLevel).toBeNull();
+    // What it was checked against does not depend on the rung it failed to reach.
+    expect(stated?.sources).toEqual(['the crate ledger']);
   });
 
   it('reports an unrecognised status as a Finding rather than swallowing it', async () => {

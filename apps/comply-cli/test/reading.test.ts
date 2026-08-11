@@ -63,6 +63,16 @@ function baselinePath(name: string): string {
  * it, and the Findings section still says it is defined two different ways. Read by Fact
  * Kind rather than by the Facet that says it defines the language, this file says three,
  * which is how that repair is held.
+ *
+ * `corpus-a.txt` moved a fourth time when a Fact began saying where it stands and what it
+ * was checked against (ADR-0022), and `corpus-b.txt` did not budge — corpus B's review
+ * genuinely happens a document at a time, and it is carried here so that grain cannot
+ * leak into the reading. Corpus A gained one rule, so one more Fact read and one more
+ * finding is the whole of it, and the finding cites `alpha/rules.md:47`, which is that
+ * rule's own heading and not the top of a document 46 lines above it. What must *not* be
+ * here is a grid that moved: alpha's first rule now stands at the approved rung on its own
+ * word, and the cell is still `~~` because the two rules beside it do not, which is the
+ * difference between a fact's claim and a document's.
  */
 describe.each([
   ['lens-a.json', 'corpus-a.txt'],

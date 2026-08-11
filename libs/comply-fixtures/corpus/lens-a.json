@@ -28,7 +28,10 @@
     { "name": "rules", "label": "Rules", "factKind": "Rule", "extractor": "heading",
       "bodyAttribute": "statement",
       "itemPattern": "^R-[0-9]+",
-      "parts": { "Statement": "statement", "Why it exists": "rationale", "Rationale": "rationale" },
+      "parts": { "Statement": "statement", "Why it exists": "rationale", "Rationale": "rationale",
+                 "Where it stands": "standing", "Checked against": "checkedAgainst" },
+      "statusAttribute": "standing",
+      "sourcesAttribute": "checkedAgainst",
       "describes": "What must hold here. One heading per rule, which says what holds and why it does, with somewhere it came from so it can be checked against its source.",
       "criteria": [
         { "type": "requiredAttributes", "attributes": ["name", "statement", "rationale"] },

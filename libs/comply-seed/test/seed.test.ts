@@ -93,6 +93,31 @@ describe('a Seed as an artifact', () => {
     expect(await readSeed(path)).toEqual(seed());
   });
 
+  it('already carries a fact that states where it stands and what it was checked against', async () => {
+    // Why ADR-0022's planned version does not arrive (see ADR-0029). Where a fact
+    // states its own standing, it states it in one of its attributes — a column of a
+    // table, a part under a heading, the body itself — and the format has held
+    // attributes, one passage or several, since it was written. Nothing new is written
+    // down, so there is no new form to write it down in, and a version that changed
+    // would refuse every shelf in order to rewrite a Seed byte for byte.
+    const stating = seed({
+      documents: [{
+        ...seed().documents[0]!,
+        status: null,
+        items: [{
+          line: 8,
+          attributes: { name: 'A', standing: 'Agreed', checkedAgainst: ['- one.php', '- two.php'] },
+          relations: [], excerpt: '## A', excerptCut: false,
+        }],
+      }],
+    });
+
+    expect(seedSchema.safeParse(stating).success).toBe(true);
+    const dir = await mkdtemp(join(tmpdir(), 'comply-seed-'));
+    const { path } = await holdSeed(dir, stating);
+    expect(await readSeed(path)).toEqual(stating);
+  });
+
   it('refuses a Seed carrying a reading rather than trusting it', async () => {
     // A maturity level or a source list in a Seed would mean extraction had judged.
     const parsed = seedSchema.safeParse({ version: SEED_VERSION, lensId: 'l1', documents: [{}] });

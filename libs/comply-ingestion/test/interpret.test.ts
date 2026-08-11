@@ -112,6 +112,149 @@ describe('what a Lens makes of a Seed', () => {
   });
 });
 
+/**
+ * A Lens whose facts state where they stand and what they were checked against
+ * (ADR-0022). The two attributes are named, and how they came to be on a fact is
+ * the extractor's business and none of this function's.
+ */
+function statedPerFact(): Lens {
+  const base = lens();
+  return {
+    ...base,
+    statusMappings: [
+      { match: 'settled', maturity: 'high', sources: ['review'] },
+      { match: 'rough', maturity: 'low', sources: ['system-x'] },
+    ],
+    facets: [{
+      ...base.facets[0]!,
+      parts: { Statement: 'statement', Standing: 'standing', Against: 'checkedAgainst' },
+      statusAttribute: 'standing',
+      sourcesAttribute: 'checkedAgainst',
+    }],
+  };
+}
+
+/** One document whose single fact carries whatever attributes a case needs. */
+function factSaying(attributes: Record<string, string | string[]>, status: string | null = 'settled'): Seed {
+  return seedOf({
+    status,
+    items: [{ line: 12, attributes: { name: 'A', ...attributes }, relations: [], excerpt: '## A', excerptCut: false }],
+  });
+}
+
+describe('a fact saying where it stands and where it came from (ADR-0022)', () => {
+  it('takes the fact its own word for where it stands, over its document', () => {
+    // The whole of the issue: one line of frontmatter marked 47 terms reviewed at
+    // once, and nobody reviewed 47 definitions.
+    const { facts } = interpret(factSaying({ standing: 'rough' }, 'settled'), statedPerFact());
+
+    expect(facts[0]?.maturityLevel).toBe('low');
+  });
+
+  it('falls back to the document where the fact says nothing', () => {
+    // A corpus part-way through stating its own is read as it stands, not refused.
+    const { facts } = interpret(factSaying({}, 'settled'), statedPerFact());
+
+    expect(facts[0]?.maturityLevel).toBe('high');
+  });
+
+  it('unions what the mapping says the status corroborates with what the fact names', () => {
+    // Sources are a set, and a fact confirmed by more is stronger than the same
+    // fact confirmed by fewer (LAW-005).
+    const { facts } = interpret(
+      factSaying({ standing: 'rough', checkedAgainst: '- a.php\n- b.php' }),
+      statedPerFact(),
+    );
+
+    expect(facts[0]?.sources).toEqual(['system-x', 'a.php', 'b.php']);
+  });
+
+  it('unions against the document status where the fact states only its sources', () => {
+    const { facts } = interpret(factSaying({ checkedAgainst: '- a.php' }, 'settled'), statedPerFact());
+
+    expect(facts[0]?.maturityLevel).toBe('high');
+    expect(facts[0]?.sources).toEqual(['review', 'a.php']);
+  });
+
+  it('names one place once, wherever the two paths both name it', () => {
+    const { facts } = interpret(factSaying({ checkedAgainst: '- review' }, 'settled'), statedPerFact());
+
+    expect(facts[0]?.sources).toEqual(['review']);
+  });
+
+  it('reports a status it cannot read against the fact that stated it', () => {
+    // The citation this buys before any corpus is rewritten: a line somebody can
+    // open onto the thing that is wrong, rather than the top of the document
+    // (LAW-009).
+    const { facts, findings } = interpret(factSaying({ standing: 'half-settled' }), statedPerFact());
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.code).toBe('unknown-status');
+    expect(findings[0]?.message).toContain('half-settled');
+    expect(findings[0]?.origin.line).toBe(12);
+    // Surfaced, not guessed at, and never quietly replaced by the document's.
+    expect(facts).toHaveLength(1);
+    expect(facts[0]?.maturityLevel).toBeNull();
+    expect(facts[0]?.sources).toEqual([]);
+  });
+
+  it('reports the document once, however many facts inherit its unreadable status', () => {
+    // Reported where it was written. A document whose one status is unreadable is
+    // one thing wrong in one place, and saying it per fact would count one defect
+    // as many (LAW-006).
+    const seed = seedOf({
+      status: 'half-settled',
+      items: [
+        { line: 12, attributes: { name: 'A' }, relations: [], excerpt: '## A', excerptCut: false },
+        { line: 20, attributes: { name: 'B' }, relations: [], excerpt: '## B', excerptCut: false },
+      ],
+    });
+    const { facts, findings } = interpret(seed, statedPerFact());
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.origin.line).toBe(1);
+    expect(facts.map((fact) => fact.maturityLevel)).toEqual([null, null]);
+  });
+
+  it('takes neither of two standings a source wrote for one fact', () => {
+    // Picking one would be a silent choice between two things the source says, and
+    // there is nothing here that makes either of them the answer (LAW-008).
+    const { facts, findings } = interpret(
+      factSaying({ standing: ['settled', 'rough'] }),
+      statedPerFact(),
+    );
+
+    expect(facts[0]?.maturityLevel).toBeNull();
+    expect(findings[0]?.code).toBe('unknown-status');
+    expect(findings[0]?.message).toContain('settled');
+    expect(findings[0]?.message).toContain('rough');
+    expect(findings[0]?.origin.line).toBe(12);
+  });
+
+  it('reads a document that carries no status of its own at all', () => {
+    // A lens naming no status key: the fallback is nothing, and a fact that states
+    // its own is read exactly as it stands.
+    const declared = statedPerFact();
+    const withoutTheKey: Lens = {
+      ...declared,
+      adapter: { ...declared.adapter, statusKey: undefined },
+    };
+    const { facts, findings } = interpret(factSaying({ standing: 'settled' }, null), withoutTheKey);
+
+    expect(findings).toEqual([]);
+    expect(facts[0]?.maturityLevel).toBe('high');
+  });
+
+  it('says nothing about a status where the facet names no attribute for one', () => {
+    // Every corpus read before this could be said, and corpus-b after it: review
+    // happens a document at a time and the reading is unchanged (ADR-0001).
+    const { facts } = interpret(factSaying({ standing: 'rough' }), lens());
+
+    expect(facts[0]?.maturityLevel).toBe('high');
+    expect(facts[0]?.sources).toEqual(['review']);
+  });
+});
+
 describe('the reason the line moved', () => {
   it('reads one Seed differently through a stricter Lens, with nothing re-extracted', async () => {
     const asDeclared = await loadLens(fixturePath('lens-a.json'));

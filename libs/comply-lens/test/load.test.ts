@@ -227,3 +227,92 @@ describe('loadLens', () => {
     await expect(loadLens(path)).resolves.toBeDefined();
   });
 });
+
+describe('a fact saying where it stands and where it came from (ADR-0022)', () => {
+  it('accepts a lens whose source writes no status on a document at all', async () => {
+    // The whole point of the key being optional: a corpus that states its status on
+    // each fact has nothing to put in a document's frontmatter, and requiring a key
+    // there would make it declare one it does not have.
+    const path = await writeLens({
+      ...valid,
+      adapter: { kind: 'markdown-frontmatter', root: './corpus', moduleIdKey: 'm', facetKey: 'f' },
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement',
+        parts: { Statement: 'statement', 'Where it stands': 'standing' },
+        statusAttribute: 'standing',
+      }],
+    });
+    const lens = await loadLens(path);
+    expect(lens.adapter.statusKey).toBeUndefined();
+  });
+
+  it('accepts a facet naming the attribute it writes its status in and the one it writes its sources in', async () => {
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement',
+        parts: { 'Where it stands': 'standing', 'Checked against': 'checkedAgainst' },
+        statusAttribute: 'standing',
+        sourcesAttribute: 'checkedAgainst',
+      }],
+    });
+    await expect(loadLens(path)).resolves.toBeDefined();
+  });
+
+  it('accepts a facet reading rows that names a column of its own as the status', async () => {
+    // How the attribute got onto the fact is the extractor's business, so a corpus
+    // keeping its knowledge in tables says this the same way as one keeping it in
+    // sections.
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'table',
+        columns: { Name: 'name', Standing: 'standing', Against: 'checkedAgainst' },
+        statusAttribute: 'standing',
+        sourcesAttribute: 'checkedAgainst',
+      }],
+    });
+    await expect(loadLens(path)).resolves.toBeDefined();
+  });
+
+  it('rejects a facet whose status attribute is one nothing it reads could ever fill', async () => {
+    // The hazard this whole family of refusals exists for. Nothing writes to
+    // "standing", so every fact falls back to its document's status and the reading
+    // is exactly what it was — while the lens says, in writing, that it is not.
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'statement',
+        parts: { Statement: 'statement' },
+        statusAttribute: 'standing',
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/statusAttribute/);
+    await expect(loadLens(path)).rejects.toThrow(/standing/);
+  });
+
+  it('rejects a facet whose sources attribute is one nothing it reads could ever fill', async () => {
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'table', columns: { Name: 'name' },
+        sourcesAttribute: 'checkedAgainst',
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/sourcesAttribute/);
+    await expect(loadLens(path)).rejects.toThrow(/checkedAgainst/);
+  });
+
+  it('accepts a status attribute that is the one the body lands in', async () => {
+    // A facet naming no parts reads the whole body into one attribute, and a corpus
+    // whose sections hold nothing but a status is entitled to say so.
+    const path = await writeLens({
+      ...valid,
+      facets: [{
+        name: 'x', factKind: 'Rule', extractor: 'heading', bodyAttribute: 'standing',
+        statusAttribute: 'standing',
+      }],
+    });
+    await expect(loadLens(path)).resolves.toBeDefined();
+  });
+});

@@ -70,7 +70,9 @@ export async function extractSeed(lens: Lens): Promise<Seed> {
       bodyStartLine: parsed.bodyStartLine,
       moduleId: text(parsed.data[moduleIdKey]),
       facet: facetName,
-      status: text(parsed.data[statusKey]),
+      // A Lens naming no key here reads a corpus whose documents say nothing about
+      // where they stand, because each of their Facts says it (ADR-0022).
+      status: statusKey === undefined ? null : text(parsed.data[statusKey]),
       owner: ownerKey === undefined ? null : text(parsed.data[ownerKey]),
       setAside: read.setAside,
       items: read.items.map((item) => {

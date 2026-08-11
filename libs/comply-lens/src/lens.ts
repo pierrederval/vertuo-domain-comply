@@ -164,6 +164,49 @@ export const facetSpecSchema = z.object({
    */
   definesTerms: z.literal(true).optional(),
   /**
+   * The attribute holding where one of this Facet's Facts stands (ADR-0022).
+   *
+   * A status read from a document's frontmatter stamps one rung onto everything
+   * beneath it, so one person's one sign-off becomes a claim about every Fact on
+   * the page — sixteen documents reviewed in the corpus that prompted this, one of
+   * them marking 47 words as reviewed at once. And the reverse is the same wall: a
+   * person who has genuinely checked three Commands of thirty-five has nowhere to
+   * say so, so the only honest move is to sign off none.
+   *
+   * An *attribute*, and nothing more. How one came to be on a Fact is already the
+   * extractor's business — a column of a table, a Part under a heading, the body
+   * itself — so both shapes are read without this having to know which.
+   *
+   * A Fact that states one is read by it; one that does not falls back to its
+   * document's. Optional, and a Facet naming none is read entirely from its
+   * document, which is what every Facet was read by before this could be said. What
+   * a Fact is *required* to state is a sentence the Lens says through its criteria
+   * and never one the core says (ADR-0001).
+   *
+   * Refused where nothing this Facet reads could ever fill it, for the reason the
+   * refusals above are: ignored, the declaration reads as though it were in force,
+   * and the reading is exactly what it was while the Lens says in writing that it
+   * is not.
+   */
+  statusAttribute: z.string().min(1).optional(),
+  /**
+   * The attribute holding what one of this Facet's Facts was checked against
+   * (ADR-0022).
+   *
+   * Named separately from the status and never folded into it. A corpus that writes
+   * *derived from current backend behaviour* has put a rung and a provenance in one
+   * string, and `statusMappings` exists to undo exactly that at the boundary
+   * (LAW-005, ADR-0006). Undoing a conflation is the right treatment for a corpus
+   * that has one; building a new convention that needs the same treatment is not.
+   *
+   * What is found here is unioned with what the status mapping says that status
+   * corroborates, because Sources are a set and a Fact confirmed by more is
+   * stronger than the same Fact confirmed by fewer.
+   *
+   * Refused where nothing this Facet reads could ever fill it.
+   */
+  sourcesAttribute: z.string().min(1).optional(),
+  /**
    * What counts as enough under this Facet (ADR-0019).
    *
    * Declared here rather than against the Fact Kind, because a corpus routinely
@@ -195,9 +238,49 @@ export const adapterSpecSchema = z.object({
   root: z.string(),
   moduleIdKey: z.string(),
   facetKey: z.string(),
-  statusKey: z.string(),
+  /**
+   * Where a document says what it stands at, if it says so at all.
+   *
+   * Optional, because a corpus whose Facts state their own has nothing to put in a
+   * document's frontmatter, and requiring a key here would make such a corpus
+   * declare one it does not have. Where both are declared, this is the fallback for
+   * a Fact that states nothing (ADR-0022).
+   */
+  statusKey: z.string().optional(),
   ownerKey: z.string().optional(),
 });
+
+/**
+ * Every attribute a Facet reading this way could put on one of its Facts.
+ *
+ * Named so a Facet can be told that the attribute it points at is one nothing it
+ * reads will ever write to. Derived from the same three declarations the reading
+ * itself is derived from, so the two cannot drift: a table writes the columns it
+ * maps, a heading or a whole document writes the parts it maps and whatever the
+ * body lands in, and a heading is additionally known by the words of the heading
+ * itself. A Facet whose Facts are Modules is given its Module's identity and its
+ * owner, which are put on by the reading rather than found on the page.
+ */
+function attributesAFacetCanFill(facet: z.infer<typeof facetSpecSchema>): Set<string> {
+  const filled = new Set<string>();
+  if (facet.extractor === 'table') {
+    for (const attribute of Object.values(facet.columns ?? {})) filled.add(attribute);
+    // Derived from the name, where a name is read at all, so a row can be referred to.
+    if (filled.has('name')) filled.add('slug');
+  } else {
+    if (facet.extractor === 'heading') {
+      filled.add('name');
+      filled.add('slug');
+    }
+    for (const attribute of Object.values(facet.parts ?? {})) filled.add(attribute);
+    filled.add(facet.bodyAttribute ?? 'body');
+  }
+  if (facet.factKind === 'Module') {
+    filled.add('name');
+    filled.add('owner');
+  }
+  return filled;
+}
 
 export const lensSchema = z
   .object({
@@ -309,6 +392,26 @@ export const lensSchema = z
             `facet "${facet.name}" names no parts at all; remove parts to read each fact ` +
             `whole, because naming none reads every fact as only what stands before its ` +
             `first part`,
+        });
+      }
+    }
+
+    // Where a Facet says a Fact states its own standing or its own sources, something the
+    // Facet reads has to be able to fill the attribute it named. Refused rather than
+    // ignored, for the reason the three rules above are refused: ignored, every Fact
+    // falls back to its document exactly as before, and the Lens says in writing that it
+    // does not.
+    for (const [index, facet] of lens.facets.entries()) {
+      const couldFill = attributesAFacetCanFill(facet);
+      for (const declaration of ['statusAttribute', 'sourcesAttribute'] as const) {
+        const named = facet[declaration];
+        if (named === undefined || couldFill.has(named)) continue;
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['facets', index, declaration],
+          message:
+            `facet "${facet.name}" names "${named}" as ${declaration} and nothing it reads ` +
+            `writes to it; it reads ${[...couldFill].map((a) => `"${a}"`).join(', ')}`,
         });
       }
     }

@@ -1,11 +1,89 @@
 import { join } from 'node:path';
-import type { Fact, Finding } from '@vertuo/comply-core';
-import { decomposeStatus, type Lens } from '@vertuo/comply-lens';
+import type { AttributeValue, Fact, Finding } from '@vertuo/comply-core';
+import { decomposeStatus, sourcesWritten, type Lens } from '@vertuo/comply-lens';
 import type { Seed } from '@vertuo/comply-seed';
 
 export interface Interpretation {
   facts: Fact[];
   findings: Finding[];
+}
+
+/** A rung and what corroborates it, together, because one is read from the other. */
+interface WhereItStands {
+  maturityLevel: string | null;
+  sources: string[];
+}
+
+const NOTHING_SAID: WhereItStands = { maturityLevel: null, sources: [] };
+
+/**
+ * The one passage an attribute holds, or nothing.
+ *
+ * An attribute holds two passages when a source wrote the same part twice
+ * (ADR-0026). Two of them here are two statements about where one thing stands,
+ * and this returns neither: picking one would be a silent choice between two
+ * things the source says, and nothing in either of them makes it the answer
+ * (LAW-008). What was found is handed back so the reader can be told what it was.
+ */
+function statedOnce(value: AttributeValue | undefined): { one: string } | { several: string[] } | null {
+  if (value === undefined) return null;
+  const written = (Array.isArray(value) ? value : [value]).map((p) => p.trim()).filter((p) => p !== '');
+  if (written.length === 0) return null;
+  return written.length === 1 ? { one: written[0]! } : { several: written };
+}
+
+/** Both paths' sources as the one set they are, in the order they were read (LAW-005). */
+function bothPaths(fromTheMapping: string[], theFactNames: string[]): string[] {
+  const set = [...fromTheMapping];
+  for (const place of theFactNames) if (!set.includes(place)) set.push(place);
+  return set;
+}
+
+/**
+ * Where one Fact says it stands, if it says so at all (ADR-0022).
+ *
+ * `null` for a Fact that says nothing, which is not the same as a Fact whose
+ * standing could not be read: the first is answered by its document and the second
+ * is answered by nobody. A reason is reported against the Fact's own line, which is
+ * the citation this buys before a single status is transcribed anywhere — somewhere
+ * a person can open onto the thing that is wrong, rather than the top of the
+ * document it happens to be written in (LAW-009).
+ */
+function whatThisFactSays(
+  lens: Lens,
+  facet: Lens['facets'][number],
+  attributes: Record<string, AttributeValue>,
+  here: Fact['origin'],
+): { stands: WhereItStands | null; findings: Omit<Finding, 'moduleId'>[] } {
+  if (facet.statusAttribute === undefined) return { stands: null, findings: [] };
+
+  const stated = statedOnce(attributes[facet.statusAttribute]);
+  if (stated === null) return { stands: null, findings: [] };
+
+  if ('several' in stated) {
+    return {
+      stands: NOTHING_SAID,
+      findings: [{
+        code: 'unknown-status',
+        message:
+          `Where this stands is written more than once ("${stated.several.join('", "')}"), ` +
+          `so neither is read`,
+        origin: here,
+      }],
+    };
+  }
+
+  const decomposed = decomposeStatus(lens, stated.one);
+  if (decomposed !== null) return { stands: decomposed, findings: [] };
+
+  return {
+    stands: NOTHING_SAID,
+    findings: [{
+      code: 'unknown-status',
+      message: `Status "${stated.one}" matches no mapping in lens "${lens.id}"`,
+      origin: here,
+    }],
+  };
 }
 
 /**
@@ -79,8 +157,10 @@ export function interpret(seed: Seed, lens: Lens): Interpretation {
       continue;
     }
 
-    let maturityLevel: string | null = null;
-    let sources: string[] = [];
+    // What the document says, read once and reported once. A document whose one
+    // status cannot be read is one thing wrong in one place, and saying it again for
+    // every Fact beneath it would count one defect as many (LAW-006).
+    let asTheDocumentStands: WhereItStands = NOTHING_SAID;
     if (document.status !== null) {
       const decomposed = decomposeStatus(lens, document.status);
       if (decomposed === null) {
@@ -89,8 +169,7 @@ export function interpret(seed: Seed, lens: Lens): Interpretation {
           message: `Status "${document.status}" matches no mapping in lens "${lens.id}"`, origin,
         });
       } else {
-        maturityLevel = decomposed.maturityLevel;
-        sources = decomposed.sources;
+        asTheDocumentStands = decomposed;
       }
     }
 
@@ -109,6 +188,26 @@ export function interpret(seed: Seed, lens: Lens): Interpretation {
         attributes.name = moduleId;
         if (document.owner !== null) attributes.owner = document.owner;
       }
+
+      // Where this Fact itself says it stands, over what its document says. The
+      // document remains the fallback, so a corpus part-way through stating its own is
+      // read as it stands rather than refused, and a corpus whose review genuinely
+      // happens a document at a time is read exactly as it was (ADR-0001).
+      const here = { file, line: item.line };
+      const own = whatThisFactSays(lens, facet, attributes, here);
+      for (const finding of own.findings) findings.push({ ...finding, moduleId });
+      const stands = own.stands ?? asTheDocumentStands;
+
+      // Both paths, always: what a Fact was checked against does not depend on which
+      // rung it reached, and survives a status this Lens could not read. Maturity and
+      // Source are independent and are never carried inward as one thing (LAW-005).
+      const sources = bothPaths(
+        stands.sources,
+        facet.sourcesAttribute === undefined
+          ? []
+          : sourcesWritten(attributes[facet.sourcesAttribute]),
+      );
+
       facts.push({
         id: facet.factKind === 'Module' ? moduleId : `${document.path}#${index}`,
         kind: facet.factKind,
@@ -117,9 +216,9 @@ export function interpret(seed: Seed, lens: Lens): Interpretation {
         containerId: document.containerId,
         attributes,
         relations: item.relations,
-        maturityLevel,
+        maturityLevel: stands.maturityLevel,
         sources,
-        origin: { file, line: item.line },
+        origin: here,
       });
     }
   }

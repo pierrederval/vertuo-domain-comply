@@ -17,6 +17,15 @@ A Widget may not be made twice. See [R-2](rules.md#r-2-a-sprocket-s-role-in-the-
 
 Two Widgets carrying one identity cannot be told apart by anybody downstream.
 
+### Where it stands
+
+Agreed
+
+### Checked against
+
+- system-x
+- the crate ledger
+
 ### Who last read it
 
 Avery, against System X.
@@ -30,6 +39,28 @@ A Sprocket turns when asked. It is never a [Widget](terms.md#widget).
 ### Rationale
 
 Nothing else in Alpha turns, so whoever needs turning needs this.
+
+### Checked against
+
+- the crate ledger
+
+## R-3 A Crate carries one kind of thing
+
+### Statement
+
+Everything in one Crate is the same kind of thing. A Crate of Widgets never holds a Sprocket.
+
+### Rationale
+
+Whoever opens a Crate has to know what is in it without looking through all of it.
+
+### Where it stands
+
+Half-agreed
+
+### Checked against
+
+- the crate ledger
 
 ## Terminology
 
