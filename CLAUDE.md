@@ -52,15 +52,28 @@ against one shape, the shape has leaked into the core.
 
 TypeScript on Node 24 with `tsx`, a pnpm workspace over `apps/*` and `libs/*` orchestrated by
 Turborepo, PostgreSQL via Kysely, Zod for validation and contracts, Fastify for HTTP, React 19 with
-Vite and the shared design system, Vitest for tests, Docker to deploy (ADR-0013).
+Vite, Tailwind and vendored shadcn primitives, Vitest for tests, Docker to deploy (ADR-0013 and
+ADR-0018).
 
-Two rules that are easy to break:
+Three rules that are easy to break:
 
 - **Only `libs/system-db` may import Kysely or open a connection.** Any other package touching the
   database directly is a defect.
 - **Ledger tables reject `UPDATE` and `DELETE` at the database** — the application role has no such
   grant, and a trigger backs it up. Do not attempt to work around this; it is LAW-003 made
   structural.
+- **Never assert about a class name.** Interface tests use `data-*` handles — `data-figure`,
+  `data-cell`, `data-movement`, `data-conspicuous` — because several of them are laws made testable,
+  and a guard tied to styling is deleted by whoever next changes the styling. `data-figure` appearing
+  exactly twice is LAW-006: two readings, never a third fused one.
+
+The interface's components are vendored into `apps/comply-studio/src/components/ui` and are ours to
+maintain (ADR-0018). Both vocabulary guards scan them like any other source, so LAW-004 and LAW-010
+apply to a vendored component as much as to one written here.
+
+shadcn's blocks bring KPI tiles, progress rings, trend chips and count badges. Every one of them is a
+figure with its denominator removed, which is LAW-006. A badge may carry a state's name; never a count.
+No percentage, no rate, no grade, no score. `—` means *no baseline* and never becomes `0%`.
 
 One library per bounded context, so the domain model's boundaries are enforced by the package graph.
 
