@@ -23,11 +23,62 @@ describe('extractors', () => {
       columns: { Word: 'name', Meaning: 'definition', 'Also called': 'aliases' },
     };
     const items = extract(doc!, facet);
-    expect(items).toHaveLength(2);
     expect(items[0]!.attributes.name).toBe('Widget');
     expect(items[0]!.attributes.definition).toBe('A thing that is made.');
     expect(items[1]!.attributes.name).toBe('Sprocket');
     expect(items[1]!.line).toBeGreaterThan(items[0]!.line);
+  });
+
+  it('table extractor reads every table when a Facet says nothing about which are its own', async () => {
+    // The document holds a second table of words nobody uses any more, headed
+    // differently and sharing only its first column. A Facet that has not said which
+    // tables are its own gets all of them, exactly as it did before it could say.
+    const doc = await parseDocument(fixturePath('corpus-a/alpha/terms.md'));
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
+      columns: { Word: 'name', Meaning: 'definition', 'Also called': 'aliases' },
+    };
+    expect(extract(doc!, facet).map((i) => i.attributes.name))
+      .toEqual(['Widget', 'Sprocket', 'Grommet']);
+  });
+
+  it('table extractor reads only the tables a Facet says are its own', async () => {
+    // `Grommet` is a word the business retired, written down beside what it used to
+    // mean and why it went. Read as a definition it is a Term with a name and nothing
+    // else — one that fails a criterion it was never meant to be held to, in a queue
+    // where nobody can act on it. Said aloud, the table is simply not this Facet's.
+    const doc = await parseDocument(fixturePath('corpus-a/alpha/terms.md'));
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
+      columns: { Word: 'name', Meaning: 'definition', 'Also called': 'aliases' },
+      identifyingColumns: ['Word', 'Meaning'],
+    };
+    expect(extract(doc!, facet).map((i) => i.attributes.name)).toEqual(['Widget', 'Sprocket']);
+  });
+
+  it('table extractor asks only for the columns that identify a table, not for every one', () => {
+    // A corpus spells the same column several ways, so what identifies its table is the
+    // handful of headers that never move. Requiring the whole header row would refuse
+    // every table the moment one of them was spelled differently.
+    const doc: ParsedDocument = {
+      file: 'inline://spelled-differently.md',
+      data: {},
+      body: [
+        '',
+        '| Word | Meaning | Also known as |',
+        '| --- | --- | --- |',
+        '| Widget | A thing that is made. | Gadget |',
+      ].join('\n'),
+      bodyStartLine: 1,
+    };
+    const facet: FacetSpec = {
+      name: 'terms', factKind: 'Term', extractor: 'table', criteria: [],
+      columns: { Word: 'name', Meaning: 'definition', 'Also called': 'aliases', 'Also known as': 'aliases' },
+      identifyingColumns: ['Word', 'Meaning'],
+    };
+    const items = extract(doc, facet);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.attributes.aliases).toBe('Gadget');
   });
 
   it('heading extractor yields one item per section and collects links as relations', async () => {

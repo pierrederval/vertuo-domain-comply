@@ -16,6 +16,7 @@
       "criteria": [{ "type": "requiredAttributes", "attributes": ["description"] }] },
     { "name": "terms", "label": "Terms", "factKind": "Term", "extractor": "table",
       "columns": { "Word": "name", "Meaning": "definition", "Also called": "aliases" },
+      "identifyingColumns": ["Word", "Meaning"],
       "describes": "The words this area uses, and what each one means here. One row per word.",
       "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
     { "name": "rules", "label": "Rules", "factKind": "Rule", "extractor": "heading",
