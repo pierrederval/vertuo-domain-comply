@@ -1,0 +1,71 @@
+{
+  "id": "vertuo-domain-fr",
+  "name": "Vertuoza",
+  "adapter": {
+    "kind": "markdown-frontmatter",
+    "root": "../../vertuo-domain-fr/domains",
+    "moduleIdKey": "domain",
+    "facetKey": "section",
+    "statusKey": "status",
+    "ownerKey": "owner"
+  },
+  "facets": [
+    { "name": "overview", "label": "Overview", "factKind": "Module", "extractor": "document",
+      "bodyAttribute": "description",
+      "describes": "Ce que ce Domain possède, ce qu'il consomme ailleurs, et ce qu'il ne possède délibérément pas. Un Domain sans Objectif écrit ne peut être ni discuté ni délimité.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["description"] }] },
+
+    { "name": "glossary", "label": "Glossary", "factKind": "Term", "extractor": "table",
+      "columns": { "Terme": "name", "Définition": "definition", "Alias ou Notes": "aliases" },
+      "describes": "Les mots que ce Domain emploie et ce que chacun signifie ici. Une ligne par mot, avec les alias sous lesquels il est aussi connu, pour que deux noms d'une même chose se retrouvent.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
+
+    { "name": "business-rules", "label": "Business Rules", "factKind": "Rule", "extractor": "heading",
+      "bodyAttribute": "statement",
+      "describes": "Ce qui doit tenir dans ce Domain. Un titre par règle, qui est aussi la cible des liens que citent les tables Commands, Events et Workflows.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] },
+
+    { "name": "commands", "label": "Commands", "factKind": "Message", "extractor": "table",
+      "columns": { "Command": "name", "Actor": "actor", "Intention": "definition",
+        "Règles Principales": "rules", "Domain Events Résultants": "events" },
+      "describes": "Les demandes qu'une chose arrive. Chacune exige qui peut la demander et ce qu'elle vise ; sans Actor, une Command ne dit rien de qui a le droit de l'exercer.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "actor", "definition"] }] },
+
+    { "name": "events", "label": "Domain Events", "factKind": "Message", "extractor": "table",
+      "columns": { "Domain Event": "name", "Signification": "definition", "Règle Associée": "rule" },
+      "describes": "Les faits métier déjà survenus, auxquels d'autres Domains réagissent. Chacun exige sa signification et la Règle dont il découle, pour qu'un lecteur puisse retracer pourquoi il existe.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition", "rule"] }] },
+
+    { "name": "workflows", "label": "Workflows", "factKind": "Rule", "extractor": "table",
+      "columns": { "Étape": "name", "Description": "statement",
+        "Règles Appliquées": "rules", "Règles": "rules",
+        "Domain Events": "events", "Domain Events Candidats": "events" },
+      "describes": "Comment le travail traverse réellement ce Domain, de bout en bout. Une ligne par étape, avec les Règles qu'elle applique et les Domain Events qu'elle produit.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] },
+
+    { "name": "state-machines", "label": "State Machines", "factKind": "Transition", "extractor": "table",
+      "columns": { "Transition": "name", "État source": "name", "État cible": "to", "Garde": "guard" },
+      "describes": "Vers quel état une chose peut passer depuis quel autre, et ce qui doit être vrai pour qu'elle y passe. Une ligne par transition, avec la Garde qui l'autorise.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "guard"] }] },
+
+    { "name": "experience", "label": "Experience", "factKind": "Term", "extractor": "heading",
+      "bodyAttribute": "description",
+      "describes": "Où cette connaissance se voit à l'écran. Un titre par écran ou par zone d'écran, pour qu'une règle écrite ici puisse être confrontée à ce qu'un utilisateur rencontre.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "description"] }] }
+  ],
+  "maturity": {
+    "levels": ["placeholder", "candidat", "revu", "validé"],
+    "approvedAtOrAbove": "validé"
+  },
+  "statusMappings": [
+    { "match": "Placeholder - Non documenté",
+      "maturity": "placeholder",
+      "sources": [] },
+    { "match": "Candidat - Dérivé du Comportement Backend Actuel",
+      "maturity": "candidat",
+      "sources": ["comportement backend actuel"] },
+    { "match": "Revu par PM",
+      "maturity": "revu",
+      "sources": ["comportement backend actuel", "revue PM"] }
+  ]
+}
