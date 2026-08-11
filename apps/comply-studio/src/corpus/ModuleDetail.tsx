@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import type {
   CorpusModule,
   Knowledge,
@@ -15,12 +16,22 @@ import {
   Readings,
   Surface,
 } from '../components/layout.js';
+import { Where } from '../components/Where.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { count } from '../words.js';
 
-/** Somewhere a person can go and check the claim for themselves (LAW-009). */
-function Where({ at }: { at: Place }) {
-  return <span className="font-mono text-sm">{`${at.file}, line ${at.line}`}</span>;
+/**
+ * Where one piece of knowledge is opened.
+ *
+ * A place is the address, because it is the only name every Corpus gives a piece of
+ * knowledge. Its two halves travel named rather than folded into the address: a
+ * document's path holds separators of its own, and one carrying them encoded is an
+ * address that works here and is taken apart by the first thing that tidies a path
+ * on its way through.
+ */
+function opensAt(corpusId: string, moduleId: string, at: Place): string {
+  const held = `/corpus/${encodeURIComponent(corpusId)}/modules/${encodeURIComponent(moduleId)}`;
+  return `${held}/knowledge?in=${encodeURIComponent(at.file)}&line=${at.line}`;
 }
 
 /**
@@ -117,8 +128,20 @@ function Standing({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
  * it. How far along a piece of knowledge is and how well backed it is are two
  * separate readings, and conflating them is what made coverage uncomputable in
  * the first place (LAW-005).
+ *
+ * Each place opens onto the piece written at it, where the rest of what it says,
+ * what backs it up, and the source text it was read out of are all shown together
+ * (#22). A place is the address for the same reason it is what a reader is shown.
  */
-function Written({ knowledge }: { knowledge: Knowledge[] }) {
+function Written({
+  knowledge,
+  corpusId,
+  moduleId,
+}: {
+  knowledge: Knowledge[];
+  corpusId: string;
+  moduleId: string;
+}) {
   return (
     <>
       <p className="text-sm text-muted-foreground">
@@ -127,7 +150,12 @@ function Written({ knowledge }: { knowledge: Knowledge[] }) {
       <ul className={LISTED}>
         {knowledge.map((piece) => (
           <li key={`${piece.at.file}:${piece.at.line}`}>
-            <Where at={piece.at} />{' '}
+            <Link
+              to={opensAt(corpusId, moduleId, piece.at)}
+              className="underline decoration-dotted underline-offset-4"
+            >
+              <Where at={piece.at} />
+            </Link>{' '}
             {piece.maturity === null ? (
               // Not an empty space, and not the word the code has for nothing
               // (LAW-010). A Corpus that graded nothing here said something.
@@ -142,7 +170,17 @@ function Written({ knowledge }: { knowledge: Knowledge[] }) {
   );
 }
 
-function Declared({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
+function Declared({
+  facet,
+  ladder,
+  corpusId,
+  moduleId,
+}: {
+  facet: ModuleFacet;
+  ladder: Ladder;
+  corpusId: string;
+  moduleId: string;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -176,7 +214,9 @@ function Declared({ facet, ladder }: { facet: ModuleFacet; ladder: Ladder }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <Standing facet={facet} ladder={ladder} />
-        {facet.state !== 'absent' && <Written knowledge={facet.knowledge} />}
+        {facet.state !== 'absent' && (
+          <Written knowledge={facet.knowledge} corpusId={corpusId} moduleId={moduleId} />
+        )}
       </CardContent>
     </Card>
   );
@@ -294,7 +334,13 @@ export function ModuleDetail({ module }: { module: CorpusModule }) {
       </Readings>
 
       {facets.map((facet) => (
-        <Declared key={facet.facet} facet={facet} ladder={ladder} />
+        <Declared
+          key={facet.facet}
+          facet={facet}
+          ladder={ladder}
+          corpusId={module.corpus.id}
+          moduleId={module.id}
+        />
       ))}
       <Against findings={findings} lookedFor={lookedFor} />
 

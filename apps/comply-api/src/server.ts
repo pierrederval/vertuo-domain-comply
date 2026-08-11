@@ -8,10 +8,12 @@ import {
 } from 'fastify-type-provider-zod';
 import {
   corpusDetailSchema,
+  corpusFactSchema,
   corpusListSchema,
   corpusModuleSchema,
   notHeldSchema,
   type CorpusDetail,
+  type CorpusFact,
   type CorpusModule,
   type CorpusReading,
   type CorpusSummary,
@@ -22,10 +24,13 @@ import {
   type Movement,
   type Place,
   type ReadinessFigure,
+  type SourceText,
+  type WrittenPart,
 } from '@vertuo/comply-contract';
-import type { Finding, SourceLocation } from '@vertuo/comply-core';
+import type { AttributeValue, Finding, SourceLocation } from '@vertuo/comply-core';
 import { factsUnder } from '@vertuo/comply-readiness';
 import { readSeededCorpus, type Reading } from '@vertuo/comply-reading';
+import type { Seed } from '@vertuo/comply-seed';
 import { readShelf, type ShelvedCorpus } from './shelf.js';
 
 /**
@@ -248,6 +253,141 @@ function oneModule(
 }
 
 /**
+ * One place, and no more than one piece of knowledge is written down at it.
+ *
+ * Every extractor there is reads one thing per heading or one thing per row, so no
+ * two things share a line: across the two fixture Corpus and the real one, 1520
+ * pieces of knowledge are written at 1520 distinct places. Were that ever to stop
+ * holding, what stops holding with it is a piece of knowledge having a name at all
+ * — which is the agreement's own statement about what identifies one, and not this
+ * surface's to repair.
+ */
+function samePlace(one: Place, other: Place): boolean {
+  return one.file === other.file && one.line === other.line;
+}
+
+/**
+ * What was asked for at an address this shelf holds a Corpus for, and has not.
+ *
+ * The two are told apart for the reason the Corpus and the Module are: they send a
+ * reader to different places, and one sentence for both would send half of the
+ * people who meet it to the wrong one.
+ */
+type NotHeldHere = 'module' | 'knowledge';
+
+/**
+ * The source text one piece of knowledge was read out of.
+ *
+ * Taken from the knowledge as written down and not from the source, which is what
+ * lets a reader be shown the text a claim came from on a machine that cannot reach
+ * the documents at all (spec §3.3). It was written down at extraction and has
+ * reached no reader until now.
+ *
+ * Nothing where the knowledge on the shelf carries no text for that place — the
+ * surface says so rather than drawing an empty quotation, because a reader shown
+ * one has been shown a claim they cannot check and told nothing about why.
+ */
+function quotedAt(seed: Seed, at: Place): SourceText | null {
+  const document = seed.documents.find((held) => held.path === at.file);
+  const item = document?.items.find((held) => held.line === at.line);
+  if (item === undefined || item.excerpt === '') return null;
+  return { says: item.excerpt, cut: item.excerptCut };
+}
+
+/**
+ * The parts one piece of knowledge is written in, in the order its source writes
+ * them.
+ *
+ * Every part the reading holds, including the ones an extractor made rather than
+ * the source. A Facet may state a criterion against any of them, and a reader
+ * shown fewer parts than the criteria are stated against cannot check the
+ * shortfall they were told about.
+ *
+ * A passage that says nothing at all is left out, because that is already what the
+ * reading counts as nothing written down under a part — and the source text
+ * alongside still shows whatever it was written under.
+ */
+function partsOf(attributes: Record<string, AttributeValue>): WrittenPart[] {
+  const written: WrittenPart[] = [];
+
+  for (const [named, value] of Object.entries(attributes)) {
+    // Each passage as written. Two of them are two, never one: passages that are
+    // not next to each other in the source are not continuous prose (ADR-0017).
+    const says = (Array.isArray(value) ? value : [value]).filter((one) => one.trim() !== '');
+    if (says.length > 0) written.push({ named, says });
+  }
+
+  return written;
+}
+
+/**
+ * One piece of knowledge, whole, or nothing where this Corpus writes none at the
+ * place asked about.
+ *
+ * Asked for by where it is written down, because that is the one name every Corpus
+ * gives a piece of knowledge — nothing in a Lens promises it another (spec §5.4).
+ * The Module is part of the address and is checked rather than trusted: the place
+ * alone would answer, and answering it would put one Module's knowledge on another
+ * Module's page.
+ *
+ * Nothing is judged here. Which rung it sits at, what corroborates it, and which
+ * Facet it is under were all decided where the reading was taken; this puts the
+ * reading beside the text it was read out of.
+ */
+function oneFact(
+  shelved: ShelvedCorpus,
+  moduleId: string,
+  at: Place,
+  takenAt: string,
+): CorpusFact | NotHeldHere {
+  const { lens, seed, sourceReadAt } = shelved;
+  const corpus = { id: lens.id, name: lens.name ?? lens.id };
+  const reading = readNow(shelved, takenAt);
+
+  // Nothing has been written down, so nothing is at that place — which is a
+  // different answer from a place this Corpus writes nothing at, and sends a
+  // reader somewhere else.
+  if (reading === null || seed === null || sourceReadAt === null) {
+    return { corpus, reading: { outcome: 'nothing-written-down-yet' } };
+  }
+
+  // Told apart, because they send a reader to different places: a name this
+  // Corpus does not have is a name to go and check, and a place it writes nothing
+  // at is a place to go and look at.
+  if (!reading.matrix.rows.some((row) => row.moduleId === moduleId)) return 'module';
+
+  const { root } = lens.adapter;
+  const fact = reading.corpus.facts.find(
+    (held) =>
+      (held.moduleId ?? held.id) === moduleId && samePlace(placeOf(root, held.origin), at),
+  );
+  if (fact === undefined) return 'knowledge';
+
+  // Read under a Facet the Lens declares, or it would not have been read at all.
+  const declared = lens.facets.find((facet) => facet.name === fact.facet)!;
+
+  return {
+    corpus,
+    reading: {
+      outcome: 'read',
+      sourceReadAt: sourceReadAt.toISOString(),
+      lensId: reading.matrix.lensId,
+      ladder: { levels: lens.maturity.levels, approvedAtOrAbove: lens.maturity.approvedAtOrAbove },
+      at,
+      moduleId,
+      facet: declared.name,
+      label: declared.label ?? declared.name,
+      // The two readings of one piece of knowledge, side by side and neither
+      // standing for the other (LAW-005). Nothing is derived from the pair.
+      maturity: fact.maturityLevel,
+      sources: [...fact.sources],
+      written: partsOf(fact.attributes),
+      quoted: quotedAt(seed, at),
+    },
+  };
+}
+
+/**
  * The read-only surface over a shelf.
  *
  * Every route is a GET. Nothing here writes: re-reading the source is the one
@@ -318,6 +458,46 @@ export function buildServer(shelf: string): FastifyInstance {
 
       const answer = oneModule(shelved, moduleId, new Date().toISOString());
       if (answer === null) return reply.status(404).send({ notHeld: 'module', id, moduleId });
+
+      return answer;
+    },
+  );
+
+  server.get(
+    '/corpus/:id/modules/:moduleId/knowledge',
+    {
+      schema: {
+        params: z.object({ id: z.string().min(1), moduleId: z.string().min(1) }),
+        /**
+         * Where the knowledge is written down, as the two things a place is.
+         *
+         * Named rather than folded into the address, because a document's path
+         * holds separators of its own: one carrying them encoded is an address
+         * that works here and is taken apart by the first thing that tidies a
+         * path on its way through.
+         */
+        querystring: z.object({
+          in: z.string().min(1),
+          /** Counted from one, as an editor counts. */
+          line: z.coerce.number().int().positive(),
+        }),
+        response: { 200: corpusFactSchema, 404: notHeldSchema },
+      },
+    },
+    async (request, reply) => {
+      const { id, moduleId } = request.params;
+      const { corpus } = await readShelf(shelf);
+      const shelved = corpus.find((entry) => entry.lens.id === id);
+
+      if (shelved === undefined) {
+        return reply.status(404).send({ notHeld: 'corpus', id, moduleId });
+      }
+
+      const at = { file: request.query.in, line: request.query.line };
+      const answer = oneFact(shelved, moduleId, at, new Date().toISOString());
+      if (typeof answer === 'string') {
+        return reply.status(404).send({ notHeld: answer, id, moduleId });
+      }
 
       return answer;
     },

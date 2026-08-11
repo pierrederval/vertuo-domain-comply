@@ -37,3 +37,4 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0027](./0027-only-the-dictionary-is-held-to-the-dictionarys-shape.md) | Only the dictionary is held to the dictionary's shape *(implements 0021; corrects one figure in it)* |
 | [0028](./0028-the-build-gate-runs-uncached-and-its-name-is-the-gate.md) | The build gate runs the whole suite uncached, and the job's name is what blocks a merge *(bears on 0013)* |
 | [0029](./0029-a-fact-states-where-it-stands-and-what-it-was-checked-against.md) | A Fact states where it stands and what it was checked against *(implements 0022 and corrects four figures in it; refines 0006 and 0026)* |
+| [0030](./0030-knowledge-is-opened-where-it-is-written-down.md) | A piece of knowledge is opened where it is written down, and quoted from the Seed *(builds 0017's excerpt and 0029's Sources into a surface; bears on 0026)* |
