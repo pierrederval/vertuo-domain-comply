@@ -1,3 +1,4 @@
+import { relative } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
@@ -8,14 +9,22 @@ import {
 import {
   corpusDetailSchema,
   corpusListSchema,
+  corpusModuleSchema,
+  notHeldSchema,
   type CorpusDetail,
+  type CorpusModule,
   type CorpusReading,
   type CorpusSummary,
   type IntegrityFigure,
+  type ModuleFacet,
+  type ModuleFinding,
   type ModuleRow,
   type Movement,
+  type Place,
   type ReadinessFigure,
 } from '@vertuo/comply-contract';
+import type { Finding, SourceLocation } from '@vertuo/comply-core';
+import { factsUnder } from '@vertuo/comply-readiness';
 import { readSeededCorpus, type Reading } from '@vertuo/comply-reading';
 import { readShelf, type ShelvedCorpus } from './shelf.js';
 
@@ -129,6 +138,105 @@ function wholeReading(shelved: ShelvedCorpus, takenAt: string): CorpusDetail {
 }
 
 /**
+ * Where a claim was found, as somewhere a reader can go.
+ *
+ * Relativised against where this Corpus's knowledge is kept. Origins are held as
+ * absolute paths because LAW-009 needs a path a person can open, but sending that
+ * path bakes in the machine that read it: it cannot be shared, compared between
+ * two people, or quoted into a Change Request, which is every use a reader has
+ * for it.
+ */
+function placeOf(root: string, at: SourceLocation): Place {
+  return { file: relative(root, at.file), line: at.line };
+}
+
+function reportOf(root: string, finding: Finding): ModuleFinding {
+  return {
+    says: finding.message,
+    at: placeOf(root, finding.origin),
+    alsoAt: (finding.relatedOrigins ?? []).map((also) => placeOf(root, also)),
+  };
+}
+
+/**
+ * One Module, whole, or nothing where this Corpus holds no Module of that name.
+ *
+ * Every declared Facet appears, in the order the Lens declares them, and each
+ * carries only the reason belonging to the state it is in. Nothing is judged
+ * here: which Facts sit under a Facet, whether they are well-formed and how many
+ * have not reached the approved step were all decided where the reading was
+ * taken, and this arranges what was decided into what the two sides agreed
+ * (spec §3.2).
+ */
+function oneModule(
+  shelved: ShelvedCorpus,
+  moduleId: string,
+  takenAt: string,
+): CorpusModule | null {
+  const { lens, sourceReadAt } = shelved;
+  const corpus = { id: lens.id, name: lens.name ?? lens.id };
+  const reading = readNow(shelved, takenAt);
+
+  // Nothing has been written down, so there is no Module here to find and no
+  // reading to report — which is a different answer from a name this Corpus does
+  // not have, and sends a reader somewhere else.
+  if (reading === null || sourceReadAt === null) {
+    return { corpus, id: moduleId, reading: { outcome: 'nothing-written-down-yet' } };
+  }
+
+  const at = reading.matrix.rows.findIndex((row) => row.moduleId === moduleId);
+  const row = reading.matrix.rows[at];
+  if (row === undefined) return null;
+
+  const { root } = lens.adapter;
+  const facets: ModuleFacet[] = row.cells.map((cell, position) => {
+    const declared = lens.facets[position]!;
+    const knowledge = factsUnder(reading.corpus, moduleId, declared).map((fact) => ({
+      at: placeOf(root, fact.origin),
+      maturity: fact.maturityLevel,
+    }));
+
+    switch (cell.state) {
+      case 'absent':
+        return { facet: cell.facet, state: 'absent' };
+      case 'present':
+        return { facet: cell.facet, state: 'present', knowledge, shortOf: cell.unmet };
+      case 'well-formed':
+        return {
+          facet: cell.facet,
+          state: 'well-formed',
+          knowledge,
+          notYetApproved: cell.notYetApproved,
+        };
+      case 'approved':
+        return { facet: cell.facet, state: 'approved', knowledge };
+    }
+  });
+
+  return {
+    corpus,
+    id: moduleId,
+    reading: {
+      outcome: 'read',
+      sourceReadAt: sourceReadAt.toISOString(),
+      lensId: reading.matrix.lensId,
+      ladder: { levels: lens.maturity.levels, approvedAtOrAbove: lens.maturity.approvedAtOrAbove },
+      owner: row.owner,
+      facets,
+      approved: reading.scores[at]!.approved,
+      declaredFacets: reading.scores[at]!.total,
+      // A Finding that belongs to no Module cannot be shown against one. Where
+      // those go is the Inbox's business (#23), and dropping them here would be
+      // a Finding that routes to nobody quietly becoming a Finding nobody sees.
+      findings: reading.findings
+        .filter((finding) => finding.moduleId === moduleId)
+        .map((finding) => reportOf(root, finding)),
+      lookedFor: reading.checks,
+    },
+  };
+}
+
+/**
  * The read-only surface over a shelf.
  *
  * Every route is a GET. Nothing here writes: re-reading the source is the one
@@ -175,6 +283,30 @@ export function buildServer(shelf: string): FastifyInstance {
       if (shelved === undefined) return reply.status(404).send({ id: request.params.id });
 
       return wholeReading(shelved, new Date().toISOString());
+    },
+  );
+
+  server.get(
+    '/corpus/:id/modules/:moduleId',
+    {
+      schema: {
+        params: z.object({ id: z.string().min(1), moduleId: z.string().min(1) }),
+        response: { 200: corpusModuleSchema, 404: notHeldSchema },
+      },
+    },
+    async (request, reply) => {
+      const { id, moduleId } = request.params;
+      const { corpus } = await readShelf(shelf);
+      const shelved = corpus.find((entry) => entry.lens.id === id);
+
+      if (shelved === undefined) {
+        return reply.status(404).send({ notHeld: 'corpus', id, moduleId });
+      }
+
+      const answer = oneModule(shelved, moduleId, new Date().toISOString());
+      if (answer === null) return reply.status(404).send({ notHeld: 'module', id, moduleId });
+
+      return answer;
     },
   );
 

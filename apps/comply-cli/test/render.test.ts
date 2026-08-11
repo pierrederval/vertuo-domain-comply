@@ -134,6 +134,47 @@ describe('rendering', () => {
     expect(out).toContain('Facets not yet approved:');
     expect(out).toContain('m1 / items');
     expect(out).toContain('missing: definition');
+    // The criterion's own name is not something a person needs to read, and a
+    // reason that carried it would be the shortfall stated in the vocabulary of
+    // whatever computed it.
+    expect(out).not.toContain('requiredAttributes');
+  });
+
+  it('puts every kind of shortfall into words of its own', () => {
+    const strict: Lens = {
+      ...inlineLens,
+      facets: [...inlineLens.facets, { name: 'steps', factKind: 'Transition', extractor: 'table' }],
+      criteria: {
+        Term: [
+          { type: 'requiredAttributes', attributes: ['name', 'definition'] },
+          { type: 'minSources', count: 2 },
+          { type: 'minRelations', relation: 'refines', count: 1 },
+        ],
+        Transition: [{ type: 'allStatesReachable', fromAttribute: 'from', toAttribute: 'to' }],
+      },
+    };
+    const facts: Fact[] = [
+      fact({ id: 'm1', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),
+      fact({
+        id: 'm1-term', kind: 'Term', moduleId: 'm1', facet: 'items',
+        attributes: { name: 'Foo' }, sources: ['one'],
+      }),
+      fact({
+        id: 'm1-step', kind: 'Transition', moduleId: 'm1', facet: 'steps',
+        attributes: { from: 'stuck', to: 'stuck' },
+      }),
+    ];
+    const matrix = buildMatrix(buildCorpus(facts), strict);
+    const out = renderMatrix(matrix, scoreMatrix(matrix), []);
+
+    expect(out).toContain('missing: definition');
+    expect(out).toContain('backed by 1 of the 2 sources this Lens asks for');
+    expect(out).toContain('0 of the 1 "refines" links this Lens asks for');
+    expect(out).toContain('nothing leads to: stuck');
+    // Not one of the four criterion names reaches the terminal.
+    for (const kind of ['requiredAttributes', 'minSources', 'minRelations', 'allStatesReachable']) {
+      expect(out).not.toContain(kind);
+    }
   });
 
   it('names the maturity shortfall for a well-formed facet that has no unmet content criteria', () => {

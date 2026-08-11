@@ -34,13 +34,16 @@ describe('well-formedness engine', () => {
 
   it('names each missing attribute', () => {
     const unmet = evaluateFact(fact({ attributes: { name: 'n' }, sources: ['x'] }), base);
-    expect(unmet).toHaveLength(1);
-    expect(unmet[0]!.detail).toContain('statement');
+    // The parts of the reason, not a sentence about it: which attributes are
+    // missing is what a surface needs to write its own words about them.
+    expect(unmet).toEqual([{ criterion: 'requiredAttributes', missing: ['statement'] }]);
   });
 
-  it('reports too few sources', () => {
+  it('reports too few sources against how many are asked for', () => {
     const unmet = evaluateFact(fact({ attributes: { name: 'n', statement: 's' } }), base);
-    expect(unmet.map((u) => u.criterion)).toEqual(['minSources']);
+    // Both numbers, because a shortfall is stated against what was asked for
+    // (LAW-006), and because no surface can phrase it from one of them.
+    expect(unmet).toEqual([{ criterion: 'minSources', has: 0, needs: 1 }]);
   });
 
   it('applies no criteria to a Fact Kind the lens does not constrain', () => {
@@ -53,8 +56,25 @@ describe('well-formedness engine', () => {
       fact({ id: 't2', kind: 'Transition', attributes: { from: 'lost', to: 'lost' } }),
     ];
     const unmet = evaluateFacet(facts, 'Transition', base);
-    expect(unmet).toHaveLength(1);
-    expect(unmet[0]!.detail).toContain('lost');
+    expect(unmet).toEqual([{ criterion: 'allStatesReachable', unreachable: ['lost'] }]);
+  });
+
+  it('names every shortfall with the criterion the Lens itself declared', () => {
+    const unmet = [
+      ...evaluateFact(fact({ attributes: {} }), base),
+      ...evaluateFacet(
+        [fact({ id: 't1', kind: 'Transition', attributes: { from: 'lost', to: 'lost' } })],
+        'Transition',
+        base,
+      ),
+    ];
+    const declared = Object.values(base.criteria).flat().map((c) => c.type);
+
+    // One vocabulary for a criterion, whether it is being declared or reported
+    // as unmet. A shortfall that named itself differently would leave a reader
+    // shown one to hunt for the other in the Lens.
+    expect(unmet.length).toBeGreaterThan(2);
+    for (const reason of unmet) expect(declared).toContain(reason.criterion);
   });
 
   it('accepts a fully reachable transition graph', () => {

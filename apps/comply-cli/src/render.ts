@@ -3,6 +3,7 @@ import type { Finding } from '@vertuo/comply-core';
 import type { FacetState, Matrix } from '@vertuo/comply-readiness';
 import type { ModuleScore } from '@vertuo/comply-readiness';
 import type { TrendRow } from '@vertuo/comply-readiness';
+import type { UnmetCriterion } from '@vertuo/comply-readiness';
 
 const MARK: Record<FacetState, string> = {
   absent: '--',
@@ -13,6 +14,28 @@ const MARK: Record<FacetState, string> = {
 
 function pad(value: string, width: number): string {
   return value.length >= width ? value : value + ' '.repeat(width - value.length);
+}
+
+/**
+ * One unmet criterion, in words.
+ *
+ * Written here, one sentence per kind of shortfall, rather than taken as a
+ * sentence from what computed it. A reason arrives as its parts — what is
+ * missing, how many there are against how many are asked for — and every
+ * surface phrases them for the person in front of it. This one writes for a
+ * terminal; the criterion's own name is not something a person needs to read.
+ */
+function reasonFor(unmet: UnmetCriterion): string {
+  switch (unmet.criterion) {
+    case 'requiredAttributes':
+      return `missing: ${unmet.missing.join(', ')}`;
+    case 'minSources':
+      return `backed by ${unmet.has} of the ${unmet.needs} sources this Lens asks for`;
+    case 'minRelations':
+      return `${unmet.has} of the ${unmet.needs} "${unmet.relation}" links this Lens asks for`;
+    case 'allStatesReachable':
+      return `nothing leads to: ${unmet.unreachable.join(', ')}`;
+  }
 }
 
 /**
@@ -33,7 +56,10 @@ function renderShortfalls(matrix: Matrix): string[] {
     row.cells
       .filter((cell) => cell.state === 'present' || cell.state === 'well-formed')
       .map((cell) => {
-        const reasons = cell.unmet.length > 0 ? cell.unmet : ['not at the approved maturity level'];
+        const reasons =
+          cell.unmet.length > 0
+            ? cell.unmet.map(reasonFor)
+            : ['not at the approved maturity level'];
         return [`  ${row.moduleId} / ${cell.facet}`, ...reasons.map((r) => `      ${r}`)].join('\n');
       }),
   );

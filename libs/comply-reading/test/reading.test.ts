@@ -29,10 +29,25 @@ describe.each(['lens-a.json', 'lens-b.json'])('reading %s', (lensFile) => {
     expect(reading.checks.length).toBeGreaterThan(0);
 
     // Nothing fused, averaged, or graded: the two readings never meet in a
-    // third figure, because no such figure exists (LAW-006, spec §4).
+    // third figure, because no such figure exists (LAW-006, spec §4). The list
+    // is asserted whole, so a figure standing for both cannot be added quietly;
+    // it grows when a reading genuinely carries something new, as `corpus` is.
     expect(Object.keys(reading).sort()).toEqual([
-      'checks', 'findings', 'lensId', 'matrix', 'scores', 'snapshot', 'takenAt', 'trend',
+      'checks', 'corpus', 'findings', 'lensId', 'matrix', 'scores', 'snapshot', 'takenAt', 'trend',
     ]);
+  });
+
+  it('carries the knowledge the figures were counted over', async () => {
+    const reading = await read(lensFile);
+
+    // Every Module the grid has a row for can be asked about, without applying
+    // the Lens a second time to find out what is in it.
+    for (const row of reading.matrix.rows) {
+      const known = reading.corpus.facts.filter(
+        (fact) => fact.moduleId === row.moduleId || fact.id === row.moduleId,
+      );
+      expect(known.length).toBeGreaterThan(0);
+    }
   });
 
   it('reports no Finding that nothing said it was looking for', async () => {

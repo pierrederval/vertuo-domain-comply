@@ -137,4 +137,42 @@ describe('Readiness Matrix', () => {
     expect(cell.state).toBe('well-formed');
     expect(cell.state).not.toBe('approved');
   });
+
+  it('says how much of a facet is not yet approved, against how much there is', () => {
+    const facts: Fact[] = [
+      fact({ id: 'm3', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),
+      fact({
+        id: 'm3-term-a', kind: 'Term', moduleId: 'm3', facet: 'items',
+        attributes: { name: 'A', definition: 'def A' },
+        maturityLevel: 'final',
+      }),
+      fact({
+        id: 'm3-term-b', kind: 'Term', moduleId: 'm3', facet: 'items',
+        attributes: { name: 'B', definition: 'def B' },
+        maturityLevel: 'draft',
+      }),
+    ];
+    const matrix = buildMatrix(buildCorpus(facts), inlineLens);
+    const cell = matrix.rows.find((r) => r.moduleId === 'm3')!.cells.find((c) => c.facet === 'items')!;
+
+    // The figure a surface needs to say what work is left, with what it is out
+    // of beside it. Computed here, where whether a Fact is approved is decided.
+    expect(cell.notYetApproved).toBe(1);
+    expect(cell.factCount).toBe(2);
+  });
+
+  it('lists each reason a facet fell short once, however many facts fell short that way', () => {
+    const facts: Fact[] = [
+      fact({ id: 'm4', kind: 'Module', moduleId: null, facet: 'summary', attributes: { description: 'ok' } }),
+      fact({ id: 'm4-a', kind: 'Term', moduleId: 'm4', facet: 'items', attributes: { name: 'A' } }),
+      fact({ id: 'm4-b', kind: 'Term', moduleId: 'm4', facet: 'items', attributes: { name: 'B' } }),
+    ];
+    const matrix = buildMatrix(buildCorpus(facts), inlineLens);
+    const cell = matrix.rows.find((r) => r.moduleId === 'm4')!.cells.find((c) => c.facet === 'items')!;
+
+    // Two Facts missing the same thing is one job, not two. A reason names what
+    // is missing and never which Fact is missing it, so a repeat gives a reader
+    // nothing to act on differently.
+    expect(cell.unmet).toEqual([{ criterion: 'requiredAttributes', missing: ['definition'] }]);
+  });
 });

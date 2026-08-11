@@ -18,6 +18,19 @@ export interface Reading {
   lensId: string;
   /** When this reading was taken. */
   takenAt: string;
+  /**
+   * The knowledge this reading was made from.
+   *
+   * Carried rather than left behind. A figure invites the question *what is it
+   * made of*, and every surface that answers it needs the Facts the figures were
+   * counted over. The alternative is applying the Lens a second time to answer —
+   * a second route from a Seed to knowledge, which is how two answers to one
+   * question appear (ADR-0012).
+   *
+   * A view and never a copy: nothing downstream may write to a Corpus (LAW-002),
+   * and `Corpus` has no operation that could.
+   */
+  corpus: Corpus;
   matrix: Matrix;
   /** Per Module, approved out of the Facets the Lens declares. */
   scores: ModuleScore[];
@@ -67,6 +80,7 @@ export function composeReading(
   return {
     lensId: lens.id,
     takenAt,
+    corpus,
     matrix,
     scores,
     findings: [...interpretationFindings, ...runChecks(corpus, lens)],

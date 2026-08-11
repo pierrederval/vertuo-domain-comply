@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { corpusDetailSchema, type CorpusDetail } from '@vertuo/comply-contract';
 import { CorpusMatrix } from '../src/corpus/CorpusMatrix.js';
@@ -93,8 +94,13 @@ const OTHER: CorpusDetail = corpusDetailSchema.parse({
   },
 });
 
+/** Each Module's row leads to the Module, so the grid is drawn where links work. */
 function draw(detail: CorpusDetail): string {
-  return renderToStaticMarkup(<CorpusMatrix corpus={detail} />);
+  return renderToStaticMarkup(
+    <MemoryRouter>
+      <CorpusMatrix corpus={detail} />
+    </MemoryRouter>,
+  );
 }
 
 describe('the Corpus page, which is the Readiness Matrix', () => {
@@ -207,6 +213,15 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
 
     expect(drawn).toContain('Read from source');
     expect(drawn).toContain('2026-01-01T08:00:00.000Z');
+  });
+
+  it('leads from each Module to what to do about it', () => {
+    const drawn = draw(corpus({}));
+
+    // A cell says how far along a Module is and never what to do, which is a
+    // Facet at a time with the reason it fell short (spec §5.4).
+    expect(drawn).toContain('href="/corpus/c-one/modules/m-one"');
+    expect(drawn).toContain('href="/corpus/c-one/modules/m-two"');
   });
 
   it('says a Corpus has nothing written down rather than drawing an empty grid', () => {

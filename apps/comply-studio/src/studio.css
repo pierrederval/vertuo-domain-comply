@@ -227,7 +227,19 @@ body {
 }
 
 .module-id {
+  /* Hugs its own name: an underline running the width of the column would read
+     as a rule under the row rather than as somewhere to go. */
+  justify-self: start;
   font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+
+.module-id:hover,
+.module-id:focus-visible {
+  box-shadow: inset 0 -1px 0 var(--ink);
+  outline-color: var(--focus);
 }
 
 .owner,
@@ -299,4 +311,79 @@ body {
 .legend .mark {
   font-size: var(--text-body);
   color: var(--ink);
+}
+
+/*
+ * One Module, a Facet at a time.
+ *
+ * Read top to bottom rather than across, because there is one column of meaning
+ * here: for each Facet, what stands between it and approval. The grid is the
+ * surface read in two directions; this is the one that answers *and then what*.
+ */
+.whence,
+.answers-for {
+  margin: 0 0 var(--step-1);
+  font-size: var(--text-small);
+  color: var(--ink-quiet);
+}
+
+.answers-for {
+  margin-bottom: var(--step-3);
+}
+
+.facet-state {
+  margin: 0 0 var(--step-1);
+  font-size: var(--text-small);
+  color: var(--ink-quiet);
+  text-transform: lowercase;
+}
+
+/*
+ * The one state that is nothing at all still gets a mark. A Facet drawn as
+ * blank cannot be told from one the page forgot, and an unwritten Facet is the
+ * work this page exists to name.
+ */
+.facet-state.state-absent {
+  color: var(--mark);
+}
+
+.standing {
+  margin: 0 0 var(--step-1);
+}
+
+.shortfalls,
+.knowledge,
+.findings {
+  margin: 0 0 var(--step-2);
+  padding-left: var(--step-3);
+}
+
+.shortfalls li,
+.knowledge li {
+  margin-bottom: 0.25rem;
+}
+
+.findings li {
+  margin-bottom: var(--step-2);
+}
+
+.findings .says {
+  margin: 0 0 0.25rem;
+}
+
+.written {
+  margin: var(--step-2) 0 var(--step-1);
+  font-size: var(--text-small);
+  color: var(--ink-quiet);
+}
+
+.place {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-small);
+}
+
+.maturity,
+.also {
+  font-size: var(--text-small);
+  color: var(--ink-quiet);
 }

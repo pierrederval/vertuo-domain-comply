@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import type { CorpusDetail, FacetState, ModuleRow, Movement } from '@vertuo/comply-contract';
 import { Age } from '../components/Age.js';
 import { Figure } from '../components/Figure.js';
@@ -59,11 +60,21 @@ function Moved({ movement }: { movement: Movement }) {
   );
 }
 
-function Row({ module }: { module: ModuleRow }) {
+function Row({ module, corpusId }: { module: ModuleRow; corpusId: string }) {
   return (
     <tr>
       <th scope="row" className="module">
-        <span className="module-id">{module.id}</span>
+        {/*
+          A cell says how far along a Module is and never what to do about it.
+          What to do is a Facet at a time, with the reason it fell short, which
+          is the page this leads to (spec §5.4).
+        */}
+        <Link
+          className="module-id"
+          to={`/corpus/${encodeURIComponent(corpusId)}/modules/${encodeURIComponent(module.id)}`}
+        >
+          {module.id}
+        </Link>
         {module.owner === null ? (
           // LAW-007: every Finding against this Module routes to nobody, which is
           // a defect and not an empty space.
@@ -170,7 +181,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
                 </thead>
                 <tbody>
                   {modules.map((module) => (
-                    <Row key={module.id} module={module} />
+                    <Row key={module.id} module={module} corpusId={corpus.id} />
                   ))}
                 </tbody>
               </table>
