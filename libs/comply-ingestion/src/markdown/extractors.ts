@@ -46,6 +46,44 @@ function extractDocument(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[]
   }];
 }
 
+/**
+ * The anchor a name answers to, computed the way the pages a reader reads compute
+ * one.
+ *
+ * An author writes a link by copying the address such a page gives, so this has to
+ * agree with that page or every link written that way is reported broken — and a
+ * defect the tool invented is worse than one it misses, because somebody believes
+ * it and goes looking for a fault that is not there.
+ *
+ * Four rules, in this order:
+ *
+ * - Markup carried in place goes first, and takes whatever is written inside it
+ *   along with it. The page addresses a heading by the words it shows, and an
+ *   annotation's own attributes are not among them.
+ * - Decompose, then drop the combining marks. An accented letter folds to the
+ *   letter it is built on, which is why the decomposition comes first.
+ * - A letter that decomposes into nothing is kept exactly as it stands. It is
+ *   still a letter, and the address it appears in still works.
+ * - Everything that is neither a letter nor a number separates, however many
+ *   characters of it there are in a row. An apostrophe is one of those: it is a
+ *   separator, not something to be deleted, so the words either side of one stay
+ *   two words.
+ *
+ * A rule written against the Latin alphabet — `[^a-z0-9]` — breaks the last three
+ * at once: it deletes an accented letter instead of folding it, deletes an
+ * undecomposable one instead of keeping it, and closes the gap an apostrophe
+ * should have opened (ADR-0023).
+ */
+function slugify(name: string): string {
+  return name
+    .replace(/<[^>]*>/g, '')
+    .normalize('NFKD')
+    .replace(/\p{M}+/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-|-$/g, '');
+}
+
 /** Matches a GFM separator cell: optional leading/trailing colon around one or more dashes. */
 function isSeparatorCell(cell: string): boolean {
   return /^:?-+:?$/.test(cell.replace(/\s/g, ''));
@@ -98,6 +136,16 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
       relations.push(...relationsIn(value));
     }
     if (Object.keys(attributes).length > 0) {
+      // A row is reachable by name, the same way a heading is. Without this, nothing
+      // a corpus writes down as a table can be referred to from anywhere — and a
+      // corpus that keeps its Commands, its Events and its words in tables is then
+      // one where no reference between two of them can be followed at all.
+      //
+      // A row whose Facet maps no column to a name is left alone: there is nothing to
+      // derive an anchor from, and an invented one is a target no author could write.
+      const name = attributes.name;
+      if (typeof name === 'string') attributes.slug = slugify(name);
+
       // One row, one line: a row is quoted as itself. Pulling the header row in
       // beside it would read better and would be two non-adjacent lines presented
       // as one, which is not what the source says.
@@ -106,10 +154,6 @@ function extractTable(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
     }
   }
   return items;
-}
-
-function slugify(heading: string): string {
-  return heading.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 function extractHeading(doc: ParsedDocument, facet: FacetSpec): ExtractedItem[] {
