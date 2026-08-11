@@ -277,6 +277,17 @@ describe('one Module, drilled into', () => {
     expect(drawn).toContain('this Corpus does not say how far along it is');
   });
 
+  it('opens each piece of knowledge where it is written down', () => {
+    const drawn = draw(MODULE);
+
+    // A place is where a piece of knowledge is and also the only name every
+    // Corpus gives it, so it is both what a reader is shown and what they follow
+    // to see the text it was read out of (#22). The Findings below are not links:
+    // where one of those goes is the Inbox's business (#23).
+    expect(drawn).toContain('/corpus/c1/modules/m1/knowledge?in=two.md&amp;line=4');
+    expect(drawn).toContain('/corpus/c1/modules/m1/knowledge?in=three.md&amp;line=1');
+  });
+
   it('states the denominator in words, and what approved means here', () => {
     const drawn = draw(MODULE);
 

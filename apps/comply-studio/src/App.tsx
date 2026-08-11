@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, Navigate, Route, Routes, useParams } from 'react-router';
-import { fetchCorpus, fetchCorpusDetail, fetchModule } from './api.js';
+import { Link, Navigate, Route, Routes, useParams, useSearchParams } from 'react-router';
+import { fetchCorpus, fetchCorpusDetail, fetchFact, fetchModule } from './api.js';
 import { Answering } from './components/Answering.js';
 import { NothingToShow } from './components/layout.js';
 import { Card, CardContent } from './components/ui/card.js';
 import { CorpusList } from './corpus/CorpusList.js';
 import { CorpusMatrix } from './corpus/CorpusMatrix.js';
+import { FactDetail } from './corpus/FactDetail.js';
 import { ModuleDetail } from './corpus/ModuleDetail.js';
 import { AppShell, type ShelfState } from './shell/AppShell.js';
 import { DESTINATIONS, OPENS_AT } from './shell/destinations.js';
@@ -82,6 +83,34 @@ function OneModule() {
 }
 
 /**
+ * One piece of knowledge, opened at the place it is written down.
+ *
+ * The place arrives as the two things it is, and is checked before anything is
+ * asked for: an address holding no place, or a line no editor could go to, is an
+ * address with nothing kept at it and is answered as one rather than as knowledge
+ * the shelf is short of.
+ */
+function OneFact() {
+  const { id, moduleId } = useParams();
+  const [asked] = useSearchParams();
+  const corpus = id ?? '';
+  const module = moduleId ?? '';
+  const file = asked.get('in') ?? '';
+  const line = Number(asked.get('line'));
+
+  if (file === '' || !Number.isInteger(line) || line < 1) return <Nowhere />;
+
+  return (
+    <Answering
+      ask={() => fetchFact(corpus, module, { file, line })}
+      about={`${corpus}/${module}/${file}/${line}`}
+    >
+      {(held) => <FactDetail held={held} />}
+    </Answering>
+  );
+}
+
+/**
  * A destination that has its place but not yet its content.
  *
  * It says what it will hold rather than standing empty, because a surface with
@@ -130,6 +159,12 @@ export function App() {
           ),
         )}
         <Route path="/corpus/:id/modules/:moduleId" element={<OneModule />} />
+        {/*
+          A piece of knowledge sits beneath the Module that wrote it down, so a
+          reader inside one is still inside that Module — which is what lets the
+          shell go on saying where they are without knowing this surface exists.
+        */}
+        <Route path="/corpus/:id/modules/:moduleId/knowledge" element={<OneFact />} />
         <Route path="*" element={<Nowhere />} />
       </Route>
     </Routes>

@@ -1,11 +1,15 @@
 import {
   corpusDetailSchema,
+  corpusFactSchema,
   corpusListSchema,
   corpusModuleSchema,
   notHeldSchema,
   type CorpusDetail,
+  type CorpusFact,
   type CorpusModule,
   type CorpusSummary,
+  type NotHeld,
+  type Place,
 } from '@vertuo/comply-contract';
 
 /**
@@ -40,6 +44,26 @@ export async function fetchCorpusDetail(id: string): Promise<CorpusDetail> {
   return answer.data;
 }
 
+/**
+ * What to do about something the shelf does not hold.
+ *
+ * Three different things to go and do: put a Corpus on the shelf, check a name
+ * against the grid, or go and look at a place. A single sentence for all of them
+ * would send two thirds of the people who meet it to the wrong one.
+ */
+function whatIsNotHeld(said: NotHeld['notHeld'] | null): string {
+  switch (said) {
+    case 'corpus':
+      return 'No Corpus of that name is on the shelf.';
+    case 'module':
+      return 'No Module of that name is in this Corpus.';
+    case 'knowledge':
+      return 'This Corpus writes nothing down at that place.';
+    default:
+      return 'Nothing is kept at that address.';
+  }
+}
+
 /** One Module: every Facet its Lens declares, and why each one falls short. */
 export async function fetchModule(id: string, moduleId: string): Promise<CorpusModule> {
   const response = await fetch(
@@ -47,19 +71,45 @@ export async function fetchModule(id: string, moduleId: string): Promise<CorpusM
   );
 
   if (response.status === 404) {
-    // Two different things to go and do: put a Corpus on the shelf, or check a
-    // name against the grid. A single sentence for both would send half of the
-    // people who meet it to the wrong one.
     const said = notHeldSchema.safeParse(await response.json());
-    throw new Error(
-      said.success && said.data.notHeld === 'corpus'
-        ? 'No Corpus of that name is on the shelf.'
-        : 'No Module of that name is in this Corpus.',
-    );
+    // A Module page reached from a Corpus that is not there and one reached with a
+    // name the Corpus does not have are the two cases here; anything else this
+    // route could say would be about a place, which it never asks for.
+    throw new Error(whatIsNotHeld(said.success ? said.data.notHeld : 'module'));
   }
   if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
 
   const answer = corpusModuleSchema.safeParse(await response.json());
+  if (!answer.success) throw new Error('The Studio was sent something it could not read.');
+
+  return answer.data;
+}
+
+/**
+ * One piece of knowledge: what it says, how far along it is, what backs it up, and
+ * the source text it was read out of.
+ *
+ * Asked for by where it is written down, which is the only name every Corpus gives
+ * one, under the Module it belongs to — so a place cannot be read on the page of a
+ * Module that did not write it.
+ */
+export async function fetchFact(
+  id: string,
+  moduleId: string,
+  at: Place,
+): Promise<CorpusFact> {
+  const held = `/corpus/${encodeURIComponent(id)}/modules/${encodeURIComponent(moduleId)}`;
+  const response = await fetch(
+    `${held}/knowledge?in=${encodeURIComponent(at.file)}&line=${at.line}`,
+  );
+
+  if (response.status === 404) {
+    const said = notHeldSchema.safeParse(await response.json());
+    throw new Error(whatIsNotHeld(said.success ? said.data.notHeld : 'knowledge'));
+  }
+  if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
+
+  const answer = corpusFactSchema.safeParse(await response.json());
   if (!answer.success) throw new Error('The Studio was sent something it could not read.');
 
   return answer.data;
