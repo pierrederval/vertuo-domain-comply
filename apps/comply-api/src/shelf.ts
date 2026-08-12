@@ -2,7 +2,7 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadLens, type Lens } from '@vertuo/comply-lens';
 import { lastRecordedReading, type RecordedReading } from '@vertuo/comply-readiness';
-import { latestHeldSeed, readSeed, type Seed } from '@vertuo/comply-seed';
+import { heldSeeds, readSeed, type Seed, type ShelvedSeed } from '@vertuo/comply-seed';
 
 /** Where a shelf keeps the knowledge that has been written down from source. */
 const SEEDS = 'seeds';
@@ -14,8 +14,17 @@ export interface ShelvedCorpus {
   lens: Lens;
   /** The knowledge as last written down, or nothing where the source is unread. */
   seed: Seed | null;
-  /** When that knowledge was written down. Absent for the same reason. */
-  sourceReadAt: Date | null;
+  /**
+   * Every writing-down of this source the shelf still holds, oldest first, so the
+   * last of them is the knowledge above and the moment it appeared is the age every
+   * reading made from it inherits.
+   *
+   * Carried whole rather than as the latest alone, because each one is a time the
+   * source was read and said something new — a Seed is never rewritten and holding
+   * an unchanged one is a no-op (ADR-0012), so there is one of these per change at
+   * source and none per run.
+   */
+  writtenDown: ShelvedSeed[];
   /**
    * The last reading put on record for this Corpus, which is what a fresh one is
    * compared against, or nothing where none has been.
@@ -68,7 +77,8 @@ export async function readShelf(dir: string): Promise<Shelf> {
       continue;
     }
 
-    const held = await latestHeldSeed(join(dir, SEEDS), lens.id);
+    const writtenDown = await heldSeeds(join(dir, SEEDS), lens.id);
+    const held = writtenDown.at(-1) ?? null;
 
     // One Corpus whose knowledge cannot be read is one Corpus passed over, and the
     // reason travels with it. Left to throw, a single shelf holding knowledge written
@@ -95,7 +105,7 @@ export async function readShelf(dir: string): Promise<Shelf> {
     corpus.push({
       lens,
       seed,
-      sourceReadAt: held?.heldAt ?? null,
+      writtenDown,
       lastRecorded: await lastRecordedReading(join(dir, READINGS), lens.id),
     });
   }

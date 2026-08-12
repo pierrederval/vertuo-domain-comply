@@ -1,16 +1,24 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, Navigate, Route, Routes, useParams, useSearchParams } from 'react-router';
-import { fetchCorpus, fetchCorpusDetail, fetchFact, fetchInbox, fetchModule } from './api.js';
+import {
+  fetchCorpus,
+  fetchCorpusDetail,
+  fetchFact,
+  fetchHome,
+  fetchInbox,
+  fetchModule,
+} from './api.js';
 import { Answering } from './components/Answering.js';
 import { NothingToShow } from './components/layout.js';
 import { Card, CardContent } from './components/ui/card.js';
+import { CorpusHome } from './corpus/CorpusHome.js';
 import { CorpusList } from './corpus/CorpusList.js';
 import { CorpusMatrix } from './corpus/CorpusMatrix.js';
 import { FactDetail } from './corpus/FactDetail.js';
 import { Inbox } from './corpus/Inbox.js';
 import { ModuleDetail } from './corpus/ModuleDetail.js';
 import { AppShell, type ShelfState } from './shell/AppShell.js';
-import { DESTINATIONS, OPENS_AT } from './shell/destinations.js';
+import { OPENS_AT } from './shell/destinations.js';
 
 /**
  * The shelf, read once and shared.
@@ -67,6 +75,18 @@ function OneCorpus() {
   return (
     <Answering ask={() => fetchCorpusDetail(asked)} about={asked}>
       {(corpus) => <CorpusMatrix corpus={corpus} />}
+    </Answering>
+  );
+}
+
+/** What needs a person in one Corpus, and what moved in it. */
+function WhatNeedsWork() {
+  const { id } = useParams();
+  const asked = id ?? '';
+
+  return (
+    <Answering ask={() => fetchHome(asked)} about={asked}>
+      {(corpus) => <CorpusHome corpus={corpus} />}
     </Answering>
   );
 }
@@ -135,17 +155,6 @@ function OneFact() {
   );
 }
 
-/**
- * A destination that has its place but not yet its content.
- *
- * It says what it will hold rather than standing empty, because a surface with
- * nothing on it reads as a broken one — and a reader who takes an unbuilt
- * surface for a broken one stops trusting the ones that work.
- */
-function BeingBuilt({ says }: { says: string }) {
-  return <Says>{says}</Says>;
-}
-
 /** Nothing is kept at the address the reader arrived at. */
 function Nowhere() {
   return (
@@ -173,17 +182,9 @@ export function App() {
           made before this shell existed still arrives somewhere.
         */}
         <Route path="/corpus/:id" element={<Navigate to={OPENS_AT} replace />} />
+        <Route path="/corpus/:id/home" element={<WhatNeedsWork />} />
         <Route path="/corpus/:id/readiness" element={<OneCorpus />} />
         <Route path="/corpus/:id/inbox" element={<TheInbox />} />
-        {DESTINATIONS.filter((destination) => destination.beingBuilt !== undefined).map(
-          (destination) => (
-            <Route
-              key={destination.at}
-              path={`/corpus/:id/${destination.at}`}
-              element={<BeingBuilt says={destination.beingBuilt ?? ''} />}
-            />
-          ),
-        )}
         <Route path="/corpus/:id/modules/:moduleId" element={<OneModule />} />
         {/*
           A piece of knowledge sits beneath the Module that wrote it down, so a

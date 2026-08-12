@@ -9,6 +9,7 @@ import {
 import {
   corpusDetailSchema,
   corpusFactSchema,
+  corpusHomeSchema,
   corpusInboxSchema,
   corpusListSchema,
   corpusModuleSchema,
@@ -16,6 +17,7 @@ import {
   type CitedPlace,
   type CorpusDetail,
   type CorpusFact,
+  type CorpusHome,
   type CorpusInbox,
   type CorpusModule,
   type CorpusReading,
@@ -26,6 +28,7 @@ import {
   type ModuleFinding,
   type ModuleRow,
   type Movement,
+  type NeedsWork,
   type Place,
   type ReadinessFigure,
   type RoutedFindings,
@@ -36,6 +39,7 @@ import type { AttributeValue, Finding, SourceLocation } from '@vertuo/comply-cor
 import { factsUnder, type TrendRow } from '@vertuo/comply-readiness';
 import { readSeededCorpus, type Reading } from '@vertuo/comply-reading';
 import type { Seed } from '@vertuo/comply-seed';
+import { whatMoved, whenReadFromSource } from './home.js';
 import { readShelf, type ShelvedCorpus } from './shelf.js';
 
 /**
@@ -75,8 +79,21 @@ function readNow(shelved: ShelvedCorpus, takenAt: string): Reading | null {
   return seed === null ? null : readSeededCorpus(seed, lens, takenAt, lastRecorded);
 }
 
+/**
+ * When the knowledge a reading is made of was written down, or nothing where the
+ * source has never been read.
+ *
+ * The last of the writings-down the shelf holds, because a Seed is never rewritten:
+ * the most recent one is the knowledge in hand, and the moment it appeared is how
+ * old every figure counted from it is.
+ */
+function whenWrittenDown(shelved: ShelvedCorpus): Date | null {
+  return shelved.writtenDown.at(-1)?.heldAt ?? null;
+}
+
 function summarise(shelved: ShelvedCorpus, takenAt: string): CorpusSummary {
-  const { lens, sourceReadAt } = shelved;
+  const { lens } = shelved;
+  const sourceReadAt = whenWrittenDown(shelved);
   const name = lens.name ?? lens.id;
   const reading = readNow(shelved, takenAt);
 
@@ -121,6 +138,70 @@ function movementOf(row: TrendRow): Movement {
 }
 
 /**
+ * What needs a person in one Corpus, and what moved in it (spec §5.1).
+ *
+ * The same two figures the list and the grid carry, from the same derivation, and
+ * then the Modules where there is work. The Modules are in this Corpus's own order:
+ * an order by how thin each one is would be a ranking, and a ranking is a figure by
+ * another name — the same refusal the Inbox makes about whose queue is longest.
+ *
+ * A Module short of nothing is left out rather than shown as finished. What it holds
+ * is on the grid, where its Facets are stated one by one; a work list that carried
+ * everything would be the grid again, in a shape that cannot be read down a column.
+ *
+ * Two horizons, both stated. Every writing-down of the source is still held, so
+ * every one of them can be named; what a Facet or a Finding did can only be stated
+ * since the last reading kept, because that is as far back as the shelf holds
+ * anything to work it out from.
+ */
+async function homeOf(
+  shelved: ShelvedCorpus,
+  takenAt: string,
+  reportTrouble: (because: string) => void,
+): Promise<CorpusHome> {
+  const { lens } = shelved;
+  const sourceReadAt = whenWrittenDown(shelved);
+  const name = lens.name ?? lens.id;
+  const reading = readNow(shelved, takenAt);
+
+  if (reading === null || sourceReadAt === null) {
+    return { id: lens.id, name, reading: { outcome: 'nothing-written-down-yet' } };
+  }
+
+  // Scores and trend are derived from the matrix's rows in order, so the two line
+  // up Module for Module.
+  const needsWork: NeedsWork[] = reading.scores.flatMap((score, at) =>
+    score.approved === score.total
+      ? []
+      : [
+          {
+            id: score.moduleId,
+            owner: score.owner,
+            approved: score.approved,
+            declaredFacets: score.total,
+            movement: movementOf(reading.trend[at]!),
+          },
+        ],
+  );
+
+  return {
+    id: lens.id,
+    name,
+    reading: {
+      outcome: 'read',
+      sourceReadAt: sourceReadAt.toISOString(),
+      lensId: reading.matrix.lensId,
+      ladder: { levels: lens.maturity.levels, approvedAtOrAbove: lens.maturity.approvedAtOrAbove },
+      ...figures(reading),
+      declaredFacets: lens.facets.length,
+      needsWork,
+      writtenDown: whenReadFromSource(shelved),
+      since: await whatMoved(shelved, reading, reportTrouble),
+    },
+  };
+}
+
+/**
  * One Corpus, whole: every Module against every Facet its Lens declares.
  *
  * Every Module appears, including one with nothing in it, and every declared
@@ -128,7 +209,8 @@ function movementOf(row: TrendRow): Movement {
  * the finding, not a row to leave out (spec §5.3).
  */
 function wholeReading(shelved: ShelvedCorpus, takenAt: string): CorpusDetail {
-  const { lens, sourceReadAt } = shelved;
+  const { lens } = shelved;
+  const sourceReadAt = whenWrittenDown(shelved);
   const name = lens.name ?? lens.id;
   const reading = readNow(shelved, takenAt);
 
@@ -205,7 +287,8 @@ function oneModule(
   moduleId: string,
   takenAt: string,
 ): CorpusModule | null {
-  const { lens, sourceReadAt } = shelved;
+  const { lens } = shelved;
+  const sourceReadAt = whenWrittenDown(shelved);
   const corpus = { id: lens.id, name: lens.name ?? lens.id };
   const reading = readNow(shelved, takenAt);
 
@@ -360,7 +443,8 @@ function oneFact(
   at: Place,
   takenAt: string,
 ): CorpusFact | NotHeldHere {
-  const { lens, seed, sourceReadAt } = shelved;
+  const { lens, seed } = shelved;
+  const sourceReadAt = whenWrittenDown(shelved);
   const corpus = { id: lens.id, name: lens.name ?? lens.id };
   const reading = readNow(shelved, takenAt);
 
@@ -468,7 +552,8 @@ function citedAt(
  * decided where the reading was taken (spec §5.2).
  */
 function inboxOf(shelved: ShelvedCorpus, takenAt: string): CorpusInbox {
-  const { lens, seed, sourceReadAt } = shelved;
+  const { lens, seed } = shelved;
+  const sourceReadAt = whenWrittenDown(shelved);
   const corpus = { id: lens.id, name: lens.name ?? lens.id };
   const reading = readNow(shelved, takenAt);
 
@@ -575,6 +660,35 @@ export function buildServer(shelf: string): FastifyInstance {
       if (shelved === undefined) return reply.status(404).send({ id: request.params.id });
 
       return wholeReading(shelved, new Date().toISOString());
+    },
+  );
+
+  server.get(
+    '/corpus/:id/home',
+    {
+      schema: {
+        params: z.object({ id: z.string().min(1) }),
+        /**
+         * Still a GET, and still nothing written. Working out where this Corpus
+         * stood at the last reading means reading its retained knowledge back and
+         * applying the Lens to it again — which produces a value and leaves the
+         * shelf exactly as it was (LAW-002, ADR-0016).
+         */
+        response: { 200: corpusHomeSchema, 404: z.object({ id: z.string().min(1) }) },
+      },
+    },
+    async (request, reply) => {
+      const { corpus } = await readShelf(shelf);
+      const shelved = corpus.find((entry) => entry.lens.id === request.params.id);
+
+      if (shelved === undefined) return reply.status(404).send({ id: request.params.id });
+
+      return homeOf(shelved, new Date().toISOString(), (because) =>
+        server.log.warn(
+          { corpus: request.params.id, reason: because },
+          'the knowledge the last reading on record was made of could not be read back',
+        ),
+      );
     },
   );
 

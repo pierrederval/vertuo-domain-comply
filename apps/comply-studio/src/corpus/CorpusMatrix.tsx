@@ -1,7 +1,8 @@
 import { Link } from 'react-router';
-import type { CorpusDetail, FacetState, ModuleRow, Movement } from '@vertuo/comply-contract';
-import { Figure } from '../components/Figure.js';
-import { Aside, Conspicuous, NothingToShow, Readings, Surface } from '../components/layout.js';
+import type { CorpusDetail, FacetState, ModuleRow } from '@vertuo/comply-contract';
+import { Moved } from '../components/Moved.js';
+import { TwoReadings } from '../components/TwoReadings.js';
+import { Aside, Conspicuous, NothingToShow, Surface } from '../components/layout.js';
 import { Card, CardContent } from '../components/ui/card.js';
 import {
   TableBody,
@@ -47,58 +48,6 @@ function Cell({ state }: { state: FacetState }) {
         {mark}
       </abbr>
     </TableCell>
-  );
-}
-
-/**
- * What one Module's figure has done since the last reading kept to compare it
- * against.
- *
- * Four facts, drawn four ways, and the two that are not a number are not the same
- * fact. A reading with nothing behind it is not a figure that held steady, and a
- * page that draws both as `0` tells a person work has stalled when nobody has ever
- * measured it (LAW-006).
- *
- * A reading taken against other criteria is the third of those, and it is not `—`
- * either: there *is* an earlier reading, and what changed is what was asked of the
- * Corpus rather than what the Corpus says. Drawn as a loss it would report the
- * knowledge getting worse on the morning somebody raised the bar (§6).
- */
-function Moved({ movement }: { movement: Movement }) {
-  if (movement.comparedWith === 'no-earlier-reading') {
-    return (
-      <abbr
-        className="cursor-help no-underline"
-        data-movement="none"
-        title="there is no earlier reading to compare this one with"
-      >
-        —
-      </abbr>
-    );
-  }
-  if (movement.comparedWith === 'a-reading-under-other-criteria') {
-    return (
-      <abbr
-        className="cursor-help no-underline"
-        data-movement="other-criteria"
-        title="the last reading was taken against different criteria, so nothing about this figure’s movement can be stated"
-      >
-        criteria changed
-      </abbr>
-    );
-  }
-  if (movement.approvedDelta === 0) {
-    return <span data-movement="steady">held steady</span>;
-  }
-
-  const gained = movement.approvedDelta > 0;
-  return (
-    <span
-      className="font-semibold text-foreground"
-      data-movement={gained ? 'gained' : 'lost'}
-    >
-      {`${gained ? '▲' : '▼'} ${Math.abs(movement.approvedDelta)}`}
-    </span>
   );
 }
 
@@ -199,25 +148,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
 
   return (
     <Surface>
-      <Readings>
-        {[
-          <Figure
-            key="readiness"
-            reading="Readiness"
-            counts="Modules fully approved"
-            value={readiness.modulesFullyApproved}
-            outOf={`of ${count(readiness.modules, 'Module')}`}
-          />,
-          <Figure
-            key="integrity"
-            reading="Integrity"
-            counts="Open Findings"
-            value={integrity.openFindings}
-            outOf={`from ${count(integrity.lookedFor.length, 'Check')}`}
-            detail={integrity.lookedFor.join(', ')}
-          />,
-        ]}
-      </Readings>
+      <TwoReadings readiness={readiness} integrity={integrity} />
 
       <Card>
         <CardContent className="flex flex-col gap-4">
