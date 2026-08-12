@@ -34,7 +34,9 @@ describe('markdown adapter', () => {
     // language is what tells the third apart, and that is not this reading's business
     // (ADR-0021).
     expect(corpus.byKind('Term').map((f) => f.attributes.name).sort())
-      .toEqual(['Cog', 'Sprocket', 'Widget', 'Widget', 'Widget']);
+      .toEqual(['Cog', 'Maker', 'Packer', 'Sprocket', 'Widget', 'Widget', 'Widget']);
+    // Requests, read as rows, each naming who may place it (ADR-0037).
+    expect(corpus.byKind('Message').map((f) => f.attributes.placedBy)).toEqual(['Maker', 'Fixer']);
     expect(corpus.facts.every((f) => f.origin.line > 0)).toBe(true);
   });
 

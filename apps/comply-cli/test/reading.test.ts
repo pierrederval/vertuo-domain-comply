@@ -89,6 +89,18 @@ function baselinePath(name: string): string {
  * either side of it is identical, character for character, which is what makes it a
  * legitimate move rather than the loss this file exists to catch — recording a reading only
  * when its inputs change moved nothing anybody is shown about the knowledge (ADR-0016).
+ *
+ * The sixth move is the first to move **both** files by knowledge rather than by a sentence, and
+ * it is the third legitimate case above with a fourth beside it: both Corpus genuinely gained a
+ * Facet of requests and somewhere the roles those requests name are settled (ADR-0037), and the
+ * reading genuinely learned to say something new about them. Corpus A gained two columns and four
+ * Facts — two of a cast, two requests — so 3/5 became 5/7, 3/15 became 5/21, 14 found became 18,
+ * and one Finding appeared: `alpha/orders.md:11` names a Fixer nobody has written down. Corpus B
+ * gained one column and four Facts and **no Finding at all**, which is the half worth reading
+ * twice: it writes two roles in one section, and a reading that could not be told how this corpus
+ * divides them would report `Opérateur ou Inspecteur` as somebody nobody has written down, at a
+ * Corpus that has written down both. What set aside says did not move in either file, because
+ * neither new document carries any furniture.
  */
 describe.each([
   ['lens-a.json', 'corpus-a.txt'],

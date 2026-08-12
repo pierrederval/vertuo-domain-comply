@@ -20,6 +20,7 @@ export type FindingCode =
   | 'split-identity'
   | 'broken-reference'
   | 'conflicting-definition'
+  | 'unsettled-actor'
   | 'empty-facet';
 
 export interface Finding {

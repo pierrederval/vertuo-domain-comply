@@ -11,7 +11,9 @@ describe('document discovery and parsing', () => {
     const files = await discoverDocuments(fixturePath('corpus-a'));
     expect(files.map((f) => f.replace(/.*corpus-a\//, ''))).toEqual([
       'alpha/aggregates.md',
+      'alpha/crew.md',
       'alpha/invariants.md',
+      'alpha/orders.md',
       'alpha/overview.md',
       'alpha/rules.md',
       'alpha/terms.md',

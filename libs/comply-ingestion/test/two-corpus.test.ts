@@ -10,8 +10,12 @@ describe('two-corpus rule (ADR-0001)', () => {
 
     expect(findings.filter((f) => f.code === 'unknown-status')).toEqual([]);
     expect(corpus.byKind('Term').map((f) => f.attributes.name).sort())
-      .toEqual(['Fulcrum', 'Lever', "Pulley d'Étage"]);
+      .toEqual(['Fulcrum', 'Inspecteur', 'Lever', 'Opérateur', "Pulley d'Étage"]);
     expect(corpus.byKind('Rule')).toHaveLength(1);
+    // Requests, read from sections rather than rows, each naming who may make it
+    // (ADR-0037).
+    expect(corpus.byKind('Message').map((f) => f.attributes.acteur))
+      .toEqual(['Opérateur ou Inspecteur', 'Opérateur']);
   });
 
   it('handles numeric maturity levels coerced to strings', async () => {

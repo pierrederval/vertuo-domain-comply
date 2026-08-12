@@ -24,6 +24,12 @@ describe('LAW-004: the core knows no business', () => {
       'lever', 'fulcrum', 'pulley', 'avery', 'quinn',
       'overview', 'terms', 'aggregates', 'rules', 'definitions', 'constraints', 'terminology',
       'agreed', 'guessed',
+      // Who does the work in each fixture, what can be asked of it, and the attributes
+      // each of them says who may ask in (ADR-0037). *actor* is deliberately not here and
+      // could not be: it is a word this product owns — a Message names one — and the term
+      // would catch `extractors` in every barrel that re-exports them.
+      'crew', 'orders', 'maker', 'packer', 'fixer', 'placedBy',
+      'demandes', 'acteur', 'effet', 'opérateur', 'inspecteur',
       // The attributes lens A says its rules state their standing and their sources in
       // (ADR-0022). Which attribute carries either is a sentence a Lens says, so the
       // core knows neither name.

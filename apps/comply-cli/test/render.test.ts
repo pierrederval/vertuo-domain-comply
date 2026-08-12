@@ -57,9 +57,9 @@ describe('rendering', () => {
     const out = renderMatrix(matrix, scoreMatrix(matrix), [], read);
 
     expect(out).toContain('alpha');
-    // Alpha has three of the five Facets its Lens declares approved. Both numbers,
-    // always: a bare 3 is the figure LAW-006 refuses.
-    expect(out).toMatch(/3\/5/);
+    // Alpha has five of the seven Facets its Lens declares approved. Both numbers,
+    // always: a bare 5 is the figure LAW-006 refuses.
+    expect(out).toMatch(/5\/7/);
     expect(out).toContain('avery');
   });
 

@@ -283,6 +283,34 @@ source happens to write, and nothing bounds that. Four things about it:
   than on what a figure would do. It also means no fixture needs to be lengthened to exercise a cut: length
   is a size and not a shape, and ADR-0001 asks for shapes.
 
+**A Message names who may make it, and the Facet that asks says where that is settled** (ADR-0037). Five
+things about it:
+
+- **The declaration goes on the Facet that asks, and that is not an accident.** `definesTerms` is a flag on
+  the Facet that settles because exactly one may settle a word; `actor` is a pointer *from* the asking Facet
+  because two casts of actors is not a contradiction the way two dictionaries is. Four things must hold or
+  the Lens does not load, and the fourth is the one that surprises: **the asking Facet's own Facts must have
+  a name**, because the Finding names the request.
+- **`separatedBy` is the whole difficulty and it is measured.** A corpus writes two roles in one field, and
+  read whole that is a role nobody wrote down, reported at a corpus that wrote one of the two: 14 of the
+  DDD Corpus's 45 unsettled actor strings are that, across 61 of its 245 Commands. Declaring the divider
+  takes Findings **up** from 157 to 197 and the false ones down from 14 to 2 — the Commands implicated move
+  by one, and what each Finding says stops being wrong. Fixture B's **empty** result is what holds this: it
+  writes `Opérateur ou Inspecteur` and settles both, so a reading that lost the divider reports a defect
+  that corpus does not have.
+- **No shelf declares it, so the Check is silent everywhere but the fixtures — and named while silent.** The
+  DDD Corpus's report is unmoved to the line: 125 Findings, the same seven codes, 0 of 224 Facets approved.
+  That is the acceptance test, not a footnote; a Check that must not speak is only proved by a report that
+  did not move. Pointing `commands` at `glossary` in `lenses/vertuo-domain-fr.json` is a one-line change
+  away and the number to expect is written in ADR-0037.
+- **The three real broken references #46 opens on are not this Check's.** Two of `#commercial`, `#client`
+  and `#administrateur` *are* settled by the Glossary, so what is wrong there is a link into the wrong
+  document. All 24 broken references stay exactly where they are.
+- **Both fixtures gained a Message and both CLI baselines moved**, which is the first time both moved at
+  once for a legitimate reason — so the usual test of a real move (*did the sibling budge?*) does not apply
+  and both diffs were read line by line instead. `reading.test.ts` carries the sixth entry in that log.
+  Neither fixture could have avoided it: neither held a Message at all before this.
+
 There is no lint step. Every pull request runs the whole suite under
 [`.github/workflows/build-gate.yml`](./.github/workflows/build-gate.yml), so LAW-004 and LAW-010 are
 enforced on a pull request and not only on the laptop of whoever remembered (ADR-0028). Four things about

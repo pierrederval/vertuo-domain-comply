@@ -13,6 +13,7 @@ describe('the named set of Checks', () => {
       'split-identity',
       'conflicting-definition',
       'broken-reference',
+      'unsettled-actor',
       'missing-owner',
     ]);
   });
@@ -29,12 +30,13 @@ describe('the named set of Checks', () => {
 });
 
 describe('check runner', () => {
-  it('finds all four defect kinds planted in fixture A', async () => {
+  it('finds all five defect kinds planted in fixture A', async () => {
     const lens = await loadLens(fixturePath('lens-a.json'));
     const { corpus } = await loadCorpus(lens);
     const codes = [...new Set(runChecks(corpus, lens).map((f) => f.code))].sort();
     expect(codes).toEqual([
       'broken-reference', 'conflicting-definition', 'missing-owner', 'split-identity',
+      'unsettled-actor',
     ]);
   });
 

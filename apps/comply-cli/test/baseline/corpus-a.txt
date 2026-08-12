@@ -1,12 +1,12 @@
-MODULE    overview   aggregates terms      rules      invariants APPROVED  TREND  OWNER
----------------------------------------------------------------------------------------
-alpha     OK         OK         OK         ~~         ..         3/5       n/a    avery
-beta      ..         --         --         --         --         0/5       n/a    NO OWNER
-bravo     --         --         ~~         --         --         0/5       n/a    NO OWNER
----------------------------------------------------------------------------------------
-Approved facets: 3/15 across 3 modules.
+MODULE    overview   aggregates terms      rules      invariants crew       orders     APPROVED  TREND  OWNER
+-------------------------------------------------------------------------------------------------------------
+alpha     OK         OK         OK         ~~         ..         OK         OK         5/7       n/a    avery
+beta      ..         --         --         --         --         --         --         0/7       n/a    NO OWNER
+bravo     --         --         ~~         --         --         --         --         0/7       n/a    NO OWNER
+-------------------------------------------------------------------------------------------------------------
+Approved facets: 5/21 across 3 modules.
 Denominator is the facets this Lens declares. Knowledge absent from the corpus entirely is not counted.
-Knowledge as found: 12 of 14 read, 2 set aside.
+Knowledge as found: 16 of 18 read, 2 set aside.
 Set aside is what a facet said was none of its own. It is judged by nothing, and left out of nothing silently.
 Trend: n/a is no earlier reading to compare with. other is a reading taken against different criteria, where nothing about the knowledge can be stated. Neither is a change of nothing.
 Legend: OK approved  ~~ well-formed  .. present  -- absent
@@ -21,7 +21,7 @@ Facets not yet approved:
   bravo / terms
       not at the approved maturity level
 
-Findings (6):
+Findings (7):
   [unknown-status] alpha/rules.md:47
       Status "Half-agreed" matches no mapping in lens "corpus-a"
   [split-identity] beta/terms.md:9
@@ -31,6 +31,8 @@ Findings (6):
         also: beta/terms.md:9
   [broken-reference] beta/terms.md:10
       Reference to "r-9-missing" resolves to nothing in the corpus
+  [unsettled-actor] alpha/orders.md:11
+      Message "Fill a Crate" says "Fixer" may make it, and nothing under "Crew" says who that is
   [missing-owner] beta/overview.md:6
       Module "beta" has no owner; findings for it route to nobody
   [missing-owner] beta/terms.md:9

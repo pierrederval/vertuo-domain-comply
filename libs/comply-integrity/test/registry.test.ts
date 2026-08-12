@@ -107,13 +107,15 @@ describe('the facet that defines the language (ADR-0021)', () => {
     expect(buildTermRegistry(corpus, lens)).toEqual([]);
   });
 
-  it('holds the dictionary and not the second facet of Terms beside it, in a real corpus', async () => {
-    // ADR-0001: the same reading against a Corpus on disk, whose second facet of Terms
-    // writes down one of the dictionary's own words and means something else by it.
+  it('holds the dictionary and neither facet of Terms beside it, in a real corpus', async () => {
+    // ADR-0001: the same reading against a Corpus on disk, whose other facets of Terms
+    // write down one of the dictionary's own words and mean something else by it. Three
+    // facets of Terms now — a list of which thing owns the others, a cast of who does
+    // the work (ADR-0037), and the dictionary — and the registry still holds four words.
     const lens = await loadLens(fixturePath('lens-a.json'));
     const { corpus } = await loadCorpus(lens);
 
-    expect(corpus.byKind('Term')).toHaveLength(5);
+    expect(corpus.byKind('Term')).toHaveLength(7);
     expect(buildTermRegistry(corpus, lens).map((entry) => entry.canonical).sort())
       .toEqual(['Cog', 'Sprocket', 'Widget', 'Widget']);
   });
