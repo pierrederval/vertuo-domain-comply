@@ -133,7 +133,7 @@ function Says({ children }: { children: ReactNode }) {
 function EveryCorpus({ shelf }: { shelf: ShelfState }) {
   if (shelf.trouble !== null) return <Says>{shelf.trouble}</Says>;
   if (shelf.corpus === null) return <Says>Reading the shelf.</Says>;
-  return <CorpusList corpus={shelf.corpus} />;
+  return <CorpusList corpus={shelf.corpus.corpus} criteriaNotFollowed={shelf.corpus.criteriaNotFollowed} />;
 }
 
 /**

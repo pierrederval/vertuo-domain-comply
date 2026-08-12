@@ -36,11 +36,22 @@ function seedOf(...documents: Partial<SeedDocument>[]): Seed {
 describe('what applying a Lens looks for', () => {
   it('names it, so the Findings it reports have something to be counted against', () => {
     expect(INTERPRETATION_CHECKS).toEqual([
-      'unparsable-document',
+      'unreadable-document',
+      'unknown-facet',
       'missing-module-identity',
       'unknown-status',
       'empty-facet',
     ]);
+  });
+
+  it('names each of them in words a reader meets, because each of them is drawn', () => {
+    // Every one of these is put in front of a reader, as the denominator beside the
+    // Integrity figure and as the list of what ran in the Inbox. So a code is a
+    // surface, which is the question the surface guard's own limitation left open,
+    // and LAW-010 applies to one exactly as it does to a label.
+    for (const code of INTERPRETATION_CHECKS) {
+      expect(code).not.toMatch(/parse|schema|index|null|commit|branch|repositor|migration/i);
+    }
   });
 
   it('reports nothing it did not say it was looking for', async () => {
@@ -63,10 +74,23 @@ describe('what a Lens makes of a Seed', () => {
 
     expect(facts).toEqual([]);
     expect(findings).toHaveLength(1);
-    expect(findings[0]?.code).toBe('unparsable-document');
+    expect(findings[0]?.code).toBe('unreadable-document');
     // The wording lives here and not in the Seed, so improving it costs nothing.
     expect(findings[0]?.message).not.toBe('');
     expect(findings[0]?.origin).toEqual({ file: join(ROOT, 'm/doc.md'), line: 1 });
+  });
+
+  it('says what a document that said nothing about itself would have to say', async () => {
+    // LAW-010 and AC-6 in one: a Finding that only reports the absence leaves the
+    // reader nothing to do. Both keys are named, from the Lens, because the two of
+    // them are the whole of what a document has to say before it can be read.
+    const { findings } = interpret(
+      seedOf({ readable: false, bodyStartLine: null, moduleId: null, facet: null, status: null, items: [] }),
+      lens(),
+    );
+
+    expect(findings[0]?.message).toContain('area');
+    expect(findings[0]?.message).toContain('kind');
   });
 
   it('reports an absent identity, naming the key the Lens told it to look in', async () => {
@@ -76,13 +100,43 @@ describe('what a Lens makes of a Seed', () => {
     expect(findings[0]?.message).toContain('area');
   });
 
-  it('reports a facet no Lens declares, quoting what was found there', async () => {
+  it('reports a Facet nothing declares apart from the document that said nothing at all', async () => {
+    // Two defects wore one code until this slice, and their remedies have nothing in
+    // common: a document that says nothing about itself needs two lines written at the
+    // top of it, and a document naming a Facet nobody declared is a word spelled one
+    // way here and another way in the Lens. One code put them in one row of the Inbox
+    // and made the denominator claim four looks where five happen.
     const { facts, findings } = interpret(seedOf({ facet: 'nonesuch', items: [] }), lens());
 
     expect(facts).toEqual([]);
-    expect(findings[0]?.code).toBe('unparsable-document');
+    expect(findings[0]?.code).toBe('unknown-facet');
     expect(findings[0]?.message).toContain('nonesuch');
     expect(findings[0]?.message).toContain('kind');
+  });
+
+  it('names the Facets that are declared, because the mistake is nearly always a spelling', async () => {
+    // The whole of the DDD Corpus's three: two documents write `state-machine` where
+    // its Lens declares `state-machines`. Nothing but the declared names side by side
+    // makes that visible, and it is the Lens's to supply, never this function's.
+    const { findings } = interpret(seedOf({ facet: 'note', items: [] }), lens());
+
+    expect(findings[0]?.message).toContain('notes');
+  });
+
+  it('says none of it in markdown\'s words, because a Seed from any adapter arrives here', async () => {
+    // This function's own doc comment says it is deliberately not markdown's business,
+    // and three of its messages said *frontmatter* — a word only one adapter has. A
+    // second adapter would arrive and its Findings would talk about a thing it does
+    // not have (LAW-004).
+    const said = [
+      ...interpret(seedOf({ readable: false, moduleId: null, facet: null, items: [] }), lens()).findings,
+      ...interpret(seedOf({ moduleId: null }), lens()).findings,
+      ...interpret(seedOf({ facet: 'nonesuch', items: [] }), lens()).findings,
+      ...interpret(seedOf({ items: [] }), lens()).findings,
+    ].map((finding) => finding.message);
+
+    expect(said).not.toHaveLength(0);
+    for (const message of said) expect(message.toLowerCase()).not.toContain('frontmatter');
   });
 
   it('reports a facet that yielded nothing at the line its content should have begun', async () => {

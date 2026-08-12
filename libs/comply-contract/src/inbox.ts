@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WAYS_OF_HAVING_NO_READING } from './no-reading.js';
 import { sourceTextSchema } from './fact.js';
 import { placeSchema } from './module.js';
 
@@ -93,7 +94,7 @@ export const inboxReadingSchema = z.discriminatedUnion('outcome', [
    * to have found anything in — which is a different answer from a Corpus nothing
    * was found in, and sends a reader somewhere else.
    */
-  z.object({ outcome: z.literal('nothing-written-down-yet') }),
+  ...WAYS_OF_HAVING_NO_READING,
   z.object({
     outcome: z.literal('read'),
     sourceReadAt: z.string().datetime(),

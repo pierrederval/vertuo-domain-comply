@@ -28,6 +28,7 @@ import {
   type ModuleFacet,
   type ModuleFinding,
   type ModuleRow,
+  type NoReading,
   type Movement,
   type NeedsWork,
   type Place,
@@ -96,6 +97,26 @@ function whenWrittenDown(shelved: ShelvedCorpus): Date | null {
   return shelved.writtenDown.at(-1)?.heldAt ?? null;
 }
 
+/**
+ * Which of the two ways this Corpus has no reading, decided once (spec §8).
+ *
+ * The six surfaces below each answer for a Corpus with no reading, and each of them
+ * said *nothing has been written down from this source yet* whatever the reason.
+ * That is true of a source nobody has read and false of a source that was read and
+ * written down in a form nothing here can read back — and false in the way that
+ * costs most, because it reads as a fact and sends a reader to do a thing they have
+ * already done.
+ *
+ * The sentence itself is the Door's and is not composed here: the runner and the
+ * Studio meet the same failure, and a wording per surface is a wording per surface
+ * to keep in step (ADR-0034).
+ */
+function noReadingOf(shelved: ShelvedCorpus): NoReading {
+  return shelved.knowledgeCouldNotBeRead === null
+    ? { outcome: 'nothing-written-down-yet' }
+    : { outcome: 'could-not-be-read', because: shelved.knowledgeCouldNotBeRead };
+}
+
 function summarise(shelved: ShelvedCorpus, takenAt: string): CorpusSummary {
   const { lens } = shelved;
   const sourceReadAt = whenWrittenDown(shelved);
@@ -103,7 +124,7 @@ function summarise(shelved: ShelvedCorpus, takenAt: string): CorpusSummary {
   const reading = readNow(shelved, takenAt);
 
   if (reading === null || sourceReadAt === null) {
-    return { id: lens.id, name, reading: { outcome: 'nothing-written-down-yet' } };
+    return { id: lens.id, name, reading: noReadingOf(shelved) };
   }
 
   const summary: CorpusReading = {
@@ -159,18 +180,14 @@ function movementOf(row: TrendRow): Movement {
  * since the last reading kept, because that is as far back as the shelf holds
  * anything to work it out from.
  */
-async function homeOf(
-  shelved: ShelvedCorpus,
-  takenAt: string,
-  reportTrouble: (because: string) => void,
-): Promise<CorpusHome> {
+async function homeOf(shelved: ShelvedCorpus, takenAt: string): Promise<CorpusHome> {
   const { lens } = shelved;
   const sourceReadAt = whenWrittenDown(shelved);
   const name = lens.name ?? lens.id;
   const reading = readNow(shelved, takenAt);
 
   if (reading === null || sourceReadAt === null) {
-    return { id: lens.id, name, reading: { outcome: 'nothing-written-down-yet' } };
+    return { id: lens.id, name, reading: noReadingOf(shelved) };
   }
 
   // Scores and trend are derived from the matrix's rows in order, so the two line
@@ -201,7 +218,7 @@ async function homeOf(
       declaredFacets: lens.facets.length,
       needsWork,
       writtenDown: whenReadFromSource(shelved),
-      since: await whatMoved(shelved, reading, reportTrouble),
+      since: await whatMoved(shelved, reading),
     },
   };
 }
@@ -220,7 +237,7 @@ function wholeReading(shelved: ShelvedCorpus, takenAt: string): CorpusDetail {
   const reading = readNow(shelved, takenAt);
 
   if (reading === null || sourceReadAt === null) {
-    return { id: lens.id, name, reading: { outcome: 'nothing-written-down-yet' } };
+    return { id: lens.id, name, reading: noReadingOf(shelved) };
   }
 
   // Scores and trend are both derived from the matrix's rows, in order, so the
@@ -301,7 +318,7 @@ function oneModule(
   // reading to report — which is a different answer from a name this Corpus does
   // not have, and sends a reader somewhere else.
   if (reading === null || sourceReadAt === null) {
-    return { corpus, id: moduleId, reading: { outcome: 'nothing-written-down-yet' } };
+    return { corpus, id: moduleId, reading: noReadingOf(shelved) };
   }
 
   const at = reading.matrix.rows.findIndex((row) => row.moduleId === moduleId);
@@ -457,7 +474,7 @@ function oneFact(
   // different answer from a place this Corpus writes nothing at, and sends a
   // reader somewhere else.
   if (reading === null || seed === null || sourceReadAt === null) {
-    return { corpus, reading: { outcome: 'nothing-written-down-yet' } };
+    return { corpus, reading: noReadingOf(shelved) };
   }
 
   // Told apart, because they send a reader to different places: a name this
@@ -566,7 +583,7 @@ function inboxOf(shelved: ShelvedCorpus, takenAt: string): CorpusInbox {
   // different answer from a Corpus nothing was found in, and would otherwise tell
   // a reader their knowledge is clean when nobody has read it.
   if (reading === null || seed === null || sourceReadAt === null) {
-    return { corpus, reading: { outcome: 'nothing-written-down-yet' } };
+    return { corpus, reading: noReadingOf(shelved) };
   }
 
   const { root } = lens.adapter;
@@ -696,16 +713,15 @@ export function buildServer(shelf: string): FastifyInstance {
   const queued = oneAtATime();
 
   server.get('/corpus', { schema: { response: { 200: corpusListSchema } } }, async () => {
-    const { corpus, passedOver } = await readShelf(shelf);
-
-    for (const skipped of passedOver) {
-      // A Lens that cannot be followed and knowledge written down in an older form
-      // both land here, so what is said covers either.
-      server.log.warn({ file: skipped.file, reason: skipped.reason }, 'this Corpus was passed over');
-    }
+    // Both halves, always. A set of criteria that could not be followed used to be
+    // computed here, handed to `server.log.warn` — which on a Fastify built with no
+    // logger is `function noop () { }` — and lost, under a comment saying it went to a
+    // log. So the shelf answered as though it held one Corpus fewer, which is exactly
+    // what a shelf holding one Corpus fewer looks like (LAW-006, spec §8).
+    const { corpus, criteriaNotFollowed } = await readShelf(shelf);
 
     const takenAt = new Date().toISOString();
-    return { corpus: corpus.map((shelved) => summarise(shelved, takenAt)) };
+    return { corpus: corpus.map((shelved) => summarise(shelved, takenAt)), criteriaNotFollowed };
   });
 
   server.get(
@@ -726,9 +742,9 @@ export function buildServer(shelf: string): FastifyInstance {
       const { corpus } = await readShelf(shelf);
       const shelved = corpus.find((entry) => entry.lens.id === request.params.id);
 
-      // Nothing of that name is on the shelf. What a Corpus that *is* there but
-      // cannot be read should say is #27; this is the plainer case of a Corpus
-      // the product does not hold.
+      // Nothing of that name is on the shelf, which is the only thing this answers
+      // now. A Corpus that *is* here and cannot be read has a page and says so on it,
+      // so it never reaches this line (spec §8).
       if (shelved === undefined) return reply.status(404).send({ id: request.params.id });
 
       return wholeReading(shelved, new Date().toISOString());
@@ -755,12 +771,7 @@ export function buildServer(shelf: string): FastifyInstance {
 
       if (shelved === undefined) return reply.status(404).send({ id: request.params.id });
 
-      return homeOf(shelved, new Date().toISOString(), (because) =>
-        server.log.warn(
-          { corpus: request.params.id, reason: because },
-          'the knowledge the last reading on record was made of could not be read back',
-        ),
-      );
+      return homeOf(shelved, new Date().toISOString());
     },
   );
 

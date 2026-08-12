@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WAYS_OF_HAVING_NO_READING } from './no-reading.js';
 import { ladderSchema } from './detail.js';
 
 /**
@@ -171,7 +172,7 @@ export const moduleReadingSchema = z.discriminatedUnion('outcome', [
    * way, because a Module that cannot be found and a Corpus nobody has written
    * down yet send a reader to different places.
    */
-  z.object({ outcome: z.literal('nothing-written-down-yet') }),
+  ...WAYS_OF_HAVING_NO_READING,
   z.object({
     outcome: z.literal('read'),
     sourceReadAt: z.string().datetime(),

@@ -81,10 +81,16 @@ describe('reading a Corpus’s source again', () => {
     // about the same failure, and it is marked as something to act on (LAW-007).
     expect(markup).toContain('are not where its Lens says they are');
     expect(markup).toContain('data-conspicuous');
-    // And a reader is told the figures they are looking at are the old ones and are
-    // intact — a failed read that said only *it failed* leaves them unsure whether
-    // what is below is knowledge or wreckage.
-    expect(markup).toContain('already there');
+    // And a reader is told that what they are looking at is intact and unchanged — a
+    // failed read that said only *it failed* leaves them unsure whether what is below
+    // is knowledge or wreckage.
+    //
+    // It says *what is below is what was below before* and not *the reading below is
+    // the one that was already there*, because the second claims there is a reading.
+    // A Corpus whose knowledge cannot be read back has none, and that is precisely the
+    // Corpus this action is pressed on most (#27).
+    expect(markup).toContain('what is below is what was below before');
+    expect(markup).not.toContain('the reading below');
     expect(refusesAPress(markup)).toBe(false);
   });
 

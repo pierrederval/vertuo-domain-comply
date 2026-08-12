@@ -80,6 +80,54 @@ function couldNotKeepIt(cause: unknown): Error {
 }
 
 /**
+ * What is kept for this Corpus on the shelf cannot be read back, so the press cannot
+ * get past it.
+ *
+ * The one failure here whose remedy is not another press, because a press is what has
+ * just met it: unchanged source finds the Seed already held and reads that, so a
+ * damaged file under that name stops every read of that source until it is gone.
+ *
+ * So the sentence says the way out instead, which is LAW-011 said to a person. What
+ * this product keeps for itself is derived from the source and can always be thrown
+ * away and worked out again; the knowledge is at source and none of it is at risk.
+ */
+function whatIsKeptCannotBeRead(cause: unknown): Error {
+  return new Error(
+    'The source was read, and what is kept for this Corpus on the shelf cannot be read ' +
+      'back, so reading again cannot get past it. Nothing about the knowledge has ' +
+      'changed, and none of it is at risk: what this product keeps for itself is worked ' +
+      'out from the source and can be dropped and worked out again, which is the way out.',
+    { cause },
+  );
+}
+
+/**
+ * What was written down from a source cannot be read back.
+ *
+ * The Corpus has knowledge and no reading of it, which is not the same fact as a
+ * Corpus nobody has read — and *nothing has been written down from this source yet*
+ * is what every surface said about it until spec §8 was built. That sentence is not a
+ * blank space but the wrong true-sounding one: it sends a reader to read a source that
+ * has already been read, and never mentions what happened.
+ *
+ * Written here rather than at either surface, for the reason the two failures above
+ * it are: the runner and the Studio both meet this, and two wordings of one fact is
+ * how they come to say different things about one shelf (ADR-0034).
+ *
+ * It names no file. Where a Corpus's knowledge is written down is a derived artifact
+ * this product is free to throw away and make again (LAW-011), so the remedy is a
+ * press and not something to open — which is exactly the other way round from a set
+ * of criteria that could not be followed, where the file *is* the remedy.
+ */
+export function knowledgeCouldNotBeReadBack(): string {
+  return (
+    'The knowledge last written down from this source cannot be read back, so there is ' +
+    'no reading of it. Reading the source again writes down what is there now, and this ' +
+    'Corpus is read from that.'
+  );
+}
+
+/**
  * A reading of knowledge already written down, kept where either input has changed.
  *
  * The order is the decision and there is one copy of it. The criteria are held
@@ -154,19 +202,37 @@ export async function readTheSourceAgain(
     throw saidWhereItLooked(lens.adapter.root, cause);
   }
 
+  // Three phases, three sentences, because a reader does something different about
+  // each of them. One `try` around all of it said *what it says could not be written
+  // down* whatever went wrong — including where what was written down months ago is
+  // what cannot be read, which is knowledge this press never touched. Every way out of
+  // this function carries a sentence somebody wrote for a person to read; a surface
+  // passing a failure's own words through would show the error state a business reader
+  // meets most often, in the words of whichever call happened to fail (LAW-010).
+  let held: Awaited<ReturnType<typeof holdSeed>>;
   try {
-    const held = await holdSeed(shelf.seeds, asFound);
-    // Read back from what was written down, always. It was written by this, a moment
-    // ago, so it can be nothing this cannot read — and taking it back off the shelf is
-    // what makes the figures a reading of an artifact somebody else can go and check.
-    const read = await readAndKeep(shelf, lens, await readSeed(held.path), held.path, takenAt);
+    held = await holdSeed(shelf.seeds, asFound);
+  } catch (cause) {
+    throw couldNotKeepIt(cause);
+  }
 
+  // Read back from what was written down, always. Taking it off the shelf is what makes
+  // the figures a reading of an artifact somebody else can go and check (LAW-009).
+  //
+  // Unchanged source finds a Seed already held and reads that, so this is not always
+  // reading something this function just wrote: where the shelf holds something damaged
+  // under that name, the press cannot get past it and says so.
+  let asHeld: Seed;
+  try {
+    asHeld = await readSeed(held.path);
+  } catch (cause) {
+    throw whatIsKeptCannotBeRead(cause);
+  }
+
+  try {
+    const read = await readAndKeep(shelf, lens, asHeld, held.path, takenAt);
     return { ...read, unchangedAtSource: held.alreadyHeld };
   } catch (cause) {
-    // Every way out of this function carries a sentence somebody wrote for a person to
-    // read. A surface that passed a failure's own words through would be showing the
-    // one error state a business reader is most likely to meet, in the words of
-    // whatever call happened to fail (LAW-010).
     throw couldNotKeepIt(cause);
   }
 }

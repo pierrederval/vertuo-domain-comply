@@ -34,6 +34,11 @@ The five most likely to be broken by accident:
 3. **Append-only** (LAW-003). No `UPDATE`, no `DELETE` against Fact versions. Corrections append.
 4. **Business language at the surface** (LAW-010). Never let *commit*, *branch*, *schema*, *parse*,
    *index*, *repository*, *migration*, or *null* reach a business-facing label, error, or empty state.
+   The guard's list carries four more — *compliant*, *valid*, *structure*, *exception* — and a
+   **Finding's code is a surface** like any label, because every code is drawn beside the Integrity
+   figure and in the runner's report. *invalid* belongs on the list and cannot go on it, for two reasons
+   ADR-0035 records; `\bvalid` catches what a reader would meet and misses the exact phrase *is invalid*,
+   which a test stands in for.
 5. **Ambiguity escalates** (LAW-008). No write path applies a change to a site it could not classify
    as certain.
 
@@ -67,11 +72,14 @@ Three rules that are easy to break:
   grant, and a trigger backs it up. Do not attempt to work around this; it is LAW-003 made
   structural.
 - **Never assert about a class name.** Interface tests use `data-*` handles — `data-figure`,
-  `data-cell`, `data-movement`, `data-conspicuous`, `data-read-again` — because several of them are laws
-  made testable, and a guard tied to styling is deleted by whoever next changes the styling. `data-figure`
-  appearing exactly twice is LAW-006: two readings, never a third fused one. Do not reach for the word
-  `disabled` either: a vendored `Button` names it twice to say what it *looks* like when refused, so a test
-  looking for the word passes on a button that is merely styled for it.
+  `data-cell`, `data-movement`, `data-conspicuous`, `data-read-again`, `data-cannot-be-read` — because
+  several of them are laws made testable, and a guard tied to styling is deleted by whoever next changes the
+  styling. `data-figure` appearing exactly twice is LAW-006: two readings, never a third fused one.
+  `data-cannot-be-read` carries `"knowledge"` or `"criteria"`, so a test tells the two kinds of unreadable
+  apart and counts either. Do not reach for the word `disabled` either: a vendored `Button` names it twice to
+  say what it *looks* like when refused, so a test looking for the word passes on a button that is merely
+  styled for it. And do not assert on a quoted word in drawn markup — React writes `"` as `&quot;`, so a test
+  looking for `"signed-off"` fails on a page showing exactly that.
 
 The interface's components are vendored into `apps/comply-studio/src/components/ui` and are ours to
 maintain (ADR-0018). Both vocabulary guards scan them like any other source, so LAW-004 and LAW-010
@@ -206,6 +214,17 @@ through. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above
 `libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in development, which is
 where shape-leakage shows up (ADR-0001).
 
+**Two things on a shelf can be unreadable, and they are not the same thing** (ADR-0035, spec §8). A Lens
+that will not load means nothing about that Corpus can be read at all: it has no id, no name and no page, it
+travels beside the Corpus as `criteriaNotFollowed`, and the file it is written in is both its only name and
+the only thing to act on. Knowledge written down in a form the product can no longer read is a Corpus with a
+Lens, so it keeps its id, its name and every one of its pages — including the action that reads its source
+again, which is the whole remedy. Neither is ever reported as *nothing has been written down from this
+source yet*: that sentence is true of a source nobody has read, and about the second it is the wrong
+true-sounding one, sending a reader to do what they have already done. `WAYS_OF_HAVING_NO_READING` in
+`comply-contract` is where the ways of having no reading are declared, once, and all six payloads spread it
+so none can learn a new one alone.
+
 Five things about recorded readings are worth knowing before touching them (ADR-0016, ADR-0032, ADR-0033,
 ADR-0034):
 
@@ -260,6 +279,6 @@ it are worth knowing before changing it:
 - **Nothing in CI touches a shelf or the sibling checkout.** The suite builds the fixtures it needs, and a
   test that required `vertuo-domain-fr` would fail there first.
 
-The surface guard now says what its verdict is about on every run — 97 files in 14 places, each place with
+The surface guard now says what its verdict is about on every run — 100 files in 14 places, each place with
 its own figure, because a package whose source moves out from under the guard keeps its `src` directory and
 simply falls to none (LAW-006).

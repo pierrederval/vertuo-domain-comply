@@ -96,7 +96,8 @@ function whatThisFactSays(
  * so the two cannot drift apart silently.
  */
 export const INTERPRETATION_CHECKS: readonly string[] = [
-  'unparsable-document',
+  'unreadable-document',
+  'unknown-facet',
   'missing-module-identity',
   'unknown-status',
   'empty-facet',
@@ -129,10 +130,18 @@ export function interpret(seed: Seed, lens: Lens): Interpretation {
     const file = join(root, document.path);
     const origin = { file, line: 1 };
 
+    // None of these says *frontmatter*. A Seed from any adapter arrives here, and only
+    // one adapter has such a thing; the Lens names the two keys a document says these
+    // under, whatever the source calls the place they are written. What each of them
+    // says instead is what the document would have to say to be read, because a Finding
+    // reporting only an absence is one nobody can act on (LAW-004, LAW-007).
     if (!document.readable) {
       findings.push({
-        code: 'unparsable-document', moduleId: null,
-        message: `The document has no readable frontmatter and could not be interpreted`,
+        code: 'unreadable-document', moduleId: null,
+        message:
+          `This document says nothing about itself, so nothing in it could be read. ` +
+          `A document says which Module it belongs to under "${moduleIdKey}" and which ` +
+          `Facet it holds under "${facetKey}"`,
         origin,
       });
       continue;
@@ -142,16 +151,28 @@ export function interpret(seed: Seed, lens: Lens): Interpretation {
     if (moduleId === null) {
       findings.push({
         code: 'missing-module-identity', moduleId: null,
-        message: `Frontmatter key "${moduleIdKey}" is absent or empty`, origin,
+        message:
+          `This document does not say which Module it belongs to, which is written ` +
+          `under "${moduleIdKey}"`,
+        origin,
       });
       continue;
     }
 
+    // A separate code from the document above it, because the two remedies have
+    // nothing in common: that one needs two lines written at the top of a page, and
+    // this one is a word spelled one way in the document and another in the Lens. The
+    // declared names are said back for exactly that reason — the DDD Corpus's whole
+    // three of these are `state-machine` where its Lens declares `state-machines`, and
+    // nothing but the two side by side makes that visible.
     const facet = lens.facets.find((f) => f.name === document.facet);
     if (facet === undefined) {
+      const declared = lens.facets.map((f) => `"${f.name}"`).join(', ');
       findings.push({
-        code: 'unparsable-document', moduleId,
-        message: `Frontmatter key "${facetKey}" has value "${document.facet ?? ''}", which no facet declares`,
+        code: 'unknown-facet', moduleId,
+        message:
+          `This document says it holds "${document.facet ?? ''}" under "${facetKey}", and ` +
+          `this Corpus's criteria declare no Facet of that name. They declare ${declared}`,
         origin,
       });
       continue;

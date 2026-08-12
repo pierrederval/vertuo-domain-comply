@@ -50,11 +50,7 @@ function labelOf(lens: Lens, facet: string): string {
  * compare and this cannot. Said as a statement of its own rather than as an empty
  * list, because *nothing moved* and *nothing can be worked out* are different facts.
  */
-export async function whatMoved(
-  shelved: ShelvedCorpus,
-  now: Reading,
-  reportTrouble: (because: string) => void,
-): Promise<Since> {
+export async function whatMoved(shelved: ShelvedCorpus, now: Reading): Promise<Since> {
   const { lens, lastRecorded, writtenDown } = shelved;
 
   if (lastRecorded === null) return { comparedWith: 'no-earlier-reading' };
@@ -68,12 +64,18 @@ export async function whatMoved(
   let before: Reading;
   try {
     before = readSeededCorpus(await readSeed(held.path), lens, lastRecorded.takenAt, null);
-  } catch (cause) {
-    // Which of the reasons it was goes to the log and not to the page. What a
-    // reader is owed here is that the comparison cannot be made; what to do about
-    // knowledge written down in an older form is one sentence, and where it is said
-    // is #27's work.
-    reportTrouble(cause instanceof Error ? cause.message : String(cause));
+  } catch {
+    // Pruned away and written down in a form nothing here reads both answer this, and
+    // they are deliberately not told apart. What a reader is owed is that the
+    // comparison cannot be made and what to do about it, and the sentence beside this
+    // says both — *read the source again and the next reading kept has everything it
+    // needs* is the remedy for either. Two statements a reader acts on identically are
+    // not the two LAW-006 exists to keep apart.
+    //
+    // A callback carried the reason out of here to `server.log.warn`, which is
+    // `function noop () { }` on a Fastify built with no logger. It is gone rather than
+    // pointed somewhere else: a parameter whose whole effect was to make a lost reason
+    // look routed is worse than not collecting one.
     return { comparedWith: 'knowledge-no-longer-held' };
   }
 

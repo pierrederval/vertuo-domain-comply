@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import type { CorpusDetail, FacetState, ModuleRow } from '@vertuo/comply-contract';
 import { Moved } from '../components/Moved.js';
 import { TwoReadings } from '../components/TwoReadings.js';
+import { WhyThereIsNoReading } from '../components/NoReading.js';
 import { Aside, Conspicuous, NothingToShow, Surface } from '../components/layout.js';
 import { Card, CardContent } from '../components/ui/card.js';
 import {
@@ -122,7 +123,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
     return (
       <Card className="border-dashed shadow-none">
         <CardContent>
-          <NothingToShow>Nothing has been written down from this source yet.</NothingToShow>
+          <WhyThereIsNoReading reading={reading} />
         </CardContent>
       </Card>
     );

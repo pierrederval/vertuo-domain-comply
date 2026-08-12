@@ -263,18 +263,21 @@ describe('when the source cannot be read', () => {
     const lensId = await shelveLens('lens-a.json');
     const kept = shelfAt(shelf);
 
-    // What a shelf written down by an older version of this holds. Every reading
-    // passes the whole Corpus over, so it is on no page and in no list — and reading
-    // its source again is the one thing to do about it.
+    // What a shelf written down by an older version of this holds. It is listed, with
+    // no reading and the reason it has none, and reading its source again is the one
+    // thing to do about it — which is why it keeps the page that offers it (spec §8).
+    // Every reading used to pass the whole Corpus over, so the action was out of reach
+    // of the only Corpus that needed it.
     await writeFile(
       join(kept.seeds, `${lensId}-${'a'.repeat(64)}.json`),
       JSON.stringify({ version: 1, lensId, documents: [] }),
       'utf8',
     );
     const listed = (await server.inject({ method: 'GET', url: '/corpus' })).json() as {
-      corpus: unknown[];
+      corpus: { id: string; reading: { outcome: string } }[];
     };
-    expect(listed.corpus).toEqual([]);
+    expect(listed.corpus).toHaveLength(1);
+    expect(listed.corpus[0]?.reading.outcome).toBe('could-not-be-read');
 
     expect(await readTheSourceAgain(lensId)).toEqual({ outcome: 'read', unchangedAtSource: false });
 

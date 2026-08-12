@@ -26,9 +26,10 @@ const SHELF: CorpusSummary[] = corpusListSchema.parse({
     },
     { id: 'corpus-b', name: 'corpus-b', reading: { outcome: 'nothing-written-down-yet' } },
   ],
+  criteriaNotFollowed: [],
 }).corpus;
 
-const READ: ShelfState = { corpus: SHELF, trouble: null };
+const READ: ShelfState = { corpus: { corpus: SHELF, criteriaNotFollowed: [] }, trouble: null };
 
 function draw(shelf: ShelfState, at = '/corpus'): string {
   return renderToStaticMarkup(
@@ -103,7 +104,7 @@ describe('the shell', () => {
 
     // Nothing belonging to any one Corpus is written into the shell (LAW-004):
     // handed an empty shelf it has no name of its own left to draw.
-    expect(draw({ corpus: [], trouble: null })).not.toMatch(/Alpha|corpus-a|corpus-b/);
+    expect(draw({ corpus: { corpus: [], criteriaNotFollowed: [] }, trouble: null })).not.toMatch(/Alpha|corpus-a|corpus-b/);
   });
 
   it('names the Corpus being read, and marks it on the shelf', () => {
@@ -170,7 +171,25 @@ describe('the shell', () => {
 
   it('tells waiting apart from an empty shelf', () => {
     expect(draw({ corpus: null, trouble: null })).toContain('Reading the shelf');
-    expect(draw({ corpus: [], trouble: null })).toContain('Nothing is on the shelf yet');
+    expect(draw({ corpus: { corpus: [], criteriaNotFollowed: [] }, trouble: null })).toContain('Nothing is on the shelf yet');
+  });
+
+  it('tells an empty shelf apart from one whose every file could not be read', () => {
+    // The menu names neither of them, because a set of criteria that could not be
+    // followed has no page to go to. But *nothing is on the shelf yet* is what this
+    // said about a shelf holding one, which is what a shelf holding nothing says
+    // (LAW-006, spec §8).
+    const refused = draw({
+      corpus: {
+        corpus: [],
+        criteriaNotFollowed: [{ where: 'lens-b.json', because: 'nothing about it can be read yet' }],
+      },
+      trouble: null,
+    });
+
+    expect(refused).not.toContain('Nothing is on the shelf yet');
+    expect(refused).toContain('Nothing on the shelf can be read yet');
+    expect(refused).toContain('says which file to put right');
   });
 
   it('offers nothing to sign in to, because there is nobody to be', () => {

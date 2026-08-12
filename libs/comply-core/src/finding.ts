@@ -1,7 +1,19 @@
 import type { FactId, SourceLocation } from './fact.js';
 
+/**
+ * What a Finding is, in one word.
+ *
+ * Every one of these is put in front of a reader — as the denominator beside the
+ * Integrity figure, and as the list of what ran in the Inbox and on a Module — so
+ * a code is a surface and LAW-010 governs one exactly as it governs a label. That
+ * is the question the surface guard's own known limitation left open: it stops at
+ * the start of a word, so *unparsable* passed it, and the guard declined to settle
+ * by failing a build whether a code prefixed with *un* is a surface at all. It is,
+ * and none of these carries an engineering word.
+ */
 export type FindingCode =
-  | 'unparsable-document'
+  | 'unreadable-document'
+  | 'unknown-facet'
   | 'unknown-status'
   | 'missing-module-identity'
   | 'missing-owner'
