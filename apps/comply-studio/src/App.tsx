@@ -1,12 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, Navigate, Route, Routes, useParams, useSearchParams } from 'react-router';
-import { fetchCorpus, fetchCorpusDetail, fetchFact, fetchModule } from './api.js';
+import { fetchCorpus, fetchCorpusDetail, fetchFact, fetchInbox, fetchModule } from './api.js';
 import { Answering } from './components/Answering.js';
 import { NothingToShow } from './components/layout.js';
 import { Card, CardContent } from './components/ui/card.js';
 import { CorpusList } from './corpus/CorpusList.js';
 import { CorpusMatrix } from './corpus/CorpusMatrix.js';
 import { FactDetail } from './corpus/FactDetail.js';
+import { Inbox } from './corpus/Inbox.js';
 import { ModuleDetail } from './corpus/ModuleDetail.js';
 import { AppShell, type ShelfState } from './shell/AppShell.js';
 import { DESTINATIONS, OPENS_AT } from './shell/destinations.js';
@@ -83,6 +84,30 @@ function OneModule() {
 }
 
 /**
+ * One Corpus's Findings, worked as a queue apiece.
+ *
+ * Whose queue is read off the address, so a person can bookmark theirs and be sent
+ * it: a name, the empty value for the one reaching nobody, or nothing at all for the
+ * whole Inbox. The three are told apart because they are three different pages, and
+ * an empty name is the one value no Owner can ever have.
+ *
+ * The whole Inbox is asked for whichever it is, and narrowing does not ask again —
+ * every figure on the page is the Corpus's, and a page that re-asked per person
+ * could report its own slice as the total.
+ */
+function TheInbox() {
+  const { id } = useParams();
+  const [asked] = useSearchParams();
+  const corpus = id ?? '';
+
+  return (
+    <Answering ask={() => fetchInbox(corpus)} about={corpus}>
+      {(inbox) => <Inbox inbox={inbox} narrowedTo={asked.get('owner')} />}
+    </Answering>
+  );
+}
+
+/**
  * One piece of knowledge, opened at the place it is written down.
  *
  * The place arrives as the two things it is, and is checked before anything is
@@ -149,6 +174,7 @@ export function App() {
         */}
         <Route path="/corpus/:id" element={<Navigate to={OPENS_AT} replace />} />
         <Route path="/corpus/:id/readiness" element={<OneCorpus />} />
+        <Route path="/corpus/:id/inbox" element={<TheInbox />} />
         {DESTINATIONS.filter((destination) => destination.beingBuilt !== undefined).map(
           (destination) => (
             <Route

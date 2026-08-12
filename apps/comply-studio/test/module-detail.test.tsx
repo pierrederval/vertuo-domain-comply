@@ -282,8 +282,11 @@ describe('one Module, drilled into', () => {
 
     // A place is where a piece of knowledge is and also the only name every
     // Corpus gives it, so it is both what a reader is shown and what they follow
-    // to see the text it was read out of (#22). The Findings below are not links:
-    // where one of those goes is the Inbox's business (#23).
+    // to see the text it was read out of (#22). The Findings below are not links,
+    // and cannot be from here: a Finding cites the place its words are written,
+    // which another Module may write, and what is sent to this page carries no way
+    // to tell which. The Inbox is where a cited place is followed, because that is
+    // where the answer says who writes there (ADR-0031).
     expect(drawn).toContain('/corpus/c1/modules/m1/knowledge?in=two.md&amp;line=4');
     expect(drawn).toContain('/corpus/c1/modules/m1/knowledge?in=three.md&amp;line=1');
   });

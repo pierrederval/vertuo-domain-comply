@@ -1,11 +1,13 @@
 import {
   corpusDetailSchema,
   corpusFactSchema,
+  corpusInboxSchema,
   corpusListSchema,
   corpusModuleSchema,
   notHeldSchema,
   type CorpusDetail,
   type CorpusFact,
+  type CorpusInbox,
   type CorpusModule,
   type CorpusSummary,
   type NotHeld,
@@ -62,6 +64,27 @@ function whatIsNotHeld(said: NotHeld['notHeld'] | null): string {
     default:
       return 'Nothing is kept at that address.';
   }
+}
+
+/**
+ * One Corpus's Findings, grouped by who answers for them, the ones reaching nobody
+ * first.
+ *
+ * The whole queue is asked for and the page narrows it. Asked for one person at a
+ * time, the page could not say how many Findings reach nobody without asking a
+ * second time — and two answers about one Corpus is how the loudest thing on the
+ * page comes to disagree with the rest of it.
+ */
+export async function fetchInbox(id: string): Promise<CorpusInbox> {
+  const response = await fetch(`/corpus/${encodeURIComponent(id)}/inbox`);
+  // Only one thing this route can fail to hold, and it is the Corpus itself.
+  if (response.status === 404) throw new Error(whatIsNotHeld('corpus'));
+  if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
+
+  const answer = corpusInboxSchema.safeParse(await response.json());
+  if (!answer.success) throw new Error('The Studio was sent something it could not read.');
+
+  return answer.data;
 }
 
 /** One Module: every Facet its Lens declares, and why each one falls short. */
