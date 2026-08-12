@@ -245,6 +245,13 @@ none to compare with, the figure moved by so much, or **the last one was taken a
 The third exists because a Facet asking for more than it did drops a figure with nothing written down: a
 stricter Lens is not a regression in the Corpus, and no shape can carry that fall as a loss (ADR-0032).
 
+Because it holds the figures and not the Facets they were counted from, **anything finer than a figure is
+worked out again** from the Seed it cites, by applying the Lens to that knowledge a second time — which is
+what *any past reading can be recomputed exactly* meant, first exercised by what changed in a Corpus
+(ADR-0033). It follows that a Recorded Reading whose Seed has been pruned away still compares as figures
+and can say nothing about which Facet or which Finding moved. Those are two different silences and are
+never drawn the same.
+
 ### Seed
 
 A portable serialisation of a whole Corpus. Loading one establishes or replaces Corpus state;

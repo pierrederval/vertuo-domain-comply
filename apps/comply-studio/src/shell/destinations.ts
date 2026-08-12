@@ -15,19 +15,29 @@ export interface Destination {
   /** The last part of the address, beneath the Corpus. */
   at: string;
   label: string;
-  /** What is not built yet says so where it stands, rather than standing empty. */
-  beingBuilt?: string;
 }
 
 export const DESTINATIONS: Destination[] = [
-  {
-    at: 'home',
-    label: 'Home',
-    beingBuilt: 'What needs work in this Corpus, and what changed in it, is being built.',
-  },
+  { at: 'home', label: 'Home' },
   { at: 'readiness', label: 'Readiness' },
   { at: 'inbox', label: 'Inbox' },
 ];
 
-/** Where a Corpus opens when a reader arrives with nothing more specific in mind. */
+/**
+ * Where a Corpus opens when a reader arrives with nothing more specific in mind.
+ *
+ * The grid, and not Home, though Home is the work surface and stands first in the
+ * row. The grid carries a reading nothing else in the product can give: read down a
+ * column, a Facet absent in *every* Module is as often a Lens declaring something
+ * this business does not have as it is work nobody has begun — a defect in the
+ * denominator, silently deflating every figure Home draws. Opening at Home would put
+ * figures in front of the one view that can tell a reader those figures are counted
+ * out of one too many.
+ *
+ * This moves when Home's work list is meaningfully shorter than the Corpus. Today no
+ * Module in any Corpus on any shelf has every Facet its Lens declares approved, so
+ * that list *is* the whole grid without its cells, and the grid says more in the same
+ * space. Both are one click apart either way, which is what the redirect above is
+ * for.
+ */
 export const OPENS_AT = 'readiness';

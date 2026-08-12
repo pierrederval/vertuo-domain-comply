@@ -193,7 +193,7 @@ through. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above
 `libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in development, which is
 where shape-leakage shows up (ADR-0001).
 
-Three things about recorded readings are worth knowing before touching them (ADR-0016, ADR-0032):
+Four things about recorded readings are worth knowing before touching them (ADR-0016, ADR-0032, ADR-0033):
 
 - **A reading is free; recording one is not automatic.** `report` puts a reading on record only where the
   Seed digest or the Lens digest differs from the last one — so running it four times in a morning leaves
@@ -209,6 +209,14 @@ Three things about recorded readings are worth knowing before touching them (ADR
   to reject, in the real shelf. They are invisible to a trend on purpose and visible to `prune`, which
   drops them and counts them apart, because an artifact this product holds and cannot account for is
   LAW-006 by another route.
+- **A reading holds the figures and not the cells, so anything finer is worked out again.** Which Facet
+  crossed the approved rung and which Finding started being found come from reading the cited Seed back and
+  applying the Lens to it a second time — one extra application per request, about 25ms on the DDD Corpus
+  against 30ms for the whole reading. Do not grow `RecordedReading` to hold cells to avoid that: it is a
+  cache nothing can invalidate, and the next change to how a Facet's state is decided would report as a
+  Corpus's knowledge moving. There is no `readHeldLens` and none is needed — a comparison is only stated
+  where the two Lens digests agree, which is exactly the case where the criteria in hand say what the
+  retained ones say.
 
 There is no lint step. Every pull request runs the whole suite under
 [`.github/workflows/build-gate.yml`](./.github/workflows/build-gate.yml), so LAW-004 and LAW-010 are
@@ -229,6 +237,6 @@ it are worth knowing before changing it:
 - **Nothing in CI touches a shelf or the sibling checkout.** The suite builds the fixtures it needs, and a
   test that required `vertuo-domain-fr` would fail there first.
 
-The surface guard now says what its verdict is about on every run — 87 files in 13 places, each place with
+The surface guard now says what its verdict is about on every run — 93 files in 13 places, each place with
 its own figure, because a package whose source moves out from under the guard keeps its `src` directory and
 simply falls to none (LAW-006).

@@ -1,12 +1,14 @@
 import {
   corpusDetailSchema,
   corpusFactSchema,
+  corpusHomeSchema,
   corpusInboxSchema,
   corpusListSchema,
   corpusModuleSchema,
   notHeldSchema,
   type CorpusDetail,
   type CorpusFact,
+  type CorpusHome,
   type CorpusInbox,
   type CorpusModule,
   type CorpusSummary,
@@ -41,6 +43,26 @@ export async function fetchCorpusDetail(id: string): Promise<CorpusDetail> {
   if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
 
   const answer = corpusDetailSchema.safeParse(await response.json());
+  if (!answer.success) throw new Error('The Studio was sent something it could not read.');
+
+  return answer.data;
+}
+
+/**
+ * What needs a person in one Corpus, and what moved in it.
+ *
+ * A different question from the grid and so a different answer: the grid is every
+ * Module against every Facet, and this is the Modules where there is work, with what
+ * the Corpus has done since the last reading kept for it.
+ */
+export async function fetchHome(id: string): Promise<CorpusHome> {
+  const response = await fetch(`/corpus/${encodeURIComponent(id)}/home`);
+  // Told apart from being unable to reach the server at all, because one of the two
+  // is answered by looking somewhere else and the other by waiting.
+  if (response.status === 404) throw new Error(whatIsNotHeld('corpus'));
+  if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
+
+  const answer = corpusHomeSchema.safeParse(await response.json());
   if (!answer.success) throw new Error('The Studio was sent something it could not read.');
 
   return answer.data;

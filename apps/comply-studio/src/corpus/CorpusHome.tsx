@@ -1,0 +1,293 @@
+import { Link } from 'react-router';
+import type { CorpusChange, CorpusHome as OneCorpusHome, NeedsWork, Since } from '@vertuo/comply-contract';
+import { Age } from '../components/Age.js';
+import { Moved } from '../components/Moved.js';
+import { TwoReadings } from '../components/TwoReadings.js';
+import { Aside, Conspicuous, NothingToShow, Surface } from '../components/layout.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.js';
+import { count } from '../words.js';
+
+/**
+ * One Module short of having every Facet its Lens declares approved, with what it
+ * has got and what that has done.
+ *
+ * The Module's name leads to its own page and not to the grid, because what a reader
+ * arrives here wanting is the work: the Module page states, Facet by Facet, exactly
+ * what each one falls short of. The grid is where the same Corpus is read down a
+ * column instead, which is a different question and has its own destination.
+ */
+function Work({ module, corpusId }: { module: NeedsWork; corpusId: string }) {
+  return (
+    <TableRow data-needs-work="">
+      <TableHead scope="row" className="grid gap-px align-middle font-normal">
+        <Link
+          className="justify-self-start font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+          to={`/corpus/${encodeURIComponent(corpusId)}/modules/${encodeURIComponent(module.id)}`}
+        >
+          {module.id}
+        </Link>
+        {module.owner === null ? (
+          // LAW-007: every Finding against this Module routes to nobody, which is a
+          // defect and not an empty space.
+          <span className="text-sm">
+            <Conspicuous>nobody answers for this</Conspicuous>
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground">{module.owner}</span>
+        )}
+      </TableHead>
+      <TableCell className="text-sm text-muted-foreground">
+        {`${module.approved} of ${module.declaredFacets}`}
+      </TableCell>
+      <TableCell className="text-sm text-muted-foreground">
+        <Moved movement={module.movement} />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/**
+ * One thing that changed in the Corpus.
+ *
+ * Never one thing the tooling did. There is no item here for a run, a request, or a
+ * reading being taken — burying real change under noise the tooling generated about
+ * itself is what ADR-0012 exists to prevent, and none of those has a shape to arrive
+ * in.
+ *
+ * What arrived is marked and what left is not. A Finding that has started being found
+ * and a Facet that has fallen off the approved rung are both work landing on somebody,
+ * which is what a mark is for (LAW-007); the other two directions are work having
+ * been done.
+ */
+function Changed({ change }: { change: CorpusChange }) {
+  if (change.changed === 'facet') {
+    return (
+      <li data-change="facet" className="text-sm">
+        <span className="font-medium text-foreground">{change.moduleId}</span>{' '}
+        {change.approved ? (
+          `— ${change.label} became approved`
+        ) : (
+          <Conspicuous>{`— ${change.label} is no longer approved`}</Conspicuous>
+        )}
+      </li>
+    );
+  }
+
+  return (
+    <li data-change="finding" className="text-sm">
+      {change.appeared ? (
+        <Conspicuous>Finding appeared</Conspicuous>
+      ) : (
+        <span className="font-medium text-foreground">Finding no longer found</span>
+      )}
+      {' — '}
+      {/*
+        What was found, in the words it was found in. A feed that summarised a
+        Finding would show a reader a second-hand version of the very thing this
+        product exists to detect.
+      */}
+      {change.says}
+      {change.moduleId === null ? (
+        // A Finding belonging to no Module reaches nobody, which is the fact LAW-007
+        // makes a defect. Left unsaid it reads as a Finding that simply has no name
+        // beside it.
+        <>
+          {' '}
+          <Conspicuous>reaches nobody</Conspicuous>
+        </>
+      ) : (
+        <span className="text-muted-foreground">{` in ${change.moduleId}`}</span>
+      )}
+    </li>
+  );
+}
+
+/**
+ * What the knowledge did since the last reading kept for this Corpus, or which of
+ * three reasons means nothing can be said about it.
+ *
+ * Four sentences, never a blank space. *Nothing moved*, *nobody has measured this
+ * twice*, *the bar moved*, and *what it was measured from has gone* are four
+ * different facts and a reader acts on each of them differently (LAW-006).
+ */
+function SinceThen({ since, lensId }: { since: Since; lensId: string }) {
+  if (since.comparedWith === 'no-earlier-reading') {
+    return (
+      <NothingToShow>
+        No reading has been kept for this Corpus yet, so there is nothing for what it
+        says now to be compared against. The next reading kept is what the one after
+        it will be read against.
+      </NothingToShow>
+    );
+  }
+
+  if (since.comparedWith === 'a-reading-under-other-criteria') {
+    return (
+      <NothingToShow>
+        {`The last reading kept for this Corpus was taken against different criteria from these, so nothing about the knowledge can be stated across the two. What ${lensId} asks of this Corpus changed; whether the knowledge did is not something this page can say yet.`}
+      </NothingToShow>
+    );
+  }
+
+  if (since.comparedWith === 'knowledge-no-longer-held') {
+    return (
+      <NothingToShow>
+        The knowledge the last reading kept for this Corpus was made of is not on the
+        shelf any more, so what a Facet or a Finding has done since cannot be worked
+        out. The figures that reading recorded are still what each one above is
+        compared with. Read the source again and the next reading kept has everything
+        it needs.
+      </NothingToShow>
+    );
+  }
+
+  if (since.changed.length === 0) {
+    return (
+      <NothingToShow>
+        Nothing about the knowledge has moved since that reading. No Facet has crossed
+        the approved rung either way, and no Finding has started or stopped being
+        found.
+      </NothingToShow>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col gap-2">
+      {since.changed.map((change, at) => (
+        <Changed key={at} change={change} />
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Home: what needs a person in this Corpus, and what moved in it (spec §5.1).
+ *
+ * Per Corpus and never across the shelf. No figure here stands for more than one
+ * Corpus, and none stands for both readings of one.
+ *
+ * The Corpus's own name is not repeated. The shell names what is being read, once,
+ * at the top, and says how old the reading is; a Corpus named twice on one screen
+ * reads as two things, and the second one is always what somebody forgets to change.
+ *
+ * Nothing here knows what any of it is called. Every Facet's name, every Module's,
+ * and every rung arrives in the payload, so this draws a Corpus it has never met
+ * without being changed (LAW-004).
+ */
+export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
+  const { reading } = corpus;
+
+  if (reading.outcome !== 'read') {
+    return (
+      <Card className="border-dashed shadow-none">
+        <CardContent>
+          <NothingToShow>Nothing has been written down from this source yet.</NothingToShow>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { readiness, integrity, needsWork, declaredFacets, ladder, writtenDown, since } = reading;
+  const nothingToCompare = needsWork.some(
+    (module) => module.movement.comparedWith === 'no-earlier-reading',
+  );
+  // The criteria are a property of the reading and not of one Module, so one row
+  // saying this means every row was read that way.
+  const criteriaChanged = needsWork.some(
+    (module) => module.movement.comparedWith === 'a-reading-under-other-criteria',
+  );
+
+  return (
+    <Surface>
+      <TwoReadings readiness={readiness} integrity={integrity} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Needs work</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {needsWork.length === 0 ? (
+            <NothingToShow>
+              {`Every Module here has each of the ${count(declaredFacets, 'Facet')} its Lens declares approved. Knowledge nobody has written down anywhere is not counted, and cannot be.`}
+            </NothingToShow>
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <table className="caption-bottom text-sm">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">Module</TableHead>
+                    <TableHead scope="col">Approved</TableHead>
+                    <TableHead scope="col">Movement</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {needsWork.map((module) => (
+                    <Work key={module.id} module={module} corpusId={corpus.id} />
+                  ))}
+                </TableBody>
+              </table>
+            </div>
+          )}
+
+          <Aside>
+            {`Every figure here is counted out of the ${count(declaredFacets, 'Facet')} this Corpus’s Lens declares, and a Module with all of them approved is not listed. What each one falls short of is on its own page, Facet by Facet.`}
+          </Aside>
+          <Aside>
+            {`Approved means at or above “${ladder.approvedAtOrAbove}” on this Corpus’s ladder: ${ladder.levels.join(' → ')}.`}
+          </Aside>
+          {nothingToCompare && (
+            <Aside>
+              {'— means there is no earlier reading to compare this one with. It is not the same as nothing having changed.'}
+            </Aside>
+          )}
+          {criteriaChanged && (
+            <Aside>
+              {`The last reading kept for this Corpus was taken against different criteria from these, so no figure above can be compared with it. What ${reading.lensId} asks of this Corpus changed; whether the knowledge did is not something this page can say yet.`}
+            </Aside>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>What changed</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <SinceThen since={since} lensId={reading.lensId} />
+
+          {/*
+            When the source was read, as a group of its own and under its own
+            horizon. Every writing-down is still held, so every one of them can be
+            named; what a Facet or a Finding did can only be stated as far back as
+            the last reading kept. Cutting the wider one back to the narrower would
+            hide times the source changed that the shelf can still account for
+            exactly (LAW-006).
+          */}
+          <ul className="flex flex-col gap-2">
+            {/*
+              Most recent first. A reader arriving asks what is new, and a Corpus
+              read twenty times would bury today's reading at the bottom.
+            */}
+            {[...writtenDown].reverse().map((held) => (
+              <li key={held.at} data-change="read-from-source" className="text-sm">
+                Read from source <Age at={held.at} />
+              </li>
+            ))}
+          </ul>
+
+          <Aside>
+            {since.comparedWith === 'the-last-reading'
+              ? 'Every time this source was read and said something new is listed, however long ago. What a Facet or a Finding did is stated only since the reading kept below, because that is as far back as the shelf holds anything to work it out from.'
+              : 'Every time this source was read and said something new is listed, however long ago. Reading the source again when nothing has changed at it adds nothing here, so this is a list of what changed and never a list of runs.'}
+          </Aside>
+          {since.comparedWith === 'the-last-reading' && (
+            <Aside>
+              Compared with the reading kept <Age at={since.takenAt} />.
+            </Aside>
+          )}
+        </CardContent>
+      </Card>
+    </Surface>
+  );
+}

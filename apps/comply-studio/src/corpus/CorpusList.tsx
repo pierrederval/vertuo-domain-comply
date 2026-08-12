@@ -1,10 +1,9 @@
 import { Link } from 'react-router';
 import type { CorpusSummary } from '@vertuo/comply-contract';
 import { Age } from '../components/Age.js';
-import { Figure } from '../components/Figure.js';
-import { NothingToShow, Readings, Surface } from '../components/layout.js';
+import { TwoReadings } from '../components/TwoReadings.js';
+import { NothingToShow, Surface } from '../components/layout.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
-import { count } from '../words.js';
 
 /**
  * The two readings of one Corpus, and how old they are.
@@ -26,25 +25,7 @@ function Reading({ reading }: { reading: CorpusSummary['reading'] }) {
       <p className="text-sm text-muted-foreground">
         Read from source <Age at={reading.sourceReadAt} />
       </p>
-      <Readings>
-        {[
-          <Figure
-            key="readiness"
-            reading="Readiness"
-            counts="Modules fully approved"
-            value={readiness.modulesFullyApproved}
-            outOf={`of ${count(readiness.modules, 'Module')}`}
-          />,
-          <Figure
-            key="integrity"
-            reading="Integrity"
-            counts="Open Findings"
-            value={integrity.openFindings}
-            outOf={`from ${count(integrity.lookedFor.length, 'Check')}`}
-            detail={integrity.lookedFor.join(', ')}
-          />,
-        ]}
-      </Readings>
+      <TwoReadings readiness={readiness} integrity={integrity} />
     </div>
   );
 }
