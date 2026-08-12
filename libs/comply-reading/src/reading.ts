@@ -1,17 +1,34 @@
 import { buildCorpus, type Corpus, type Finding } from '@vertuo/comply-core';
 import { INTERPRETATION_CHECKS, interpret } from '@vertuo/comply-ingestion';
 import { CHECKS, runChecks } from '@vertuo/comply-integrity';
-import type { Lens } from '@vertuo/comply-lens';
+import { lensDigest, type Lens } from '@vertuo/comply-lens';
 import {
   buildMatrix,
   scoreMatrix,
   trend,
   type Matrix,
   type ModuleScore,
-  type Snapshot,
+  type RecordedReading,
   type TrendRow,
 } from '@vertuo/comply-readiness';
-import type { Seed } from '@vertuo/comply-seed';
+import { seedDigest, type Seed } from '@vertuo/comply-seed';
+
+/**
+ * When a reading was taken, what knowledge it was made of, and what it is stated
+ * against.
+ *
+ * The knowledge arrives as a digest rather than as the Seed: what a reading needs
+ * from the Seed to be comparable is its identity, and a Corpus built from it is
+ * already the first argument. Named together so that two values of the same shape —
+ * a moment and a digest — cannot be handed over the wrong way round in silence.
+ */
+export interface AsRead {
+  takenAt: string;
+  /** The knowledge this reading was made from, as the Seed's digest. */
+  seedDigest: string;
+  /** The last reading on record for this Lens, or nothing where there is none. */
+  previous: RecordedReading | null;
+}
 
 export interface Reading {
   /** Which Lens the knowledge was read through. */
@@ -44,10 +61,17 @@ export interface Reading {
    * (LAW-006). Never a total of anything — a set of names.
    */
   checks: string[];
-  /** Per Module, against `previous`. Null entries mean no baseline, never no change. */
+  /**
+   * Per Module, against `previous`. Three statements and never two: no baseline,
+   * a baseline read through other criteria, and a delta.
+   */
   trend: TrendRow[];
-  /** These figures, ready to become the next baseline. */
-  snapshot: Snapshot;
+  /**
+   * This reading in the form it goes on record in, naming both the inputs it is a
+   * function of. Whether it *is* recorded is decided by whether either of them has
+   * changed, and that is the caller's business (ADR-0016).
+   */
+  asRecorded: RecordedReading;
 }
 
 /**
@@ -63,19 +87,26 @@ export interface Reading {
  * the runner and the server both need this composition, and two copies of it
  * would be two answers to one question.
  *
- * Pure, given `takenAt` and `previous`: holding and reading baselines is the
- * caller's business.
+ * Pure, given what it was read from and what it is stated against: holding
+ * readings and putting them on record is the caller's business.
  */
 export function composeReading(
   corpus: Corpus,
   lens: Lens,
   interpretationFindings: Finding[],
-  takenAt: string,
-  previous: Snapshot | null,
+  { takenAt, seedDigest: knowledge, previous }: AsRead,
 ): Reading {
   const matrix = buildMatrix(corpus, lens);
   const scores = scoreMatrix(matrix);
-  const snapshot: Snapshot = { takenAt, lensId: lens.id, scores };
+  const asRecorded: RecordedReading = {
+    takenAt,
+    lensId: lens.id,
+    seedDigest: knowledge,
+    // Taken over what the Lens says and not over where it points, so a checkout
+    // that moved is not a change of criteria (see `lensDigest`).
+    lensDigest: lensDigest(lens),
+    scores,
+  };
 
   return {
     lensId: lens.id,
@@ -85,8 +116,8 @@ export function composeReading(
     scores,
     findings: [...interpretationFindings, ...runChecks(corpus, lens)],
     checks: [...INTERPRETATION_CHECKS, ...CHECKS.map((check) => check.name)],
-    trend: trend(snapshot, previous),
-    snapshot,
+    trend: trend(asRecorded, previous),
+    asRecorded,
   };
 }
 
@@ -102,8 +133,12 @@ export function readSeededCorpus(
   seed: Seed,
   lens: Lens,
   takenAt: string,
-  previous: Snapshot | null,
+  previous: RecordedReading | null,
 ): Reading {
   const { facts, findings } = interpret(seed, lens);
-  return composeReading(buildCorpus(facts), lens, findings, takenAt, previous);
+  return composeReading(buildCorpus(facts), lens, findings, {
+    takenAt,
+    seedDigest: seedDigest(seed),
+    previous,
+  });
 }

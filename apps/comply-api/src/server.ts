@@ -33,7 +33,7 @@ import {
   type WrittenPart,
 } from '@vertuo/comply-contract';
 import type { AttributeValue, Finding, SourceLocation } from '@vertuo/comply-core';
-import { factsUnder } from '@vertuo/comply-readiness';
+import { factsUnder, type TrendRow } from '@vertuo/comply-readiness';
 import { readSeededCorpus, type Reading } from '@vertuo/comply-reading';
 import type { Seed } from '@vertuo/comply-seed';
 import { readShelf, type ShelvedCorpus } from './shelf.js';
@@ -60,15 +60,19 @@ function figures(reading: Reading): { readiness: ReadinessFigure; integrity: Int
 /**
  * What the product can say about one Corpus right now.
  *
- * The reading is computed on request. Recording readings so a trend can be drawn
- * against them is #24; until then there is nothing to serve but a fresh one, and
- * the age reported is the age of the knowledge it was made from — never the moment
- * the figures happened to be computed, which would claim the source had just been
- * looked at.
+ * The reading is computed on request and is never written down here: a reading is
+ * free, and one goes on record only when the knowledge or the criteria change,
+ * which happens where a Seed is loaded (ADR-0016). Every route below is a GET and
+ * this is why it can stay that way.
+ *
+ * What it is compared against is the last reading on record, read off the shelf.
+ * The age reported is the age of the knowledge the reading was made from — never
+ * the moment the figures happened to be computed, which would claim the source had
+ * just been looked at.
  */
 function readNow(shelved: ShelvedCorpus, takenAt: string): Reading | null {
-  const { lens, seed } = shelved;
-  return seed === null ? null : readSeededCorpus(seed, lens, takenAt, null);
+  const { lens, seed, lastRecorded } = shelved;
+  return seed === null ? null : readSeededCorpus(seed, lens, takenAt, lastRecorded);
 }
 
 function summarise(shelved: ShelvedCorpus, takenAt: string): CorpusSummary {
@@ -94,15 +98,26 @@ function summarise(shelved: ShelvedCorpus, takenAt: string): CorpusSummary {
 /**
  * What one Module has done since the last reading kept to compare it against.
  *
- * There is no such reading yet — recording them is #24 — so this is *nothing to
- * compare with* for every Module, which is the honest answer and reads
- * differently from *nothing changed*. The day baselines exist, they arrive here
- * as `previous` and the same two shapes carry the difference.
+ * Three statements on the wire because there are three at the reading, and the
+ * mapping is written out rather than passed through: the reading's words are the
+ * core's and the agreement's are what a person is eventually shown, so a fourth
+ * arriving on either side has to be answered for here rather than travelling
+ * unnoticed.
+ *
+ * Nothing is collapsed. *Nothing to compare with* and *read against other
+ * criteria* both decline to state a delta, and they decline for different reasons a
+ * reader acts on differently — the first is a Corpus nobody has measured twice, the
+ * second is a bar that moved.
  */
-export function movementOf(approvedDelta: number | null): Movement {
-  return approvedDelta === null
-    ? { comparedWith: 'no-earlier-reading' }
-    : { comparedWith: 'the-last-reading', approvedDelta };
+function movementOf(row: TrendRow): Movement {
+  switch (row.comparedWith) {
+    case 'no-earlier-reading':
+      return { comparedWith: 'no-earlier-reading' };
+    case 'a-reading-under-other-criteria':
+      return { comparedWith: 'a-reading-under-other-criteria' };
+    case 'the-last-reading':
+      return { comparedWith: 'the-last-reading', approvedDelta: row.approvedDelta };
+  }
 }
 
 /**
@@ -129,7 +144,7 @@ function wholeReading(shelved: ShelvedCorpus, takenAt: string): CorpusDetail {
     cells: row.cells.map((cell) => ({ facet: cell.facet, state: cell.state })),
     approved: reading.scores[at]!.approved,
     declaredFacets: reading.scores[at]!.total,
-    movement: movementOf(reading.trend[at]!.approvedDelta),
+    movement: movementOf(reading.trend[at]!),
   }));
 
   return {

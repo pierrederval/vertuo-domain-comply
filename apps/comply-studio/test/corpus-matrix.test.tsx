@@ -220,6 +220,40 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
     expect(compared).not.toContain('data-movement="none"');
   });
 
+  it('keeps a reading taken against other criteria distinct from both of those', () => {
+    const otherCriteria = draw(
+      corpus({
+        modules: [
+          {
+            id: 'm-one',
+            owner: 'someone',
+            cells: [
+              { facet: 'f-one', state: 'approved' },
+              { facet: 'f-two', state: 'absent' },
+            ],
+            approved: 1,
+            declaredFacets: 2,
+            movement: { comparedWith: 'a-reading-under-other-criteria' },
+          },
+        ],
+      }),
+    );
+
+    // Its own handle, positioned where a movement is drawn, and neither of the
+    // other two: there *is* an earlier reading, so `—` would be untrue, and no
+    // number can stand for a figure that fell because the bar moved (§6).
+    expect(otherCriteria).toContain('data-movement="other-criteria"');
+    expect(otherCriteria).not.toContain('data-movement="none"');
+    expect(otherCriteria).not.toContain('data-movement="steady"');
+    expect(otherCriteria).not.toContain('data-movement="lost"');
+    expect(otherCriteria).not.toContain('data-movement="gained"');
+    // And the page says why, rather than leaving a reader to work out what a
+    // column of one phrase means.
+    expect(otherCriteria).toMatch(/taken against different criteria/);
+    // The aside for having no baseline is a different sentence and is not shown here.
+    expect(otherCriteria).not.toContain('no earlier reading to compare this one with.');
+  });
+
   it('shows the two readings on this page as two figures, never fused', () => {
     const drawn = draw(corpus({}));
 

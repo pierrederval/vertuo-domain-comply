@@ -1,10 +1,14 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadLens, type Lens } from '@vertuo/comply-lens';
+import { lastRecordedReading, type RecordedReading } from '@vertuo/comply-readiness';
 import { latestHeldSeed, readSeed, type Seed } from '@vertuo/comply-seed';
 
 /** Where a shelf keeps the knowledge that has been written down from source. */
 const SEEDS = 'seeds';
+
+/** Where it keeps the readings put on record, which are what a trend is stated against. */
+const READINGS = 'runs';
 
 export interface ShelvedCorpus {
   lens: Lens;
@@ -12,6 +16,16 @@ export interface ShelvedCorpus {
   seed: Seed | null;
   /** When that knowledge was written down. Absent for the same reason. */
   sourceReadAt: Date | null;
+  /**
+   * The last reading put on record for this Corpus, which is what a fresh one is
+   * compared against, or nothing where none has been.
+   *
+   * Read here and never written. A recorded reading is a cache of a value derived
+   * from the Seed and the Lens (ADR-0016), so reading one leaves the Corpus exactly
+   * as it was and is not a write path around the Door (LAW-002). Putting one on
+   * record happens where a Seed is loaded, which is the runner.
+   */
+  lastRecorded: RecordedReading | null;
 }
 
 export interface Shelf {
@@ -78,7 +92,12 @@ export async function readShelf(dir: string): Promise<Shelf> {
       }
     }
 
-    corpus.push({ lens, seed, sourceReadAt: held?.heldAt ?? null });
+    corpus.push({
+      lens,
+      seed,
+      sourceReadAt: held?.heldAt ?? null,
+      lastRecorded: await lastRecordedReading(join(dir, READINGS), lens.id),
+    });
   }
 
   corpus.sort((a, b) => (a.lens.id < b.lens.id ? -1 : a.lens.id > b.lens.id ? 1 : 0));

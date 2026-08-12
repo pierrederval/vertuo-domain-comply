@@ -342,6 +342,9 @@ importers:
 
   libs/comply-seed:
     dependencies:
+      '@vertuo/comply-core':
+        specifier: workspace:*
+        version: link:../comply-core
       zod:
         specifier: ^3.24.1
         version: 3.25.76

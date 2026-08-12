@@ -10,8 +10,16 @@ import { loadLens } from '@vertuo/comply-lens';
 import { holdSeed, readSeed, whatWasRead } from '@vertuo/comply-seed';
 import { readCorpus } from '../src/reading.js';
 
-/** Fixed, so no baseline exists and the trend column reads the same on every run. */
-const READ_AT = '2026-01-01T00:00:00.000Z';
+/**
+ * Fixed, and with nothing to be compared against, so the trend column reads the
+ * same on every run. The knowledge digest is fixed for the same reason: it is on
+ * record and never drawn, so nothing it says reaches the text below.
+ */
+const AS_READ = {
+  takenAt: '2026-01-01T00:00:00.000Z',
+  seedDigest: '0'.repeat(64),
+  previous: null,
+};
 
 function baselinePath(name: string): string {
   return fileURLToPath(new URL(`./baseline/${name}`, import.meta.url));
@@ -73,6 +81,13 @@ function baselinePath(name: string): string {
  * here is a grid that moved: alpha's first rule now stands at the approved rung on its own
  * word, and the cell is still `~~` because the two rules beside it do not, which is the
  * difference between a fact's claim and a document's.
+ *
+ * The fifth move is one sentence, in both files, and not a mark: the trend column can now
+ * say a reading was taken against different criteria, and a legend that turns up only when
+ * that happens is one a reader has to already know to look for (LAW-006). Every grid line
+ * either side of it is identical, character for character, which is what makes it a
+ * legitimate move rather than the loss this file exists to catch — recording a reading only
+ * when its inputs change moved nothing anybody is shown about the knowledge (ADR-0016).
  */
 describe.each([
   ['lens-a.json', 'corpus-a.txt'],
@@ -82,7 +97,7 @@ describe.each([
     const lens = await loadLens(fixturePath(lensFile));
     const { corpus, findings, read } = await loadCorpus(lens);
 
-    const { text } = readCorpus(corpus, lens, findings, READ_AT, null, read);
+    const { text } = readCorpus(corpus, lens, findings, AS_READ, read);
 
     expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
   });
@@ -100,7 +115,7 @@ describe.each([
     const { facts, findings } = interpret(shelved, lens);
 
     const { text } = readCorpus(
-      buildCorpus(facts), lens, findings, READ_AT, null, whatWasRead(shelved),
+      buildCorpus(facts), lens, findings, AS_READ, whatWasRead(shelved),
     );
 
     expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));

@@ -4,9 +4,10 @@ node_modules/
 .turbo/
 dist/
 
-# A Seed and a run snapshot are generated, and neither ever belongs in git: a Seed
-# is immutable and digest-named, so committing them means a new file on every
-# extraction, and a recorded reading is a cache that regenerates from the two.
+# Everything a shelf holds is generated, and none of it ever belongs in git. A
+# Seed and a held Lens are immutable and digest-named, so keeping them means a new
+# file every time either is written down, and a recorded reading is a cache that
+# regenerates from the two.
 #
 # Matched wherever they land rather than per shelf. Naming one shelf's paths is
 # how 34MB of another repository's corpus reached a pull request: the shelf moves
@@ -14,3 +15,4 @@ dist/
 # that is one shelf behind.
 **/seeds/
 **/runs/
+**/lens-versions/

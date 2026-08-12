@@ -106,22 +106,51 @@ describe('rendering', () => {
     expect(noBaseline).toContain('n/a');
     expect(noBaseline).not.toMatch(/·/);
 
-    // An explicit null delta reads the same way as no trend row.
-    const explicitNull = renderMatrix(
+    // Saying so outright reads the same way as no trend row at all.
+    const saidOutright = renderMatrix(
       matrix, scores,
-      scores.map((s) => ({ moduleId: s.moduleId, approvedDelta: null })),
+      scores.map((s) => ({ moduleId: s.moduleId, comparedWith: 'no-earlier-reading' as const })),
       read,
     );
-    expect(explicitNull).toContain('n/a');
-    expect(explicitNull).not.toMatch(/·/);
+    expect(saidOutright).toContain('n/a');
+    expect(saidOutright).not.toMatch(/·/);
 
     // A genuine zero delta still reads as "no change".
     const zeroDelta = renderMatrix(
       matrix, scores,
-      scores.map((s) => ({ moduleId: s.moduleId, approvedDelta: 0 })),
+      scores.map((s) => ({
+        moduleId: s.moduleId,
+        comparedWith: 'the-last-reading' as const,
+        approvedDelta: 0,
+      })),
       read,
     );
     expect(zeroDelta).toMatch(/·/);
+  });
+
+  it('renders a reading taken against other criteria as neither a delta nor "n/a"', async () => {
+    const lens = await loadLens(fixturePath('lens-a.json'));
+    const { corpus, read } = await loadCorpus(lens);
+    const matrix = buildMatrix(corpus, lens);
+    const scores = scoreMatrix(matrix);
+
+    const otherCriteria = renderMatrix(
+      matrix, scores,
+      scores.map((s) => ({
+        moduleId: s.moduleId,
+        comparedWith: 'a-reading-under-other-criteria' as const,
+      })),
+      read,
+    );
+
+    // Not a number, in either direction, and not the mark for a genuine zero: a
+    // Facet asking for more than it did drops the figure with nothing written, and
+    // drawn as a loss it would report the Corpus getting worse.
+    expect(otherCriteria).toContain('other');
+    expect(otherCriteria).not.toMatch(/[+-]\d/);
+    expect(otherCriteria).not.toMatch(/·/);
+    // And it is told apart from having no baseline at all, in the column and in words.
+    expect(otherCriteria.split('\n').filter((line) => line.includes('n/a'))).toHaveLength(1);
   });
 
   it('renders each finding with a file and line a human can open, as a path relative to the corpus root', async () => {

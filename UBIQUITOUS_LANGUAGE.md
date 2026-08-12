@@ -219,6 +219,32 @@ word is also already spoken for: the Studio has users, and a user's profile is t
 two unrelated things "profile" would be a split identity in the vocabulary of the product that
 detects split identities. Renamed by ADR-0015; documents written before that decision say Profile.
 
+**A Lens has an identity, and it is what the Lens says and not where it points.** Its digest covers every
+declaration except the root its documents are found under, because that root is a path on whichever
+machine read the file and changes when a checkout moves. Two people reading the same source through the
+same Lens are reading it through the same criteria, and the identity says so (ADR-0032).
+
+### Recorded Reading
+
+A reading of a Corpus kept so a later one has something to be compared with. It names when it was taken,
+the Corpus, the figures per Module, and **both inputs it is a function of** — the Seed's digest and the
+Lens's.
+
+A reading itself is free and unrecorded: it is computed on request, and there is no *take a reading*
+action because there is nothing for a person to decide. One is **recorded when, and only when, one of
+those two inputs changes** (ADR-0016). Reading the same knowledge through the same criteria a second time
+records nothing, which is the same idempotence a Seed load has.
+
+A Recorded Reading holds nothing a rebuild from its two inputs could not produce again, which is what
+lets LAW-011 apply to it: it is a cache, and deleting every one of them loses nothing. So they are
+prunable — pruning costs the ability to work out where a Corpus stood before the oldest one kept, and can
+never cost a Fact.
+
+A trend is stated against the last Recorded Reading, and it can say three things and not two: there is
+none to compare with, the figure moved by so much, or **the last one was taken against other criteria**.
+The third exists because a Facet asking for more than it did drops a figure with nothing written down: a
+stricter Lens is not a regression in the Corpus, and no shape can carry that fall as a loss (ADR-0032).
+
 ### Seed
 
 A portable serialisation of a whole Corpus. Loading one establishes or replaces Corpus state;
