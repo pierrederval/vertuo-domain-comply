@@ -143,7 +143,7 @@ describe('one Corpus’s Findings, as a queue apiece', () => {
     expect(routesTo[0]!.owner).toBeNull();
     expect(routesTo.map((queue) => queue.owner)).toEqual([null, 'avery']);
     expect(routesTo[0]!.findings).toHaveLength(4);
-    expect(routesTo[1]!.findings).toHaveLength(2);
+    expect(routesTo[1]!.findings).toHaveLength(3);
     // Every Finding routes to whoever answers for the Module it belongs to, and
     // the Owner comes from the reading rather than from the Finding — so this
     // page and the grid cannot come to disagree about who answers for a Module.

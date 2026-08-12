@@ -43,7 +43,17 @@
       "criteria": [
         { "type": "requiredAttributes", "attributes": ["name", "statement"] },
         { "type": "minSources", "count": 2 }
-      ] }
+      ] },
+    { "name": "crew", "label": "Crew", "factKind": "Term", "extractor": "heading",
+      "bodyAttribute": "definition",
+      "describes": "Who does the work here. The same words as the terms above and saying something else about them: this settles who somebody is, not what a word means.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "definition"] }] },
+    { "name": "orders", "label": "Orders", "factKind": "Message", "extractor": "table",
+      "columns": { "Order": "name", "Who may place it": "placedBy" },
+      "identifyingColumns": ["Order", "Who may place it"],
+      "actor": { "attribute": "placedBy", "settledBy": "crew" },
+      "describes": "What can be asked of this area, and who is allowed to ask for it. One row per request, naming somebody the crew above settles.",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "placedBy"] }] }
   ],
   "maturity": { "levels": ["blank", "guessed", "agreed"], "approvedAtOrAbove": "agreed" },
   "statusMappings": [

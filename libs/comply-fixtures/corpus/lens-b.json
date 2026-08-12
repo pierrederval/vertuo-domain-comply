@@ -15,7 +15,12 @@
     { "name": "constraints", "factKind": "Rule", "extractor": "heading",
       "bodyAttribute": "statement",
       "describes": "Ce qui doit toujours tenir dans cette zone.",
-      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] }
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "statement"] }] },
+    { "name": "demandes", "factKind": "Message", "extractor": "heading",
+      "parts": { "Qui peut la faire": "acteur", "Effet": "effet" },
+      "actor": { "attribute": "acteur", "settledBy": "definitions", "separatedBy": [" ou "] },
+      "describes": "Ce qui peut être demandé dans cette zone, et qui a le droit de le demander. Une zone écrit parfois deux rôles au même endroit, séparés par « ou ».",
+      "criteria": [{ "type": "requiredAttributes", "attributes": ["name", "acteur", "effet"] }] }
   ],
   "maturity": { "levels": ["0", "1", "2"], "approvedAtOrAbove": "2" },
   "statusMappings": [

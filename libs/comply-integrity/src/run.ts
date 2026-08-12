@@ -5,6 +5,7 @@ import { resolveOwners } from '@vertuo/comply-readiness';
 import { checkBrokenReference } from './checks/broken-reference.js';
 import { checkConflictingDefinition } from './checks/conflicting-definition.js';
 import { checkSplitIdentity } from './checks/split-identity.js';
+import { checkUnsettledActor } from './checks/unsettled-actor.js';
 
 export interface Check {
   /**
@@ -31,6 +32,7 @@ export const CHECKS: readonly Check[] = [
   { name: 'split-identity', run: (corpus) => checkSplitIdentity(corpus) },
   { name: 'conflicting-definition', run: (corpus, lens) => checkConflictingDefinition(corpus, lens) },
   { name: 'broken-reference', run: (corpus) => checkBrokenReference(corpus) },
+  { name: 'unsettled-actor', run: (corpus, lens) => checkUnsettledActor(corpus, lens) },
   // Owner resolution is Readiness's, and what it finds is a Finding like any
   // other: a Module belonging to nobody is the defect LAW-007 is about.
   { name: 'missing-owner', run: (corpus, lens) => resolveOwners(corpus, lens).findings },

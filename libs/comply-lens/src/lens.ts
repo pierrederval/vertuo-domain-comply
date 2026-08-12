@@ -164,6 +164,60 @@ export const facetSpecSchema = z.object({
    */
   definesTerms: z.literal(true).optional(),
   /**
+   * That one of this Facet's Facts says who may make it, and where that is settled
+   * (ADR-0037).
+   *
+   * A Message asking something of the business names who is allowed to ask, and a
+   * name is only worth writing down if somewhere says who that is. The two halves
+   * live in two Facets, so one of them has to point at the other, and this is the
+   * half that asks: a Facet of Commands needs an actor where a Facet of Events needs
+   * the Rule it came from, which is the asymmetry ADR-0019 stopped keying criteria by
+   * Fact Kind for.
+   *
+   * Declared here rather than as a flag on the settling Facet, which is how the
+   * dictionary says it settles a word. The two are not the same shape. Exactly one
+   * Facet may settle what a word means because a word with two settled meanings is
+   * two languages — the contradiction is in the corpus. Two casts of actors is not a
+   * contradiction at all: a corpus may well settle its own roles in one place and the
+   * outside parties it deals with in another, and each Facet that asks knows which of
+   * them it asks of. A flag would also make a Facet claim something it cannot know on
+   * its own, because being the place a role is settled is only meaningful to whoever
+   * is asking.
+   *
+   * Refused where the attribute is one nothing this Facet reads could fill, where the
+   * Facet it points at is not declared, and where either Facet's Facts have no name —
+   * the settling one because nothing under it could ever match, and this one because
+   * what a Finding says is *this request names somebody nobody has written down*, and
+   * a Facet reading whole documents has no request to put in that sentence.
+   */
+  actor: z
+    .object({
+      /** Which attribute one of this Facet's Facts writes who may make it in. */
+      attribute: z.string().min(1),
+      /** Which Facet's Facts settle who one of those is. */
+      settledBy: z.string().min(1),
+      /**
+       * How this corpus writes more than one of them in one place.
+       *
+       * A corpus writes *an administrator or a manager* in a field meant for one
+       * role, and read whole that is a role nobody has written down — reported
+       * against a corpus that has written down one of the two. Measured on the DDD
+       * Corpus before this existed: of 45 distinct unsettled actor strings, 14
+       * carried a role the corpus does in fact settle, across 61 of its 245
+       * Commands. That is a quarter of the requests told a role is missing when it
+       * is there, which is the manufactured defect ADR-0020 exists to refuse.
+       *
+       * Said by a Lens and never worked out here, because what divides two roles is
+       * a word of the corpus's own language. Several spellings, for the reason
+       * `parts` takes several: one field writes a comma and the next writes a word.
+       *
+       * Optional. A Facet that names none reads whatever is written as one role,
+       * which is right for a corpus that writes one.
+       */
+      separatedBy: z.array(z.string().min(1)).min(1).optional(),
+    })
+    .optional(),
+  /**
    * The attribute holding where one of this Facet's Facts stands (ADR-0022).
    *
    * A status read from a document's frontmatter stamps one rung onto everything
@@ -299,6 +353,10 @@ export const lensSchema = z
     owners: z.record(z.string()).optional(),
   })
   .superRefine((lens, ctx) => {
+    /** Facets, named the way a reader would have to name them back. */
+    const named = (facets: typeof lens.facets): string =>
+      facets.map((facet) => `"${facet.name}"`).join(', ');
+
     // Both of these name the ladder's own steps back, because the mistake is nearly
     // always a step spelled a second way and the reader cannot see the two spellings
     // side by side without them. This is the refusal a person setting a Corpus up
@@ -425,14 +483,65 @@ export const lensSchema = z
       }
     }
 
+    // Where a Facet says its Facts name who may make them, four things have to hold for
+    // that sentence to mean anything (ADR-0037). Refused rather than ignored, for the
+    // reason the rules above are: ignored, nothing is ever reported — or everything is —
+    // and the Lens says in writing that the opposite is happening.
+    for (const [index, facet] of lens.facets.entries()) {
+      const asks = facet.actor;
+      if (asks === undefined) continue;
+      const path = ['facets', index, 'actor'];
+      const couldFill = attributesAFacetCanFill(facet);
+
+      if (!couldFill.has(asks.attribute)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [...path, 'attribute'],
+          message:
+            `facet "${facet.name}" says its facts write who may make them in "${asks.attribute}" ` +
+            `and nothing it reads writes to it; it reads ${[...couldFill].map((a) => `"${a}"`).join(', ')}`,
+        });
+      }
+      if (!couldFill.has('name')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path,
+          message:
+            `facet "${facet.name}" says its facts name who may make them, and nothing it reads ` +
+            `gives one of them a name; what is reported about a fact here names the fact itself, ` +
+            `so a facet reading whole documents has nothing to name`,
+        });
+      }
+
+      const settles = lens.facets.find((other) => other.name === asks.settledBy);
+      if (settles === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [...path, 'settledBy'],
+          message:
+            `facet "${facet.name}" says who may make its facts is settled by "${asks.settledBy}", ` +
+            `and this Lens declares no facet of that name; it declares ${named(lens.facets)}`,
+        });
+        continue;
+      }
+      if (!attributesAFacetCanFill(settles).has('name')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [...path, 'settledBy'],
+          message:
+            `facet "${facet.name}" says who may make its facts is settled by "${settles.name}", ` +
+            `and nothing "${settles.name}" reads gives one of its facts a name to be settled by; ` +
+            `so nothing under it could ever be who a fact here names`,
+        });
+      }
+    }
+
     // Exactly one Facet of Terms settles what a word means, and it says so about itself
     // (ADR-0021). Refused either way round: with none, whichever Facet happened to be
     // written first became the dictionary and nothing said so; with two, one word carries
     // two settled meanings and there is no rule saying which of them holds.
     const wordFacets = lens.facets.filter((facet) => facet.factKind === 'Term');
     const defining = lens.facets.filter((facet) => facet.definesTerms === true);
-    const named = (facets: typeof lens.facets): string =>
-      facets.map((facet) => `"${facet.name}"`).join(', ');
 
     for (const [index, facet] of lens.facets.entries()) {
       if (facet.definesTerms !== true || facet.factKind === 'Term') continue;

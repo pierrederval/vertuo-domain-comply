@@ -137,7 +137,8 @@ describe('two-corpus rule (ADR-0001)', () => {
     const seed = await extractSeed(lens);
 
     expect(seed.lensId).toBe('corpus-b');
-    expect(seed.documents.map((d) => d.path).sort()).toEqual(['one.md', 'three.md', 'two.md']);
+    expect(seed.documents.map((d) => d.path).sort())
+      .toEqual(['four.md', 'one.md', 'three.md', 'two.md']);
 
     // Written as a number at source and carried as the string it will be matched
     // against. Coercion is not interpretation: nothing here says what "2" denotes.

@@ -98,6 +98,34 @@ A Facet says this about itself, in its Lens, and exactly one in a Lens may. A Le
 and naming no Defining Facet does not load — being chosen by whichever Facet happened to be written first
 is the thing this exists to stop.
 
+### Actor
+
+Who is allowed to make a request. A [Message](#fact-kind) asking something of the business names
+one, and naming one is only worth doing if somewhere in the Corpus says who that is — so an Actor is a name
+in one Facet and a Fact in another, and the two are checked against each other (ADR-0037).
+
+Which of its attributes holds the name, and which Facet settles it, are said by **the Facet that asks** and
+never by a flag on the Facet that settles. Unlike a [Defining Facet](#defining-facet), there may be several
+places roles are settled in one Corpus: a word settled two ways is two languages, and that is a defect; a
+corpus settling its own roles in one place and the outside parties it deals with in another is not. A Facet
+of Commands needs an Actor where a Facet of Domain Events needs the Rule it came from, which is the same
+asymmetry that stopped criteria being keyed by Fact Kind (ADR-0019).
+
+A corpus routinely writes two of them in one field — *an administrator or a manager* — and read whole that
+is a role nobody has written down, reported at a corpus that has written down one of the two. Measured on
+the DDD Corpus: of 45 distinct unsettled Actor strings, 14 carried a role the corpus does settle, across 61
+of its 245 Commands. So a Facet may also say how this corpus writes more than one in one place, in that
+corpus's own words. What divides two roles is never worked out in the core (LAW-004).
+
+Not a "user" and not a "permission". An Actor is who the business says may ask; whether the software lets
+them is not knowledge this product reads.
+
+Two design records call reconciling free-text owner strings across corpora an *actor registry*
+(`2026-08-10-studio-readonly-design` §7, `2026-08-11-studio-app-shell-design` §12). That is about the real
+people who own Modules and not about this at all — read those as an **Owner** registry. One word for two
+things is the split identity this product detects, so the word is settled here and the deferred work above
+is renamed rather than the Actor.
+
 **A word is what makes a Term a Term; a meaning is what makes it a dictionary entry.** So every Term Facet
 must say where a Term's name is written, and only the Defining Facet must say where its definition is. A
 list of aggregates holds no definitions, and requiring one would make a Lens claim its rows mean something

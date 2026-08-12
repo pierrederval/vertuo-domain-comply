@@ -317,6 +317,102 @@ describe('a fact saying where it stands and where it came from (ADR-0022)', () =
   });
 });
 
+describe('a fact saying who may make it, and where that is settled (ADR-0037)', () => {
+  const crew = { name: 'crew', factKind: 'Term', extractor: 'heading', bodyAttribute: 'definition' };
+
+  it('accepts a facet saying which attribute holds who may make it and which facet settles that', async () => {
+    const path = await writeLens({
+      ...valid,
+      facets: [...valid.facets, crew, {
+        name: 'orders', factKind: 'Message', extractor: 'table',
+        columns: { Order: 'name', 'Who may place it': 'placedBy' },
+        actor: { attribute: 'placedBy', settledBy: 'crew' },
+      }],
+    });
+    const lens = await loadLens(path);
+    expect(lens.facets[2]!.actor).toEqual({ attribute: 'placedBy', settledBy: 'crew' });
+  });
+
+  it('accepts a facet saying how this corpus writes more than one of them in one place', async () => {
+    const path = await writeLens({
+      ...valid,
+      facets: [...valid.facets, crew, {
+        name: 'orders', factKind: 'Message', extractor: 'heading',
+        parts: { 'Who may place it': 'placedBy' },
+        actor: { attribute: 'placedBy', settledBy: 'crew', separatedBy: [' or ', ','] },
+      }],
+    });
+    await expect(loadLens(path)).resolves.toBeDefined();
+  });
+
+  it('rejects a facet whose attribute for who may make it is one nothing it reads could fill', async () => {
+    // The same hazard as a status attribute nothing writes to: ignored, every fact
+    // names nobody, nothing is ever reported, and the lens says in writing that it is.
+    const path = await writeLens({
+      ...valid,
+      facets: [...valid.facets, crew, {
+        name: 'orders', factKind: 'Message', extractor: 'table', columns: { Order: 'name' },
+        actor: { attribute: 'placedBy', settledBy: 'crew' },
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/placedBy/);
+    await expect(loadLens(path)).rejects.toThrow(/orders/);
+  });
+
+  it('rejects a facet settling who may make it against a facet this lens does not declare', async () => {
+    // Nothing would ever settle, so every fact naming anybody at all is reported —
+    // a queue of every request in the corpus, produced by one misspelled word here.
+    const path = await writeLens({
+      ...valid,
+      facets: [...valid.facets, {
+        name: 'orders', factKind: 'Message', extractor: 'table',
+        columns: { Order: 'name', Who: 'placedBy' },
+        actor: { attribute: 'placedBy', settledBy: 'crewe' },
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/crewe/);
+    await expect(loadLens(path)).rejects.toThrow(/orders/);
+  });
+
+  it('rejects a facet settled by one whose facts have no name to be settled by', async () => {
+    // A facet reading whole documents gives its facts no name, so nothing under it
+    // could ever match what a request says, and the refusal above arrives one step
+    // later as every request being reported.
+    const path = await writeLens({
+      ...valid,
+      facets: [
+        ...valid.facets,
+        { name: 'notes', factKind: 'Rule', extractor: 'document', bodyAttribute: 'statement' },
+        {
+          name: 'orders', factKind: 'Message', extractor: 'table',
+          columns: { Order: 'name', Who: 'placedBy' },
+          actor: { attribute: 'placedBy', settledBy: 'notes' },
+        },
+      ],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/notes/);
+    await expect(loadLens(path)).rejects.toThrow(/orders/);
+  });
+
+  it('rejects a facet naming who may make its facts when its own facts have no name', async () => {
+    // What a finding says is *this request names somebody nobody has written down*, and
+    // a facet reading whole documents has no request to name in that sentence.
+    const path = await writeLens({
+      ...valid,
+      facets: [...valid.facets, crew, {
+        name: 'orders', factKind: 'Message', extractor: 'document', bodyAttribute: 'placedBy',
+        actor: { attribute: 'placedBy', settledBy: 'crew' },
+      }],
+    });
+    await expect(loadLens(path)).rejects.toThrow(/orders/);
+  });
+
+  it('accepts a lens where no facet says anything about who may make it', async () => {
+    // Every corpus read so far, and the whole reason this is absent rather than false.
+    await expect(loadLens(await writeLens(valid))).resolves.toBeDefined();
+  });
+});
+
 /**
  * The sentence a refusal is said in — spec §8, and the error a person setting a
  * Corpus up is likeliest to meet.
