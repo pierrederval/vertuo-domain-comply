@@ -68,6 +68,24 @@ async function unwrite(lensId: string, document: string): Promise<void> {
   await rm(join(shelf, 'source', lensId, document));
 }
 
+/**
+ * Adds a line of prose to a document at source, so what is written down changes and
+ * not one figure or Finding does.
+ *
+ * The state a reader is in most of the time, and the only honest way to reach *the
+ * knowledge has not moved*: two writings-down, both held, and every figure and every
+ * Finding the same. A reading of the knowledge in hand cannot stand in for it, because
+ * it is the reading in hand (ADR-0034).
+ *
+ * Prose under an existing heading, so nothing is added, removed, renamed or restated.
+ * The Seed holds the words a claim was read out of, so its digest moves; what a Facet
+ * asks of that claim is answered exactly as it was.
+ */
+async function addProse(lensId: string, document: string, saying: string): Promise<void> {
+  const at = join(shelf, 'source', lensId, document);
+  await writeFile(at, `${await readFile(at, 'utf8')}\n${saying}\n`, 'utf8');
+}
+
 /** Writes down what is at source, as the runner would, at a known moment. */
 async function writeDownKnowledge(file: string, at: Date): Promise<void> {
   const lens = await loadLens(join(shelf, file));
@@ -245,11 +263,32 @@ describe('what changed since the last reading kept', () => {
     await writeDownKnowledge('lens-a.json', FIRST);
     await putAReadingOnRecord('lens-a.json', '2026-01-02T00:00:00.000Z');
 
+    // A line of prose under a heading that was already there. The knowledge was
+    // written down a second time and not one figure or Finding moved, which is the
+    // only state in which *nothing has moved* is a comparison at all: stated against
+    // a reading of the knowledge in hand it would be a reading compared with itself,
+    // and it would say this on a Corpus nobody had ever measured twice (ADR-0034).
+    await addProse('corpus-a', 'alpha/invariants.md', 'It is never in three either.');
+    await writeDownKnowledge('lens-a.json', SECOND);
+
     expect((await readWork('corpus-a')).since).toEqual({
       comparedWith: 'the-last-reading',
       takenAt: '2026-01-02T00:00:00.000Z',
       changed: [],
     });
+  });
+
+  it('says there is no earlier reading where the only one kept is of the knowledge in hand', async () => {
+    await shelveLens('lens-a.json');
+    await writeDownKnowledge('lens-a.json', FIRST);
+    await putAReadingOnRecord('lens-a.json', '2026-01-02T00:00:00.000Z');
+
+    // The state every shelf in this product was in. A reading goes on record the
+    // moment either input changes, so the most recent one is a reading of what is in
+    // hand — and reported as a comparison it says *nothing has moved* about a Corpus
+    // no reading has ever been stated against. *No baseline* and *no change* are
+    // different facts (LAW-006).
+    expect((await readWork('corpus-a')).since).toEqual({ comparedWith: 'no-earlier-reading' });
   });
 
   it('reports a Facet that fell off the approved rung, naming it as the Lens does', async () => {

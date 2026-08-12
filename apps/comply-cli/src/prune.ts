@@ -2,7 +2,7 @@ import { unlink } from 'node:fs/promises';
 import { heldLenses } from '@vertuo/comply-lens';
 import { readingsNamingNoInputs, readingsOnRecord } from '@vertuo/comply-readiness';
 import { heldSeeds } from '@vertuo/comply-seed';
-import type { Shelf } from './shelf.js';
+import type { Shelf } from '@vertuo/comply-door';
 
 export interface WhatAPruneCost {
   /** Readings dropped from the record. */

@@ -32,6 +32,9 @@ importers:
       '@vertuo/comply-core':
         specifier: workspace:*
         version: link:../../libs/comply-core
+      '@vertuo/comply-door':
+        specifier: workspace:*
+        version: link:../../libs/comply-door
       '@vertuo/comply-lens':
         specifier: workspace:*
         version: link:../../libs/comply-lens
@@ -75,6 +78,9 @@ importers:
       '@vertuo/comply-core':
         specifier: workspace:*
         version: link:../../libs/comply-core
+      '@vertuo/comply-door':
+        specifier: workspace:*
+        version: link:../../libs/comply-door
       '@vertuo/comply-ingestion':
         specifier: workspace:*
         version: link:../../libs/comply-ingestion
@@ -192,6 +198,34 @@ importers:
 
   libs/comply-core:
     devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@24.13.3)(lightningcss@1.32.0)
+
+  libs/comply-door:
+    dependencies:
+      '@vertuo/comply-ingestion':
+        specifier: workspace:*
+        version: link:../comply-ingestion
+      '@vertuo/comply-lens':
+        specifier: workspace:*
+        version: link:../comply-lens
+      '@vertuo/comply-readiness':
+        specifier: workspace:*
+        version: link:../comply-readiness
+      '@vertuo/comply-reading':
+        specifier: workspace:*
+        version: link:../comply-reading
+      '@vertuo/comply-seed':
+        specifier: workspace:*
+        version: link:../comply-seed
+    devDependencies:
+      '@vertuo/comply-fixtures':
+        specifier: workspace:*
+        version: link:../comply-fixtures
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

@@ -161,12 +161,40 @@ export async function readingsNamingNoInputs(dir: string, lensId: string): Promi
     .sort();
 }
 
-/** The reading a new one is compared against: the most recent on record, or nothing. */
-export async function lastRecordedReading(
+/**
+ * The reading a fresh one is compared against: the most recent on record that is
+ * not the fresh one, or nothing.
+ *
+ * **A reading is never compared against itself.** A reading goes on record the
+ * moment either of its inputs changes, so the most recent one on any shelf is a
+ * reading of exactly the knowledge in hand under exactly the criteria in hand. Handed
+ * back as a baseline it reports every figure as *held steady* — on a Corpus nobody has
+ * ever measured twice, on a Corpus whose source was rewritten this morning, on every
+ * Corpus there is. *No baseline* and *no change* are different facts a reader acts on
+ * differently, and this is the one place they were fused (LAW-006).
+ *
+ * So what a trend is stated against is the reading before the one in hand, which is
+ * what §6 means by *since the last time either the knowledge or the criteria changed*.
+ * Reading the source again therefore leaves a statement that holds however many times
+ * the page is asked afterwards, rather than one that is true for as long as the
+ * request takes.
+ *
+ * Both inputs have to match for a reading to be the one in hand. Passing over every
+ * reading of this *knowledge* would reach past criteria that moved over unchanged
+ * documents, which is the one thing worth saying on the morning somebody raises the
+ * bar.
+ */
+export async function earlierReading(
   dir: string,
   lensId: string,
+  inHand: { seedDigest: string; lensDigest: string },
 ): Promise<RecordedReading | null> {
-  return (await readingsOnRecord(dir, lensId)).at(-1)?.reading ?? null;
+  const earlier = (await readingsOnRecord(dir, lensId)).filter(
+    ({ reading }) =>
+      reading.seedDigest !== inHand.seedDigest || reading.lensDigest !== inHand.lensDigest,
+  );
+
+  return earlier.at(-1)?.reading ?? null;
 }
 
 /**
