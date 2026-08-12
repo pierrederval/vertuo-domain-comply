@@ -87,6 +87,7 @@ Run all of these from the repository root.
 | `pnpm typecheck` | Every package |
 | `pnpm comply extract <lens.json>` | Write down what is at source, as a Seed |
 | `pnpm comply report <lens.json>` | Read a Corpus and print where it stands |
+| `pnpm comply prune <lens.json> [keep]` | Drop what can be worked out again, and say what that cost |
 | `pnpm shelf:fixtures` | Put both fixture Corpus on the development shelf |
 | `pnpm dev` | Both processes below at once; one Ctrl-C stops both |
 | `pnpm api` | Serve that shelf, read-only, on port 4301 |
@@ -186,10 +187,28 @@ Eight things about it are worth knowing before changing it:
   written**: per-Fact status does not exist at source, and landing it is 1506 transcriptions in
   `vertuo-domain-fr`, not a change here.
 
-The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, and the
-Seeds written down from it. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above
-point it at `libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in
-development, which is where shape-leakage shows up (ADR-0001).
+The **shelf** is one directory holding a Lens per Corpus, the source those Lenses point at, the Seeds
+written down from it, the readings put on record, and the criteria each of those readings was taken
+through. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above point it at
+`libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in development, which is
+where shape-leakage shows up (ADR-0001).
+
+Three things about recorded readings are worth knowing before touching them (ADR-0016, ADR-0032):
+
+- **A reading is free; recording one is not automatic.** `report` puts a reading on record only where the
+  Seed digest or the Lens digest differs from the last one — so running it four times in a morning leaves
+  one baseline and not four. `recordReading` is the only way in, deliberately: `writeSnapshot` is gone,
+  because a public unconditional write is a deduplication somebody can go round.
+- **A Lens digest covers what the Lens says and not `adapter.root`.** Hash the Lens as loaded and the
+  digest moves when a checkout moves, when CI runs, when a second person clones the source — and every
+  reading then reports *the criteria changed*. The held copy in `lens-versions/` leaves the root out for
+  the same reason, so it is byte-identical from two different roots. Not `lenses/`: the DDD Corpus's shelf
+  **is** the directory called `lenses`.
+- **Every reading on an existing shelf names neither input and is passed over once.** The DDD shelf held
+  eight for `vertuo-domain-fr`, five of them inside seventeen seconds — the failure ADR-0016 was written
+  to reject, in the real shelf. They are invisible to a trend on purpose and visible to `prune`, which
+  drops them and counts them apart, because an artifact this product holds and cannot account for is
+  LAW-006 by another route.
 
 There is no lint step. Every pull request runs the whole suite under
 [`.github/workflows/build-gate.yml`](./.github/workflows/build-gate.yml), so LAW-004 and LAW-010 are
@@ -210,6 +229,6 @@ it are worth knowing before changing it:
 - **Nothing in CI touches a shelf or the sibling checkout.** The suite builds the fixtures it needs, and a
   test that required `vertuo-domain-fr` would fail there first.
 
-The surface guard now says what its verdict is about on every run — 76 files in 13 places, each place with
+The surface guard now says what its verdict is about on every run — 87 files in 13 places, each place with
 its own figure, because a package whose source moves out from under the guard keeps its `src` directory and
 simply falls to none (LAW-006).

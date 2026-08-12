@@ -54,9 +54,15 @@ function Cell({ state }: { state: FacetState }) {
  * What one Module's figure has done since the last reading kept to compare it
  * against.
  *
- * Three facts, drawn three ways. A reading with nothing behind it is not a
- * figure that held steady, and a page that draws both as `0` tells a person work
- * has stalled when nobody has ever measured it (LAW-006).
+ * Four facts, drawn four ways, and the two that are not a number are not the same
+ * fact. A reading with nothing behind it is not a figure that held steady, and a
+ * page that draws both as `0` tells a person work has stalled when nobody has ever
+ * measured it (LAW-006).
+ *
+ * A reading taken against other criteria is the third of those, and it is not `—`
+ * either: there *is* an earlier reading, and what changed is what was asked of the
+ * Corpus rather than what the Corpus says. Drawn as a loss it would report the
+ * knowledge getting worse on the morning somebody raised the bar (§6).
  */
 function Moved({ movement }: { movement: Movement }) {
   if (movement.comparedWith === 'no-earlier-reading') {
@@ -67,6 +73,17 @@ function Moved({ movement }: { movement: Movement }) {
         title="there is no earlier reading to compare this one with"
       >
         —
+      </abbr>
+    );
+  }
+  if (movement.comparedWith === 'a-reading-under-other-criteria') {
+    return (
+      <abbr
+        className="cursor-help no-underline"
+        data-movement="other-criteria"
+        title="the last reading was taken against different criteria, so nothing about this figure’s movement can be stated"
+      >
+        criteria changed
       </abbr>
     );
   }
@@ -172,6 +189,12 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
   );
   const nothingToCompare = modules.some(
     (module) => module.movement.comparedWith === 'no-earlier-reading',
+  );
+  // The criteria are a property of the reading and not of one Module, so one row
+  // saying this means every row was read that way. Read off the rows all the same,
+  // because the rows are what a reader is looking at.
+  const criteriaChanged = modules.some(
+    (module) => module.movement.comparedWith === 'a-reading-under-other-criteria',
   );
 
   return (
@@ -285,6 +308,11 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
           {nothingToCompare && (
             <Aside>
               {'— means there is no earlier reading to compare this one with. It is not the same as nothing having changed.'}
+            </Aside>
+          )}
+          {criteriaChanged && (
+            <Aside>
+              {`The last reading kept for this Corpus was taken against different criteria from these, so no figure above can be compared with it. What ${reading.lensId} asks of this Corpus changed; whether the knowledge did is not something this page can say yet.`}
             </Aside>
           )}
           {unstarted.map((facet) => (

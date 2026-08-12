@@ -3,12 +3,12 @@ import { fixturePath } from '@vertuo/comply-fixtures';
 import { extractSeed } from '@vertuo/comply-ingestion';
 import { loadLens } from '@vertuo/comply-lens';
 import { readSeededCorpus } from '@vertuo/comply-reading';
-import type { Snapshot } from '@vertuo/comply-readiness';
+import type { RecordedReading } from '@vertuo/comply-readiness';
 
 /** Fixed, so a reading is compared against a baseline and never against the clock. */
 const READ_AT = '2026-01-01T00:00:00.000Z';
 
-async function read(lensFile: string, previous: Snapshot | null = null) {
+async function read(lensFile: string, previous: RecordedReading | null = null) {
   const lens = await loadLens(fixturePath(lensFile));
   return readSeededCorpus(await extractSeed(lens), lens, READ_AT, previous);
 }
@@ -33,7 +33,7 @@ describe.each(['lens-a.json', 'lens-b.json'])('reading %s', (lensFile) => {
     // is asserted whole, so a figure standing for both cannot be added quietly;
     // it grows when a reading genuinely carries something new, as `corpus` is.
     expect(Object.keys(reading).sort()).toEqual([
-      'checks', 'corpus', 'findings', 'lensId', 'matrix', 'scores', 'snapshot', 'takenAt', 'trend',
+      'asRecorded', 'checks', 'corpus', 'findings', 'lensId', 'matrix', 'scores', 'takenAt', 'trend',
     ]);
   });
 
@@ -58,20 +58,38 @@ describe.each(['lens-a.json', 'lens-b.json'])('reading %s', (lensFile) => {
   it('says there is no baseline rather than saying nothing changed', async () => {
     const { trend } = await read(lensFile);
     // `—` and `0` are different facts and are never drawn the same way.
-    expect(trend.every((row) => row.approvedDelta === null)).toBe(true);
+    expect(trend.every((row) => row.comparedWith === 'no-earlier-reading')).toBe(true);
   });
 
   it('compares against a baseline when there is one', async () => {
     const first = await read(lensFile);
-    const again = await read(lensFile, first.snapshot);
+    const again = await read(lensFile, first.asRecorded);
 
-    expect(again.trend.every((row) => row.approvedDelta === 0)).toBe(true);
+    expect(
+      again.trend.every(
+        (row) => row.comparedWith === 'the-last-reading' && row.approvedDelta === 0,
+      ),
+    ).toBe(true);
   });
 
-  it('names the Lens the knowledge was read through', async () => {
+  it('names both inputs it is a function of, so a later reading can tell them apart', async () => {
     const reading = await read(lensFile);
-    expect(reading.lensId).toBe(reading.snapshot.lensId);
+    expect(reading.lensId).toBe(reading.asRecorded.lensId);
     expect(reading.matrix.lensId).toBe(reading.lensId);
+    // Nothing about either digest is asserted beyond its being there and being one
+    // value: what a digest is taken over is `seedDigest`'s and `lensDigest`'s to say.
+    expect(reading.asRecorded.seedDigest).toMatch(/^[0-9a-f]{64}$/);
+    expect(reading.asRecorded.lensDigest).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('holds nothing a rebuild from its two inputs could not produce again (LAW-011)', async () => {
+    const reading = await read(lensFile);
+    // Every key on record is one of the two inputs, when it was taken, or figures
+    // counted from them. A field that was not derivable from the pair would put
+    // back the exemption ADR-0016 withdrew.
+    expect(Object.keys(reading.asRecorded).sort()).toEqual([
+      'lensDigest', 'lensId', 'scores', 'seedDigest', 'takenAt',
+    ]);
   });
 });
 
@@ -98,5 +116,18 @@ describe('the same knowledge read through a stricter Lens', () => {
     expect(approved(after)).toBe(0);
     // Same Modules, same denominator: only what the knowledge is taken to mean moved.
     expect(after.scores.map((s) => s.moduleId)).toEqual(before.scores.map((s) => s.moduleId));
+
+    // Which is a change of criteria and says so. It is the whole reading that was
+    // taken another way, so it is every Module and not the ones whose figure fell.
+    expect(after.asRecorded.lensDigest).not.toBe(before.asRecorded.lensDigest);
+    expect(after.asRecorded.seedDigest).toBe(before.asRecorded.seedDigest);
+
+    const against = readSeededCorpus(seed, stricter, READ_AT, before.asRecorded);
+    expect(against.trend.every((row) => row.comparedWith === 'a-reading-under-other-criteria')).toBe(
+      true,
+    );
+    // Every approved Facet in this Corpus was lost, and there is no shape that can
+    // send that as a loss. A reader is told the bar moved, not that the knowledge did.
+    expect(JSON.stringify(against.trend)).not.toContain('approvedDelta');
   });
 });

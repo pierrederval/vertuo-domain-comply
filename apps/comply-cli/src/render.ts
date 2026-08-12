@@ -68,6 +68,26 @@ function renderShortfalls(matrix: Matrix): string[] {
   return entries.length === 0 ? [] : ['', 'Facets not yet approved:', ...entries];
 }
 
+/**
+ * What one Module's figure has done, in the width a column has.
+ *
+ * Three statements, drawn three ways, and none of them is a number that could be
+ * mistaken for another. No earlier reading is not a change of nothing (LAW-006), and
+ * a reading taken against other criteria is neither — a Facet asking for more than
+ * it did last week drops the figure with nothing written, so drawing that as a loss
+ * would blame the Corpus for somebody raising the bar.
+ *
+ * No trend row for this Module means what no earlier reading means: there is nothing
+ * to compare it with.
+ */
+function movedText(row: TrendRow | undefined): string {
+  if (row === undefined || row.comparedWith === 'no-earlier-reading') return 'n/a';
+  if (row.comparedWith === 'a-reading-under-other-criteria') return 'other';
+
+  const { approvedDelta } = row;
+  return approvedDelta === 0 ? '·' : approvedDelta > 0 ? `+${approvedDelta}` : String(approvedDelta);
+}
+
 export function renderMatrix(
   matrix: Matrix,
   scores: ModuleScore[],
@@ -84,15 +104,11 @@ export function renderMatrix(
 
   const lines = matrix.rows.map((row) => {
     const score = scores.find((s) => s.moduleId === row.moduleId)!;
-    // No trend row for this module means the same thing as an explicit null: no
-    // prior figure to compare against. Never render that as "no change" (LAW-006).
-    const delta = trendRows.find((t) => t.moduleId === row.moduleId)?.approvedDelta ?? null;
-    const deltaText = delta === null ? 'n/a' : delta === 0 ? '·' : delta > 0 ? `+${delta}` : String(delta);
     return (
       pad(row.moduleId, nameWidth) + '  ' +
       row.cells.map((c) => pad(MARK[c.state], facetWidth)).join('') +
       pad(`${score.approved}/${score.total}`, 10) +
-      pad(deltaText, 7) +
+      pad(movedText(trendRows.find((t) => t.moduleId === row.moduleId)), 7) +
       (row.owner ?? 'NO OWNER')
     );
   });
@@ -112,6 +128,11 @@ export function renderMatrix(
     // absence then reads as nothing having been left out (LAW-006).
     `Knowledge as found: ${read.read} of ${read.found} read, ${read.setAside} set aside.`,
     'Set aside is what a facet said was none of its own. It is judged by nothing, and left out of nothing silently.',
+    // Stated whether or not either appears, for the same reason the figure above is.
+    // A legend that turns up only when it applies is one a reader has to already know
+    // to look for, and a trend column of numbers then reads as though every reading
+    // had a baseline under the same criteria.
+    'Trend: n/a is no earlier reading to compare with. other is a reading taken against different criteria, where nothing about the knowledge can be stated. Neither is a change of nothing.',
     `Legend: ${MARK.approved} approved  ${MARK['well-formed']} well-formed  ${MARK.present} present  ${MARK.absent} absent`,
     ...renderShortfalls(matrix),
   ].join('\n');

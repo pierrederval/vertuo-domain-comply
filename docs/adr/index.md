@@ -23,7 +23,7 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0013](./0013-technical-stack.md) | Technical stack *(supersedes 0011; interface row superseded by 0018)* |
 | [0014](./0014-run-snapshots-stand-in-for-the-ledger.md) | Run snapshots stand in for the ledger, and hold history LAW-011 would otherwise forbid *(amended by 0016)* |
 | [0015](./0015-a-lens-not-a-profile.md) | The declaration of how a Corpus is read is a Lens, not a Profile *(amends LAW-004)* |
-| [0016](./0016-a-reading-is-recorded-when-its-inputs-change.md) | A recorded reading is a cache, keyed by the Seed and Lens that produced it *(amends 0014)* |
+| [0016](./0016-a-reading-is-recorded-when-its-inputs-change.md) | A recorded reading is a cache, keyed by the Seed and Lens that produced it *(amends 0014; implemented by 0032)* |
 | [0017](./0017-a-seed-quotes-its-source-and-says-nothing-about-it.md) | A Seed quotes its source exactly, cuts rather than summarises, and carries no message *(refines 0012)* |
 | [0018](./0018-the-interface-vendors-the-house-design-system.md) | The interface vendors the house design system: Tailwind and shadcn primitives *(supersedes 0013's interface row)* |
 | [0019](./0019-criteria-belong-to-a-facet.md) | Well-formedness criteria belong to a Facet, not to a Fact Kind *(refines 0005)* |
@@ -39,3 +39,4 @@ contradict a law, and a law is changed only in its own dedicated change.
 | [0029](./0029-a-fact-states-where-it-stands-and-what-it-was-checked-against.md) | A Fact states where it stands and what it was checked against *(implements 0022 and corrects four figures in it; refines 0006 and 0026)* |
 | [0030](./0030-knowledge-is-opened-where-it-is-written-down.md) | A piece of knowledge is opened where it is written down, and quoted from the Seed *(builds 0017's excerpt and 0029's Sources into a surface; bears on 0026)* |
 | [0031](./0031-a-finding-is-worked-in-somebodys-queue-and-nobodys-queue-is-first.md) | A Finding is worked in somebody’s queue, nobody’s queue is first, and the place it cites is opened under whoever writes there *(implements LAW-007 and 0010; builds 0030’s quotation into a second surface)* |
+| [0032](./0032-a-lens-has-an-identity-and-a-reading-goes-on-record-against-it.md) | A Lens has an identity, held versions are cited not carried, and a reading taken against other criteria is a third statement *(implements 0016 and §6; uses 0012's idempotence)* |

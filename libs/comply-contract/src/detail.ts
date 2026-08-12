@@ -34,14 +34,23 @@ export const ladderSchema = z
 /**
  * What one Module's figure has done since the last reading kept for comparison.
  *
- * Two shapes rather than a number that is sometimes absent, so that *there is
- * nothing to compare this with* cannot be sent as, drawn as, or mistaken for
- * *nothing changed*. They are different facts about a Module: one says a reading
- * is the first of its kind, the other says work has stood still. A first-ever
- * reading shown as zero movement is the reassurance LAW-006 exists to refuse.
+ * Three shapes rather than a number that is sometimes absent, so that neither
+ * thing a delta cannot say gets sent as one.
+ *
+ * *There is nothing to compare this with* is not *nothing changed*. They are
+ * different facts about a Module: one says a reading is the first of its kind, the
+ * other says work has stood still. A first-ever reading shown as zero movement is
+ * the reassurance LAW-006 exists to refuse.
+ *
+ * And *this was read against other criteria* is neither. A Facet that asks for
+ * more than it did last week drops the figure without a word of the knowledge
+ * changing; a stricter Lens is not a regression in the Corpus, and there is
+ * deliberately no shape here that can carry that fall as a loss (§6, ADR-0016).
+ * The delta is not merely omitted — it is unsendable.
  */
 export const movementSchema = z.discriminatedUnion('comparedWith', [
   z.object({ comparedWith: z.literal('no-earlier-reading') }),
+  z.object({ comparedWith: z.literal('a-reading-under-other-criteria') }),
   z.object({
     comparedWith: z.literal('the-last-reading'),
     /** Approved Facets gained, or lost where it is negative. Zero means held steady. */
