@@ -10,7 +10,7 @@ import {
   type Place,
 } from '@vertuo/comply-contract';
 import { fixturePath } from '@vertuo/comply-fixtures';
-import { extractSeed } from '@vertuo/comply-ingestion';
+import { EXCERPT_LIMIT, extractSeed } from '@vertuo/comply-ingestion';
 import { loadLens } from '@vertuo/comply-lens';
 import { holdSeed } from '@vertuo/comply-seed';
 import type { FastifyInstance } from 'fastify';
@@ -204,12 +204,15 @@ describe('one piece of knowledge, whole', () => {
   it('says a quotation stops short of what the source says', async () => {
     // Neither fixture writes a piece of knowledge long enough to be cut, and a
     // page that never said so would render both perfectly. So one is written: a
-    // rule whose body runs past what an excerpt carries.
+    // rule whose body runs past what an excerpt carries. Its length comes from the
+    // budget, so raising how much a quotation carries cannot leave this passing
+    // over a span it no longer cuts.
     const source = join(shelf, 'unlike-either-fixture');
     await mkdir(source, { recursive: true });
+    const sentence = 'A sentence that goes on. ';
     await writeFile(
       join(source, 'long.md'),
-      `---\nm: mm\nf: ff\ns: now\n---\n\n## One\n\n${'A sentence that goes on. '.repeat(40)}\n`,
+      `---\nm: mm\nf: ff\ns: now\n---\n\n## One\n\n${sentence.repeat(Math.ceil(EXCERPT_LIMIT / sentence.length) + 10)}\n`,
       'utf8',
     );
     await writeFile(

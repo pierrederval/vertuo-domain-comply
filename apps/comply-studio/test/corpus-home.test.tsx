@@ -284,6 +284,26 @@ describe('what changed', () => {
     expect(drawn).toContain('however long ago');
     expect(drawn).toContain('as far back as the shelf holds');
   });
+
+  /**
+   * A writing-down happens when what is written down differs from what the shelf
+   * already held. That is usually the source changing and it is sometimes this
+   * product reading the source differently — raising how much of a source a
+   * quotation carries wrote one down on the DDD Corpus's shelf twelve seconds after
+   * the one before it, with no document touched, nothing moved and every figure
+   * identical (ADR-0036).
+   *
+   * So the feed says what happened and the comparison beside it says what changed.
+   * Claiming the first means the second puts this product's own changes into a
+   * reader's account of what the business did.
+   */
+  it('never claims a writing-down means the source said something new', () => {
+    for (const drawn of [draw(corpus({})), draw(corpus({ since: { comparedWith: 'no-earlier-reading' } }))]) {
+      expect(drawn).toContain('Read from source');
+      expect(drawn).toContain('every writing-down this shelf still holds');
+      expect(drawn).not.toContain('said something new');
+    }
+  });
 });
 
 describe('what the feed says when it can say nothing', () => {

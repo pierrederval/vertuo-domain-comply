@@ -40,10 +40,20 @@ export const needsWorkSchema = z.object({
  * held.
  *
  * There is one of these per writing-down the shelf still holds, and a writing-down
- * exists only where the source's content had changed — re-reading unchanged source
- * finds what is already there and writes nothing (ADR-0012). So this can never
- * become *a run completed*, which is the noise the tooling generates about itself
- * and the one thing this list may never carry.
+ * exists only where what was written down differs from what was already there —
+ * re-reading a source that yields the same reading of it finds what is already held
+ * and writes nothing (ADR-0012). So this can never become *a run completed*, which
+ * is the noise the tooling generates about itself and the one thing this list may
+ * never carry.
+ *
+ * It is not *the source said something new* either, which is what this claimed until
+ * ADR-0036. Usually it is: a document was edited and what came out differs. It is
+ * also this product coming to read the same documents differently — raising how much
+ * of a source a quotation carries wrote one of these down on the DDD Corpus's shelf
+ * with no document touched, no figure moved and nothing at all in the comparison
+ * beside it. One entry means the source was read and something was written down.
+ * Whether any of it moved is what a comparison says, and it is a separate field for
+ * exactly that reason.
  */
 export const writtenDownSchema = z.object({
   at: z.string().datetime(),

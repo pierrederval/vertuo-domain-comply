@@ -5,14 +5,20 @@ import { readSeed } from '@vertuo/comply-seed';
 import type { ShelvedCorpus } from './shelf.js';
 
 /**
- * Every time this source was read and said something it had not said before, oldest
- * first.
+ * Every writing-down of this source the shelf still holds, oldest first.
  *
- * One per writing-down the shelf holds, and there is one of those per change at
- * source: re-reading unchanged source finds what is already held and writes nothing
- * (ADR-0012). So this cannot become a report of runs, which is what ADR-0012 exists
- * to keep out of the record — not by a rule anybody follows, but because a run that
- * changed nothing leaves nothing behind to report.
+ * One per writing-down, and there is one of those every time what was written down
+ * differed from what was already held: re-reading a source that yields the same
+ * reading of it finds what is already there and writes nothing (ADR-0012). So this
+ * cannot become a report of runs, which is what ADR-0012 exists to keep out of the
+ * record — not by a rule anybody follows, but because a run that changed nothing
+ * leaves nothing behind to report.
+ *
+ * What it is not is a list of times the source said something new, which is what it
+ * called itself until ADR-0036. That is the usual cause and it is not the only one:
+ * a change to how much of a source a quotation carries writes one of these down over
+ * documents nobody touched. This says the source was read and something was written
+ * down; `whatMoved` is what says whether any of it moved.
  */
 export function whenReadFromSource(shelved: ShelvedCorpus): WrittenDown[] {
   return shelved.writtenDown.map((held) => ({ at: held.heldAt.toISOString() }));

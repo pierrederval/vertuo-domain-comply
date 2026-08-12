@@ -333,6 +333,14 @@ for the person this product is built for.
 out of lines that are not adjacent in the source. Where the text runs long it is **cut, and says it
 was cut**, and the reader follows the origin for the rest.
 
+It carries enough to check a claim against and not merely enough to recognise, which are two different
+jobs and were settled as one until ADR-0036: at 600 characters cut to whole source lines, 183 of the DDD
+Corpus's 183 Business Rules stopped short and 1,038 of its 6,012 parts could not be checked against
+anything. A cut now falls where the source last breaks between words, because what a whole-line cut keeps
+is bounded by the longest line the source happens to write and nothing bounds that — one document gave a
+reader four headings and no knowledge at all. A Facet read a whole document at a time is cut at any size
+anybody would choose, and the pointer to the origin is what serves that reader.
+
 Cutting is the only alteration permitted, and it differs from a summary in kind: it changes none of
 the text it keeps, and it announces itself. A paraphrase does neither, so a reader has no way to tell
 that what they are looking at is not what the corpus says — which is the very defect this product

@@ -262,8 +262,15 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
             horizon. Every writing-down is still held, so every one of them can be
             named; what a Facet or a Finding did can only be stated as far back as
             the last reading kept. Cutting the wider one back to the narrower would
-            hide times the source changed that the shelf can still account for
-            exactly (LAW-006).
+            hide writings-down the shelf can still account for exactly (LAW-006).
+
+            What each entry says is that the source was read and something was
+            written down, which is all any of them ever knew. It used to say the
+            source had said something new, and a change to how much of a source a
+            quotation carries writes one down over documents nobody touched — so
+            that reading of it put this product's own changes into a reader's
+            account of what the business did (ADR-0036). The comparison above is
+            what says whether anything moved.
           */}
           <ul className="flex flex-col gap-2">
             {/*
@@ -279,8 +286,8 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
 
           <Aside>
             {since.comparedWith === 'the-last-reading'
-              ? 'Every time this source was read and said something new is listed, however long ago. What a Facet or a Finding did is stated only since the reading kept below, because that is as far back as the shelf holds anything to work it out from.'
-              : 'Every time this source was read and said something new is listed, however long ago. Reading the source again when nothing has changed at it adds nothing here, so this is a list of what changed and never a list of runs.'}
+              ? 'One entry for every writing-down this shelf still holds, however long ago. What a Facet or a Finding did is stated only since the reading kept below, because that is as far back as the shelf holds anything to work it out from.'
+              : 'One entry for every writing-down this shelf still holds, however long ago. Reading the source again when nothing has changed at it writes nothing down, so this is never a list of runs.'}
           </Aside>
           {since.comparedWith === 'the-last-reading' && (
             <Aside>
