@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import type { CorpusFact, Ladder, Place, SourceText, WrittenPart } from '@vertuo/comply-contract';
+import { WhyThereIsNoReading } from '../components/NoReading.js';
 import { Conspicuous, NothingToShow, Surface } from '../components/layout.js';
 import { Where } from '../components/Where.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
@@ -209,7 +210,7 @@ export function FactDetail({ held }: { held: CorpusFact }) {
     return (
       <Card className="border-dashed shadow-none">
         <CardContent>
-          <NothingToShow>Nothing has been written down from this source yet.</NothingToShow>
+          <WhyThereIsNoReading reading={reading} />
         </CardContent>
       </Card>
     );

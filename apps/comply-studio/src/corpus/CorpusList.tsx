@@ -1,8 +1,9 @@
 import { Link } from 'react-router';
-import type { CorpusSummary } from '@vertuo/comply-contract';
+import type { CorpusSummary, CriteriaNotFollowed } from '@vertuo/comply-contract';
 import { Age } from '../components/Age.js';
 import { TwoReadings } from '../components/TwoReadings.js';
-import { NothingToShow, Surface } from '../components/layout.js';
+import { WhyThereIsNoReading } from '../components/NoReading.js';
+import { Conspicuous, NothingToShow, Surface } from '../components/layout.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 
 /**
@@ -14,9 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.
  * both would hide which is failing.
  */
 function Reading({ reading }: { reading: CorpusSummary['reading'] }) {
-  if (reading.outcome !== 'read') {
-    return <NothingToShow>Nothing has been written down from this source yet.</NothingToShow>;
-  }
+  if (reading.outcome !== 'read') return <WhyThereIsNoReading reading={reading} />;
 
   const { readiness, integrity } = reading;
 
@@ -42,12 +41,21 @@ function Reading({ reading }: { reading: CorpusSummary['reading'] }) {
  * never met without being changed (LAW-004). A component that knew what a Facet
  * was called would render perfectly and still be a defect.
  */
-export function CorpusList({ corpus }: { corpus: CorpusSummary[] }) {
-  if (corpus.length === 0) {
+export function CorpusList({
+  corpus,
+  criteriaNotFollowed,
+}: {
+  corpus: CorpusSummary[];
+  criteriaNotFollowed: CriteriaNotFollowed[];
+}) {
+  if (corpus.length === 0 && criteriaNotFollowed.length === 0) {
     return (
       <Card className="border-dashed shadow-none">
         <CardContent>
-          <NothingToShow>No Corpus is on the shelf yet.</NothingToShow>
+          <NothingToShow>
+            No Corpus is on the shelf yet. A Corpus arrives as a set of criteria saying
+            where its source is and what is asked of it, put on the shelf beside it.
+          </NothingToShow>
         </CardContent>
       </Card>
     );
@@ -69,6 +77,21 @@ export function CorpusList({ corpus }: { corpus: CorpusSummary[] }) {
           </CardHeader>
           <CardContent>
             <Reading reading={entry.reading} />
+          </CardContent>
+        </Card>
+      ))}
+      {criteriaNotFollowed.map((refused) => (
+        <Card key={refused.where} className="border-dashed shadow-none">
+          <CardHeader>
+            {/* Not a link, and not underlined as one. There is no page: what says a
+                Corpus has an id, a name and a reading is the file that could not be
+                read, so every one of those would have to be invented for it. */}
+            <CardTitle>{refused.where}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground" data-cannot-be-read="criteria">
+              <Conspicuous>{refused.because}</Conspicuous>
+            </p>
           </CardContent>
         </Card>
       ))}

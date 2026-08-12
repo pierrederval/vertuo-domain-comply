@@ -3,6 +3,7 @@ import type { CorpusChange, CorpusHome as OneCorpusHome, NeedsWork, Since } from
 import { Age } from '../components/Age.js';
 import { Moved } from '../components/Moved.js';
 import { TwoReadings } from '../components/TwoReadings.js';
+import { WhyThereIsNoReading } from '../components/NoReading.js';
 import { Aside, Conspicuous, NothingToShow, Surface } from '../components/layout.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.js';
@@ -182,7 +183,7 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
     return (
       <Card className="border-dashed shadow-none">
         <CardContent>
-          <NothingToShow>Nothing has been written down from this source yet.</NothingToShow>
+          <WhyThereIsNoReading reading={reading} />
         </CardContent>
       </Card>
     );

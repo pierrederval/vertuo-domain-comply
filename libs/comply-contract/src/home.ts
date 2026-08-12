@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { WAYS_OF_HAVING_NO_READING } from './no-reading.js';
 import { integrityFigureSchema, readinessFigureSchema } from './corpus.js';
 import { ladderSchema, movementSchema } from './detail.js';
 
@@ -117,7 +118,7 @@ export const sinceSchema = z.discriminatedUnion('comparedWith', [
 ]);
 
 export const homeReadingSchema = z.discriminatedUnion('outcome', [
-  z.object({ outcome: z.literal('nothing-written-down-yet') }),
+  ...WAYS_OF_HAVING_NO_READING,
   z.object({
     outcome: z.literal('read'),
     /** When the knowledge this reading is made of was written down from source. */

@@ -316,3 +316,117 @@ describe('a fact saying where it stands and where it came from (ADR-0022)', () =
     await expect(loadLens(path)).resolves.toBeDefined();
   });
 });
+
+/**
+ * The sentence a refusal is said in — spec §8, and the error a person setting a
+ * Corpus up is likeliest to meet.
+ *
+ * Asserted here rather than at either surface, so the runner and the Studio cannot
+ * come to say different things about one file (ADR-0034).
+ */
+describe('what a refused Lens says to the person holding it', () => {
+  async function why(body: unknown, fileName = 'the-shelved-one.json'): Promise<string> {
+    const dir = await mkdtemp(join(tmpdir(), 'lens-'));
+    const path = join(dir, fileName);
+    await writeFile(path, typeof body === 'string' ? body : JSON.stringify(body), 'utf8');
+    try {
+      await loadLens(path);
+    } catch (refused) {
+      return (refused as Error).message;
+    }
+    throw new Error('the Lens loaded, so there is no refusal to read');
+  }
+
+  it('says nothing about this Corpus can be read, and names the file to put right', async () => {
+    const said = await why({ ...valid, maturity: { levels: ['blank', 'agreed'], approvedAtOrAbove: 'signed-off' } });
+
+    expect(said).toContain('Nothing about the Corpus described in the-shelved-one.json can be read yet');
+    expect(said).toContain('Put that right in the-shelved-one.json');
+  });
+
+  it('names the file by the name it has, never by where the machine keeps it', async () => {
+    // The old wrapper carried the absolute path, which differs on every checkout and
+    // on CI, and names a directory the reader is already looking at.
+    const said = await why({ ...valid, maturity: { levels: ['blank'], approvedAtOrAbove: 'nope' } });
+
+    expect(said).not.toContain(tmpdir());
+    expect(said).not.toMatch(/[/\\]/);
+  });
+
+  it('says what is wrong in terms of the Corpus and its ladder', async () => {
+    const said = await why({
+      ...valid,
+      maturity: { levels: ['blank', 'guessed', 'agreed'], approvedAtOrAbove: 'signed-off' },
+    });
+
+    expect(said).toContain('"signed-off"');
+    expect(said).toContain('blank, guessed, agreed');
+  });
+
+  it('says none of it in terms of what the reading does', async () => {
+    // AC-3, and the reason the guard cannot be the whole of it: these words never
+    // reach a component, so nothing but this test stands between them and a reader.
+    for (const body of [
+      { ...valid, maturity: { levels: ['blank'], approvedAtOrAbove: 'nope' } },
+      { ...valid, facets: [{ name: 'x', factKind: 'Invoice', extractor: 'table' }] },
+      { ...valid, facets: [{ name: 'x', factKind: 'Rule', extractor: 'heading', parts: {} }] },
+      { ...valid, id: '' },
+      { ...valid, maturity: undefined },
+      'not a set of criteria at all',
+    ]) {
+      const said = await why(body);
+      for (const engineering of [
+        'invalid', 'valid', 'parse', 'schema', 'expected', 'received', 'undefined', 'null',
+      ]) {
+        expect(said.toLowerCase(), `said of ${JSON.stringify(body).slice(0, 60)}`).not.toContain(
+          engineering,
+        );
+      }
+    }
+  });
+
+  it('sends a reader looking at the name, where there is no file of that name at all', async () => {
+    // Nothing is wrong inside a file here, so the sentence above would send somebody
+    // to open one that does not exist. This is also the one place the path is said as
+    // it was given: a name mistyped by one directory cannot be checked against a name
+    // with the directory taken off.
+    const dir = await mkdtemp(join(tmpdir(), 'lens-'));
+    const missing = join(dir, 'never-was-here.json');
+
+    await expect(loadLens(missing)).rejects.toThrow(
+      `There is no file at ${missing} to read a Corpus's criteria from. Check the name, or put the file there.`,
+    );
+  });
+
+  it('says a file that is not written as criteria at all cannot be read, and where', async () => {
+    const said = await why('{ this is not it');
+
+    expect(said).toContain('Nothing about the Corpus described in the-shelved-one.json can be read yet');
+    expect(said).toContain('not written in a form this product can read');
+  });
+
+  it('says what a Corpus that says nothing about where it stands is missing', async () => {
+    const said = await why({ ...valid, maturity: undefined });
+
+    expect(said).toContain('maturity');
+    expect(said).toContain('says nothing');
+  });
+
+  it('says which of them this product knows, where a word is one it does not', async () => {
+    const said = await why({ ...valid, facets: [{ name: 'x', factKind: 'Invoice', extractor: 'table' }] });
+
+    expect(said).toContain('"Invoice"');
+    expect(said).toContain('Module');
+  });
+
+  it('says every reason at once, so a second load is not the only way to find the next', async () => {
+    const said = await why({
+      ...valid,
+      maturity: { levels: ['blank'], approvedAtOrAbove: 'nope' },
+      facets: [{ name: 'x', factKind: 'Rule', extractor: 'heading', parts: {} }],
+    });
+
+    expect(said).toContain('"nope"');
+    expect(said).toContain('names no parts at all');
+  });
+});

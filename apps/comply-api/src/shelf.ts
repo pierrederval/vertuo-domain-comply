@@ -1,6 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { shelfAt } from '@vertuo/comply-door';
+import type { CriteriaNotFollowed } from '@vertuo/comply-contract';
+import { knowledgeCouldNotBeReadBack, shelfAt } from '@vertuo/comply-door';
 import { lensDigest, loadLens, type Lens } from '@vertuo/comply-lens';
 import { earlierReading, type RecordedReading } from '@vertuo/comply-readiness';
 import { heldSeeds, readSeed, seedDigest, type Seed, type ShelvedSeed } from '@vertuo/comply-seed';
@@ -9,6 +10,22 @@ export interface ShelvedCorpus {
   lens: Lens;
   /** The knowledge as last written down, or nothing where the source is unread. */
   seed: Seed | null;
+  /**
+   * Why the knowledge last written down from this source could not be read back, or
+   * nothing where it could.
+   *
+   * Beside the absent knowledge rather than in place of it, because a Corpus with
+   * knowledge nothing can read and a Corpus nobody has read are different facts and
+   * every surface here answers for both (spec §8). One value said which of the two
+   * this is and gave every page the same wrong sentence for one of them.
+   *
+   * This Corpus keeps its id, its name and its pages. It has a Lens, so there is
+   * somewhere for its reader to stand and something for them to press, and reading
+   * its source again is the one thing to do about it (ADR-0034 §5). It was passed
+   * over entirely until now, which put the action out of reach of the only Corpus
+   * that needed it.
+   */
+  knowledgeCouldNotBeRead: string | null;
   /**
    * Every writing-down of this source the shelf still holds, oldest first, so the
    * last of them is the knowledge above and the moment it appeared is the age every
@@ -42,15 +59,24 @@ export interface Shelf {
   /** Every Corpus found, by Lens id, so the list reads the same on every boot. */
   corpus: ShelvedCorpus[];
   /**
-   * Files at the top of the shelf that are not a Lens, with the reason each was
-   * not read as one.
+   * Files at the top of the shelf whose criteria could not be followed, each with the
+   * sentence saying why and what to change.
    *
-   * Reported rather than dropped. A list that is quietly one Corpus short reads
-   * exactly like a shelf that holds one Corpus fewer, and would go on reading that
-   * way for as long as the file stayed unreadable (LAW-006). Saying why is #27's
-   * work; not hiding that it happened is this slice's.
+   * Reported rather than dropped, and reported to the reader rather than to a log.
+   * A list quietly one Corpus short reads exactly like a shelf holding one Corpus
+   * fewer, and would go on reading that way for as long as the file stayed unreadable
+   * (LAW-006).
+   *
+   * These are not Corpus and are not among them. What says a Corpus has an id, a name
+   * and a page is the file that could not be read, so one here would need all three
+   * invented for it — and the file it is written in is the only name it has, which is
+   * also the only thing to act on.
+   *
+   * It used to hold knowledge written down in an unreadable form too, which is why
+   * `file` held a filename for one kind and a Lens id for the other. That Corpus has
+   * a Lens and belongs above, with the pages that Lens earns it.
    */
-  passedOver: { file: string; reason: string }[];
+  criteriaNotFollowed: CriteriaNotFollowed[];
 }
 
 /**
@@ -63,9 +89,11 @@ export interface Shelf {
  * action reaches exactly the Corpus that most needs it; found through a reading, it
  * would be missing from the only page that could offer it.
  */
-export async function everyLensOn(dir: string): Promise<{ lenses: Lens[]; passedOver: Shelf['passedOver'] }> {
+export async function everyLensOn(
+  dir: string,
+): Promise<{ lenses: Lens[]; criteriaNotFollowed: CriteriaNotFollowed[] }> {
   const lenses: Lens[] = [];
-  const passedOver: Shelf['passedOver'] = [];
+  const criteriaNotFollowed: CriteriaNotFollowed[] = [];
 
   for (const entry of (await readdir(dir, { withFileTypes: true })).sort((a, b) =>
     a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
@@ -75,13 +103,16 @@ export async function everyLensOn(dir: string): Promise<{ lenses: Lens[]; passed
     try {
       lenses.push(await loadLens(join(dir, entry.name)));
     } catch (cause) {
-      passedOver.push({
-        file: entry.name,
-        reason: cause instanceof Error ? cause.message : String(cause),
+      // The whole sentence, written where the rules that refused it are, so the runner
+      // and the Studio say one thing about one file (ADR-0034, spec §8). Nothing is
+      // composed here: a reason worded at a surface is a reason worded twice.
+      criteriaNotFollowed.push({
+        where: entry.name,
+        because: cause instanceof Error ? cause.message : String(cause),
       });
     }
   }
-  return { lenses, passedOver };
+  return { lenses, criteriaNotFollowed };
 }
 
 /**
@@ -95,34 +126,29 @@ export async function everyLensOn(dir: string): Promise<{ lenses: Lens[]; passed
 export async function readShelf(dir: string): Promise<Shelf> {
   const corpus: ShelvedCorpus[] = [];
   const kept = shelfAt(dir);
-  const { lenses, passedOver } = await everyLensOn(dir);
+  const { lenses, criteriaNotFollowed } = await everyLensOn(dir);
 
   for (const lens of lenses) {
     const writtenDown = await heldSeeds(kept.seeds, lens.id);
     const held = writtenDown.at(-1) ?? null;
 
-    // One Corpus whose knowledge cannot be read is one Corpus passed over, and the
-    // reason travels with it. Left to throw, a single shelf holding knowledge written
-    // down in an older form takes down the reading of every other Corpus beside it —
-    // and the one thing to do about it goes unsaid, because nothing is left standing
-    // to say it.
+    // A Corpus whose knowledge cannot be read back is a Corpus with no reading, and it
+    // stays a Corpus. It has a Lens, so it has an id, a name, a page and an action on
+    // that page — and reading its source again is the one thing to do about it, which
+    // is a thing nobody could do while this passed it over entirely (ADR-0034 §5).
     //
-    // Where a reason goes from here is the server's business, and today it goes only
-    // to its own log. A reader is told a Corpus is on the shelf or is not, never why
-    // one is missing, which is a gap this did not open and does not close. What it can
-    // now do is act: the action that reads a source again finds its Lens without
-    // coming through here, so the one thing to do about knowledge written down in an
-    // older form is reachable on a Corpus this passes over.
+    // Left to throw, one shelf holding knowledge written down in an older form would
+    // take down the reading of every Corpus beside it (AC-4).
     let seed: Seed | null = null;
+    let knowledgeCouldNotBeRead: string | null = null;
     if (held !== null) {
       try {
         seed = await readSeed(held.path);
-      } catch (cause) {
-        passedOver.push({
-          file: lens.id,
-          reason: cause instanceof Error ? cause.message : String(cause),
-        });
-        continue;
+      } catch {
+        // The sentence and not the failure. What went wrong inside is about a file on a
+        // shelf this product wrote and is free to write again (LAW-011); what a reader
+        // is owed is that there is no reading and that a press makes one (LAW-010).
+        knowledgeCouldNotBeRead = knowledgeCouldNotBeReadBack();
       }
     }
 
@@ -137,11 +163,12 @@ export async function readShelf(dir: string): Promise<Shelf> {
     corpus.push({
       lens,
       seed,
+      knowledgeCouldNotBeRead,
       writtenDown,
       lastRecorded: await earlierReading(kept.readings, lens.id, inHand),
     });
   }
 
   corpus.sort((a, b) => (a.lens.id < b.lens.id ? -1 : a.lens.id > b.lens.id ? 1 : 0));
-  return { corpus, passedOver };
+  return { corpus, criteriaNotFollowed };
 }

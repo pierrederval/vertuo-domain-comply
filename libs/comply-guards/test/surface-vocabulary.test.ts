@@ -14,6 +14,22 @@ import {
  * LAW-010 names the first eight. *compliant* is the ninth deliberately: a Corpus
  * is fully approved against the Facets its Lens declares, and is never described
  * as compliant or complete (LAW-006).
+ *
+ * The last three are what spec §8 asks of the error a business user is likeliest
+ * to meet: the reason a Corpus cannot be read names what is wrong with the Corpus
+ * and its Lens, and never validation, parsing or structure. *parse* was already
+ * here; the other two are added so the rule is enforced by this run and not by
+ * whoever reads the wording next (issue #27, AC-5).
+ *
+ * *invalid* belongs in this list and cannot be added yet, for two reasons that are
+ * both the over-catch this guard's own doc comment accepts. Three vendored
+ * components carry `aria-invalid:` in a class string, which is a selector and not
+ * text; and `libs/comply-lens/src/refusal.ts` compares against a validator's own
+ * code names — `invalid_type`, `invalid_enum_value` — to turn each of them into a
+ * sentence, which is the very work that keeps the word off a screen. *valid*
+ * catches the form a reader would actually meet, because `\bvalid` does not match
+ * *invalid*: what it will not catch is the exact phrase *is invalid*, which is what
+ * `loadLens` said before this slice, so the test below stands in for it.
  */
 const ENGINEERING_VOCABULARY = [
   'commit',
@@ -25,10 +41,22 @@ const ENGINEERING_VOCABULARY = [
   'migration',
   'null',
   'compliant',
+  'valid',
+  'structure',
+  'exception',
 ];
 
 /** The surfaces that carry text a reader meets today, before any interface exists. */
-const SURFACES_TODAY = ['apps/comply-cli/src/render.ts', 'libs/comply-ingestion/src/interpret.ts'];
+const SURFACES_TODAY = [
+  'apps/comply-cli/src/render.ts',
+  'libs/comply-ingestion/src/interpret.ts',
+  // Where the sentence for a Corpus that cannot be read is written. Named because
+  // these two are the error state a business user is likeliest to meet, and because
+  // neither reaches a component: nothing but this guard and their own tests stands
+  // between their words and a reader (spec §8).
+  'libs/comply-lens/src/refusal.ts',
+  'libs/comply-door/src/door.ts',
+];
 
 async function check(source: string, fileName = 'surface.ts'): Promise<SurfaceReport> {
   const dir = await mkdtemp(join(tmpdir(), 'comply-guards-'));
@@ -55,6 +83,25 @@ describe('LAW-010: business language at the surface', () => {
     // Without this the test above passes just as happily over nothing at all.
     for (const surface of SURFACES_TODAY) expect(scanned).toContain(surface);
     expect(scanned.length).toBeGreaterThan(SURFACES_TODAY.length);
+  });
+
+  it('catches the words a refused set of criteria used to be reported in', async () => {
+    // What `loadLens` said before spec §8 was built, in the words it said it in. The
+    // wrapper is gone; this stands in its place, because the phrasing that will be
+    // reached for next is the one that was there before.
+    const { violations } = await check(
+      'export const said = "schema validation failed: bad structure";\n',
+    );
+
+    expect(violations.map((held) => held.term).sort()).toEqual(['schema', 'structure', 'valid']);
+  });
+
+  it('does not read a refusal of an unreadable thing as the thing itself', async () => {
+    // `\bvalid` stops at a word start, so *invalid* is not caught — which is the
+    // limitation the comment above the list names, kept honest by asserting it.
+    const { violations } = await check('export const said = "it is invalid";\n');
+
+    expect(violations).toEqual([]);
   });
 
   it('reports a term in a label, at a place someone can open', async () => {

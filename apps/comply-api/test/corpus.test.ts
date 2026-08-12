@@ -118,32 +118,154 @@ describe('every Corpus on the shelf', () => {
   });
 
   it('answers about a shelf holding nothing without inventing anything', async () => {
-    expect(await listCorpus()).toEqual({ corpus: [] });
+    expect(await listCorpus()).toEqual({ corpus: [], criteriaNotFollowed: [] });
+  });
+});
+
+/**
+ * Spec §8, the half that is not a Finding: a Corpus that cannot be read at all, and
+ * the reason said where its reader is.
+ *
+ * Both kinds were computed and handed to `server.log.warn`, which on a Fastify built
+ * with no logger is literally `function noop () { }`. So the reason had never once
+ * reached anybody, under comments saying it went to a log.
+ */
+describe('a Corpus that cannot be read', () => {
+  /** A Lens naming a rung that is not on its own ladder — spec §8's own example. */
+  async function shelveALensNamingARungOffItsLadder(file: string): Promise<void> {
+    const declared = JSON.parse(await readFile(fixturePath(file), 'utf8')) as {
+      adapter: { root: string };
+      maturity: { approvedAtOrAbove: string };
+    };
+    declared.adapter.root = resolve(dirname(fixturePath(file)), declared.adapter.root);
+    declared.maturity.approvedAtOrAbove = 'signed-off';
+    await writeFile(join(shelf, file), JSON.stringify(declared), 'utf8');
+  }
+
+  /** Writes down knowledge and then leaves it in a form nothing here can read back. */
+  async function leaveTheKnowledgeUnreadable(id: string): Promise<void> {
+    const at = join(shelf, 'seeds', (await readdir(join(shelf, 'seeds')))
+      .find((name) => name.startsWith(`${id}-`))!);
+    const held = JSON.parse(await readFile(at, 'utf8')) as { version: number };
+    await writeFile(at, JSON.stringify({ ...held, version: held.version - 1 }), 'utf8');
+  }
+
+  it('says which file to put right, where its criteria could not be followed', async () => {
+    await shelveLens('lens-a.json');
+    await shelveALensNamingARungOffItsLadder('lens-b.json');
+
+    const { criteriaNotFollowed } = await listCorpus();
+
+    expect(criteriaNotFollowed).toHaveLength(1);
+    expect(criteriaNotFollowed[0]?.where).toBe('lens-b.json');
+    expect(criteriaNotFollowed[0]?.because).toContain('"signed-off"');
+    expect(criteriaNotFollowed[0]?.because).toContain('Put that right in lens-b.json');
   });
 
-  it('passes over a file that is not a Lens rather than refusing the whole shelf', async () => {
+  it('names the file and never where the machine keeps it', async () => {
+    await shelveALensNamingARungOffItsLadder('lens-b.json');
+
+    const { criteriaNotFollowed } = await listCorpus();
+
+    // The shelf is a temporary directory here and somebody's checkout in the product.
+    // A reason carrying one reads differently to two people looking at one shelf.
+    expect(criteriaNotFollowed[0]?.because).not.toContain(shelf);
+    expect(criteriaNotFollowed[0]?.where).not.toContain('/');
+  });
+
+  it('lets every other Corpus be read and listed exactly as before', async () => {
+    // AC-4, asserted against the payload a good shelf answers with rather than
+    // against a shape written out here, so a change to either is a change to both.
+    await shelveLens('lens-a.json');
+    await writeDownKnowledge('lens-a.json');
+    const alone = await listCorpus();
+
+    await shelveALensNamingARungOffItsLadder('lens-b.json');
+    const beside = await listCorpus();
+
+    expect(beside.corpus).toEqual(alone.corpus);
+    expect(alone.criteriaNotFollowed).toEqual([]);
+    expect(beside.criteriaNotFollowed).toHaveLength(1);
+  });
+
+  it('says a Corpus whose knowledge could not be read back has none, and why', async () => {
+    // This one has a Lens, so it keeps its id, its name and its page — which is where
+    // the action that puts it right is drawn (ADR-0034 §5).
+    await shelveLens('lens-b.json');
+    await writeDownKnowledge('lens-b.json');
+    await leaveTheKnowledgeUnreadable('corpus-b');
+
+    const { corpus } = await listCorpus();
+
+    expect(corpus).toHaveLength(1);
+    expect(corpus[0]?.id).toBe('corpus-b');
+    expect(corpus[0]?.reading.outcome).toBe('could-not-be-read');
+  });
+
+  it('never says nothing has been written down about a Corpus that has', async () => {
+    // The sentence all six surfaces drew for this until now. It is not a blank space,
+    // it is the wrong true-sounding one: it sends a reader to read a source that has
+    // already been read, and says nothing about what actually happened.
+    await shelveLens('lens-b.json');
+    await writeDownKnowledge('lens-b.json');
+    await leaveTheKnowledgeUnreadable('corpus-b');
+
+    const [entry] = (await listCorpus()).corpus;
+    if (entry?.reading.outcome !== 'could-not-be-read') throw new Error('the knowledge is unreadable');
+
+    expect(entry.reading.because).not.toContain('has been written down');
+    expect(entry.reading.because).toContain('cannot be read back');
+    // Says what to do, which for this one is a press and not a file (LAW-007).
+    expect(entry.reading.because).toContain('Reading the source again');
+  });
+
+  it('gives it no figure rather than a figure of nothing', async () => {
+    await shelveLens('lens-b.json');
+    await writeDownKnowledge('lens-b.json');
+    await leaveTheKnowledgeUnreadable('corpus-b');
+
+    const [entry] = (await listCorpus()).corpus;
+
+    expect(Object.keys(entry?.reading ?? {}).sort()).toEqual(['because', 'outcome']);
+  });
+
+  it('passes over a file that is not a set of criteria at all, and says which', async () => {
     await shelveLens('lens-a.json');
     await writeFile(join(shelf, 'notes.json'), '{"something": "else"}', 'utf8');
 
-    expect((await listCorpus()).corpus.map((entry) => entry.id)).toEqual(['corpus-a']);
+    const { corpus, criteriaNotFollowed } = await listCorpus();
+
+    expect(corpus.map((entry) => entry.id)).toEqual(['corpus-a']);
+    expect(criteriaNotFollowed.map((held) => held.where)).toEqual(['notes.json']);
   });
 
-  it('passes over knowledge written down in an older form rather than refusing the whole shelf', async () => {
-    // One shelf holds several Corpus, and one of them having been written down
-    // before the reading changed shape is not a reason to answer about none of them.
-    // The one thing to do about it is said in the reason, and nothing can say it if
-    // nothing is left standing.
-    await shelveLens('lens-a.json');
+  it('reaches every page of a Corpus whose knowledge could not be read, and none 404s', async () => {
+    // Every one of these answered 404 or *nothing written down yet* before. The first
+    // is a Corpus the product does not hold, which this one is not; the second is a
+    // Corpus nobody has read, which this one is not either.
     await shelveLens('lens-b.json');
-    await writeDownKnowledge('lens-a.json');
     await writeDownKnowledge('lens-b.json');
+    await leaveTheKnowledgeUnreadable('corpus-b');
 
-    const older = join(shelf, 'seeds', (await readdir(join(shelf, 'seeds')))
-      .find((name) => name.startsWith('corpus-b-'))!);
-    const held = JSON.parse(await readFile(older, 'utf8')) as { version: number };
-    await writeFile(older, JSON.stringify({ ...held, version: held.version - 1 }), 'utf8');
+    for (const url of [
+      '/corpus/corpus-b/reading',
+      '/corpus/corpus-b/home',
+      '/corpus/corpus-b/inbox',
+      '/corpus/corpus-b/modules/one',
+      '/corpus/corpus-b/modules/one/knowledge?in=one.md&line=1',
+    ]) {
+      const response = await server.inject({ method: 'GET', url });
+      expect(response.statusCode, url).toBe(200);
+      expect(response.json().reading.outcome, url).toBe('could-not-be-read');
+    }
+  });
 
-    expect((await listCorpus()).corpus.map((entry) => entry.id)).toEqual(['corpus-a']);
+  it('still 404s a Corpus the shelf does not hold at all', async () => {
+    // A different fact, and it stays a different one: nothing of that name is here.
+    await shelveLens('lens-a.json');
+
+    const response = await server.inject({ method: 'GET', url: '/corpus/never-was-here/reading' });
+    expect(response.statusCode).toBe(404);
   });
 });
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { criteriaNotFollowedSchema, WAYS_OF_HAVING_NO_READING } from './no-reading.js';
 
 /**
  * What the API answers and what the Studio expects, defined once.
@@ -37,11 +38,13 @@ export const integrityFigureSchema = z.object({
  * A Corpus whose source has been read, or one whose source has not.
  *
  * Told apart in the payload rather than by an absent field, because they are
- * different facts about the knowledge and a reader is owed the difference. It is
- * also where a Corpus that could not be read gets to say why, when that is built.
+ * different facts about the knowledge and a reader is owed the difference. This is
+ * the spot that was reserved for a Corpus that could not be read to say why, and
+ * `WAYS_OF_HAVING_NO_READING` is now where both of those live, said once for all six
+ * surfaces that answer for them.
  */
 export const corpusReadingSchema = z.discriminatedUnion('outcome', [
-  z.object({ outcome: z.literal('nothing-written-down-yet') }),
+  ...WAYS_OF_HAVING_NO_READING,
   z.object({
     outcome: z.literal('read'),
     /**
@@ -68,9 +71,17 @@ export const corpusSummarySchema = z.object({
   reading: corpusReadingSchema,
 });
 
-/** Every Corpus on the shelf. */
+/**
+ * Every Corpus on the shelf, and every set of criteria on it that could not be
+ * followed.
+ *
+ * Both, always. A list quietly one Corpus short reads exactly like a shelf holding one
+ * Corpus fewer, and would go on reading that way for as long as the file stayed
+ * unreadable (LAW-006).
+ */
 export const corpusListSchema = z.object({
   corpus: z.array(corpusSummarySchema),
+  criteriaNotFollowed: z.array(criteriaNotFollowedSchema),
 });
 
 export type ReadinessFigure = z.infer<typeof readinessFigureSchema>;

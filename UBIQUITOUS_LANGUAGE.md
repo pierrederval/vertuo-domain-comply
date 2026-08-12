@@ -201,6 +201,17 @@ One located, evidenced problem — a broken reference, a term used but never def
 that disagree, a Module known by two identities. Every Finding cites the exact place that produced it
 and reaches its Module Owner.
 
+**A Finding's code is a surface, so LAW-010 governs it.** Every one of them is put in front of a
+reader: as the denominator beside the Integrity figure, as the list of what ran on the Inbox and on a
+Module, and in the runner's own report. So no code carries an engineering word, and a code prefixed
+with *un* is not exempt — `unparsable-document` survived the surface guard only because that guard
+stops at the start of a word, and it is now `unreadable-document` and `unknown-facet` (ADR-0035).
+
+**A document that cannot be read is a Finding; a Corpus that cannot be read is not.** The first is a
+defect worth surfacing, cited at its place and routed like any other. The second means nothing about
+that Corpus can be read at all, so there is no reading in which to raise anything — it is said on the
+shelf instead (spec §8).
+
 ### Occurrence
 
 One place where a Term appears in the Corpus. The Occurrence index is what makes a Rename complete
@@ -225,6 +236,13 @@ different Facets and a different ladder — where "profile" says only "configura
 word is also already spoken for: the Studio has users, and a user's profile is their account. Naming
 two unrelated things "profile" would be a split identity in the vocabulary of the product that
 detects split identities. Renamed by ADR-0015; documents written before that decision say Profile.
+
+**A Lens that cannot be followed is the one message in this product that reaches nobody it knows
+about.** A Lens is hand-authored, so there is no Module and no Owner to route the reason to, and no
+reading in which to raise a Finding. LAW-007 says a finding belonging to nobody is a dashboard; this is
+the named exception, and the sentence carries its own routing instead — it names the file and says what
+to change in it. It is written beside the rule that refused it, so the runner and the Studio say one
+thing about one file (ADR-0035, ADR-0034).
 
 **A Lens has an identity, and it is what the Lens says and not where it points.** Its digest covers every
 declaration except the root its documents are found under, because that root is a path on whichever

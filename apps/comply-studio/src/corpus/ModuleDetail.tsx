@@ -8,6 +8,7 @@ import type {
   UnmetCriterion,
 } from '@vertuo/comply-contract';
 import { Figure } from '../components/Figure.js';
+import { WhyThereIsNoReading } from '../components/NoReading.js';
 import {
   Aside,
   Conspicuous,
@@ -273,7 +274,7 @@ export function ModuleDetail({ module }: { module: CorpusModule }) {
     return (
       <Card className="border-dashed shadow-none">
         <CardContent>
-          <NothingToShow>Nothing has been written down from this source yet.</NothingToShow>
+          <WhyThereIsNoReading reading={reading} />
         </CardContent>
       </Card>
     );

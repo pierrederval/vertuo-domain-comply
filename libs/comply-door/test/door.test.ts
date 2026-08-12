@@ -195,6 +195,39 @@ describe('reading the source again when the source cannot be read', () => {
     );
   });
 
+  it('does not say the knowledge could not be kept when what failed was reading it back', async () => {
+    // Found by pressing the button on a shelf holding a damaged Seed. The whole write
+    // phase was wrapped in one sentence, so a Seed on the shelf that cannot be read
+    // back reported *what it says could not be written down* — about knowledge that
+    // had been written down, possibly months ago. Three different things go wrong in
+    // this function and a reader acts on each of them differently (LAW-010).
+    const lens = await shelveSource('lens-a.json');
+    await readTheSourceAgain(shelf, lens, READ_AT);
+
+    // The same source, so the same digest and the same place on the shelf. What is at
+    // that place is now something nothing here reads.
+    const held = (await readdir(shelf.seeds)).find((name) => name.endsWith('.json'))!;
+    await writeFile(join(shelf.seeds, held), 'not knowledge at all', 'utf8');
+
+    const refused = readTheSourceAgain(shelf, lens, READ_AGAIN_AT);
+    await expect(refused).rejects.toThrow(/cannot be read back/);
+    await expect(refused).rejects.not.toThrow(/could not be written down/);
+  });
+
+  it('says reading again cannot get past it, because that is the thing a reader will try', async () => {
+    // The one failure whose remedy is not another press: the press is what just met
+    // it. So it says what this product keeps for itself can be dropped and worked out
+    // again, which is the only way out and is LAW-011 said to a person.
+    const lens = await shelveSource('lens-a.json');
+    await readTheSourceAgain(shelf, lens, READ_AT);
+    const held = (await readdir(shelf.seeds)).find((name) => name.endsWith('.json'))!;
+    await writeFile(join(shelf.seeds, held), 'not knowledge at all', 'utf8');
+
+    await expect(readTheSourceAgain(shelf, lens, READ_AGAIN_AT)).rejects.toThrow(
+      /reading again cannot get past it/,
+    );
+  });
+
   it('refuses knowledge written down in a form it cannot read, and writes nothing', async () => {
     const lens = await shelveSource('lens-a.json');
     const at = join(dir, 'older.json');

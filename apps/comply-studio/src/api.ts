@@ -12,6 +12,7 @@ import {
   type CorpusHome,
   type CorpusInbox,
   type CorpusModule,
+  type CorpusList,
   type CorpusSummary,
   type NotHeld,
   type Place,
@@ -26,14 +27,17 @@ import {
  * agreement is a fault at the boundary, and saying so is better than drawing half
  * a screen from it and leaving a reader to wonder which half is missing.
  */
-export async function fetchCorpus(): Promise<CorpusSummary[]> {
+export async function fetchCorpus(): Promise<CorpusList> {
   const response = await fetch('/corpus');
   if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
 
   const answer = corpusListSchema.safeParse(await response.json());
   if (!answer.success) throw new Error('The Studio was sent something it could not read.');
 
-  return answer.data.corpus;
+  // Both halves. A shelf holding one Corpus and one file whose criteria could not be
+  // followed used to arrive here as a shelf holding one Corpus, which is what a shelf
+  // holding one Corpus looks like (LAW-006, spec §8).
+  return answer.data;
 }
 
 /** The whole reading of one Corpus: the grid, the two figures, and their age. */

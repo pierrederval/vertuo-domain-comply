@@ -1,6 +1,6 @@
 import { Library } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router';
-import type { CorpusSummary } from '@vertuo/comply-contract';
+import type { CorpusList, CorpusSummary } from '@vertuo/comply-contract';
 import { Age } from '../components/Age.js';
 import {
   Sidebar,
@@ -27,7 +27,8 @@ import { whereTheReaderIs } from './where.js';
  * when it could not be read tells a reader their knowledge is gone.
  */
 export interface ShelfState {
-  corpus: CorpusSummary[] | null;
+  /** Both halves of what the shelf holds, or nothing until it has been read. */
+  corpus: CorpusList | null;
   trouble: string | null;
 }
 
@@ -47,13 +48,25 @@ function Shelf({ shelf, reading }: { shelf: ShelfState; reading: string | null }
     return <p className="px-2 py-1 text-sm text-muted-foreground">Reading the shelf.</p>;
   }
 
-  if (shelf.corpus.length === 0) {
-    return <p className="px-2 py-1 text-sm text-muted-foreground">Nothing is on the shelf yet.</p>;
+  if (shelf.corpus.corpus.length === 0) {
+    /*
+     * A menu is somewhere to go, and a set of criteria that could not be followed is
+     * nowhere: it has no id and no page, so it is named on the list and not here. But
+     * *nothing is on the shelf yet* is what this said about a shelf holding one, which
+     * is exactly what a shelf holding nothing says (LAW-006, spec §8).
+     */
+    return (
+      <p className="px-2 py-1 text-sm text-muted-foreground">
+        {shelf.corpus.criteriaNotFollowed.length === 0
+          ? 'Nothing is on the shelf yet.'
+          : 'Nothing on the shelf can be read yet. The list says which file to put right.'}
+      </p>
+    );
   }
 
   return (
     <SidebarMenu>
-      {shelf.corpus.map((entry) => (
+      {shelf.corpus.corpus.map((entry) => (
         <SidebarMenuItem key={entry.id}>
           {/*
             Every word in this list arrived in the payload. A sidebar that draws
@@ -165,7 +178,7 @@ export function AppShell({ shelf }: { shelf: ShelfState }) {
     DESTINATIONS.map((destination) => destination.at),
     OPENS_AT,
   );
-  const corpus = shelf.corpus?.find((entry) => entry.id === corpusId) ?? null;
+  const corpus = shelf.corpus?.corpus.find((entry) => entry.id === corpusId) ?? null;
   const read = corpus?.reading.outcome === 'read' ? corpus.reading.sourceReadAt : null;
 
   return (

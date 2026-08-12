@@ -55,7 +55,10 @@ export function ReadAgain({ doing, press }: { doing: Doing; press: () => void })
       {doing.at === 'could-not-read' && (
         <Aside>
           <Conspicuous>{doing.because}</Conspicuous>{' '}
-          {'Nothing was written down, so the reading below is the one that was already there.'}
+          {/* Not *the reading below is the one that was already there*, which claims
+              there is one. A Corpus whose knowledge cannot be read back has none, and
+              that is exactly the Corpus this action is most often pressed on (#27). */}
+          {'Nothing has changed, so what is below is what was below before.'}
         </Aside>
       )}
     </div>

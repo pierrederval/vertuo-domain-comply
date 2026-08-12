@@ -299,12 +299,19 @@ export const lensSchema = z
     owners: z.record(z.string()).optional(),
   })
   .superRefine((lens, ctx) => {
+    // Both of these name the ladder's own steps back, because the mistake is nearly
+    // always a step spelled a second way and the reader cannot see the two spellings
+    // side by side without them. This is the refusal a person setting a Corpus up
+    // meets most often (spec §8).
     const { levels, approvedAtOrAbove } = lens.maturity;
+    const ladder = `its ladder (${levels.join(', ')})`;
     if (!levels.includes(approvedAtOrAbove)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['maturity', 'approvedAtOrAbove'],
-        message: `approvedAtOrAbove "${approvedAtOrAbove}" is not on the ladder [${levels.join(', ')}]`,
+        message:
+          `it counts anything at "${approvedAtOrAbove}" or above as approved, and ` +
+          `"${approvedAtOrAbove}" is not one of the steps on ${ladder}`,
       });
     }
     for (const [index, mapping] of lens.statusMappings.entries()) {
@@ -312,7 +319,9 @@ export const lensSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['statusMappings', index, 'maturity'],
-          message: `status mapping "${mapping.match}" targets level "${mapping.maturity}", which is not on the ladder`,
+          message:
+            `it reads a Fact saying "${mapping.match}" as standing at "${mapping.maturity}", ` +
+            `and "${mapping.maturity}" is not one of the steps on ${ladder}`,
         });
       }
     }
@@ -340,9 +349,9 @@ export const lensSchema = z
           code: z.ZodIssueCode.custom,
           path: ['facets', index, 'itemPattern'],
           message:
-            `facet "${facet.name}" describes which headings are its own but reads ` +
-            `"${facet.extractor}", not headings; only a facet reading headings can say ` +
-            `which of them are its elements`,
+            `facet "${facet.name}" names itemPattern to describe which headings are its ` +
+            `own but reads "${facet.extractor}", not headings; only a facet reading ` +
+            `headings can say which of them are its elements`,
         });
         continue;
       }

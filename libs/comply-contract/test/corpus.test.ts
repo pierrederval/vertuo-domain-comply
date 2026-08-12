@@ -57,6 +57,68 @@ describe('what the two sides agree a Corpus looks like', () => {
   });
 
   it('accepts a shelf holding no Corpus at all', () => {
-    expect(corpusListSchema.parse({ corpus: [] })).toEqual({ corpus: [] });
+    expect(corpusListSchema.parse({ corpus: [], criteriaNotFollowed: [] })).toEqual({
+      corpus: [],
+      criteriaNotFollowed: [],
+    });
+  });
+});
+
+/**
+ * A Corpus that cannot be read, and the two different things that can mean
+ * (spec §8).
+ */
+describe('what the two sides agree an unreadable Corpus looks like', () => {
+  it('accepts a Corpus whose knowledge could not be read, with the reason', () => {
+    const parsed = corpusSummarySchema.safeParse(
+      summary({ outcome: 'could-not-be-read', because: 'it is written in a form nothing here reads' }),
+    );
+    expect(parsed.success).toBe(true);
+  });
+
+  it('refuses one that will not say why', () => {
+    // The whole of this outcome is the reason. Sent without one it is a blank space
+    // with a name, which is what the list already had (LAW-006).
+    expect(corpusSummarySchema.safeParse(summary({ outcome: 'could-not-be-read' })).success).toBe(
+      false,
+    );
+    expect(
+      corpusSummarySchema.safeParse(summary({ outcome: 'could-not-be-read', because: '' })).success,
+    ).toBe(false);
+  });
+
+  it('gives it no figure rather than a figure of nothing', () => {
+    // A Corpus that cannot be read has no Modules to count and nothing was looked
+    // for in it, so it has neither denominator — and a zero would read as a Corpus
+    // measured and found empty (LAW-006).
+    const parsed = corpusSummarySchema.parse(
+      summary({ outcome: 'could-not-be-read', because: 'anything', readiness: { modulesFullyApproved: 0, modules: 0 } }),
+    );
+
+    expect(parsed.reading).not.toHaveProperty('readiness');
+    expect(parsed.reading).not.toHaveProperty('integrity');
+  });
+
+  it('carries a set of criteria that could not be followed beside the Corpus, not among them', () => {
+    // It has no id, no name and no page: what says a Corpus is called anything is
+    // the file that could not be read. So it cannot be a Corpus in the list without
+    // one being invented for it, and the file it is written in is the only name it
+    // has — which is also the one thing to act on.
+    const parsed = corpusListSchema.parse({
+      corpus: [],
+      criteriaNotFollowed: [{ where: 'lens-b.json', because: 'nothing about it can be read yet' }],
+    });
+
+    expect(parsed.criteriaNotFollowed).toEqual([
+      { where: 'lens-b.json', because: 'nothing about it can be read yet' },
+    ]);
+  });
+
+  it('refuses a set of criteria that names neither its file nor its reason', () => {
+    for (const bad of [{ where: 'lens-b.json' }, { because: 'why' }, { where: '', because: 'why' }]) {
+      expect(corpusListSchema.safeParse({ corpus: [], criteriaNotFollowed: [bad] }).success).toBe(
+        false,
+      );
+    }
   });
 });
