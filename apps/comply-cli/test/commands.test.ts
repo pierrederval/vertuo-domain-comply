@@ -6,7 +6,7 @@ import { fixturePath } from '@vertuo/comply-fixtures';
 import { heldLenses } from '@vertuo/comply-lens';
 import { readingsOnRecord } from '@vertuo/comply-readiness';
 import { extractCommand, pruneCommand, reportCommand } from '../src/commands.js';
-import { shelfAt, type Shelf } from '../src/shelf.js';
+import { shelfAt, type Shelf } from '@vertuo/comply-door';
 
 let dir: string;
 let shelf: Shelf;
@@ -71,7 +71,7 @@ describe.each(['lens-a.json', 'lens-b.json'])('reading %s twice over unchanged i
     expect(second).not.toContain('On record');
   });
 
-  it('says where the reading it is compared against is kept, so it can be gone and looked at', async () => {
+  it('says where the reading already on record is kept, so it can be gone and looked at', async () => {
     const lensPath = await shelveLens(file);
     await reportCommand(shelf, lensPath, undefined);
 

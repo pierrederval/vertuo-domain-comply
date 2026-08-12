@@ -6,6 +6,7 @@ import {
   corpusListSchema,
   corpusModuleSchema,
   notHeldSchema,
+  sourceWasReadSchema,
   type CorpusDetail,
   type CorpusFact,
   type CorpusHome,
@@ -14,6 +15,7 @@ import {
   type CorpusSummary,
   type NotHeld,
   type Place,
+  type SourceWasRead,
 } from '@vertuo/comply-contract';
 
 /**
@@ -63,6 +65,29 @@ export async function fetchHome(id: string): Promise<CorpusHome> {
   if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
 
   const answer = corpusHomeSchema.safeParse(await response.json());
+  if (!answer.success) throw new Error('The Studio was sent something it could not read.');
+
+  return answer.data;
+}
+
+/**
+ * Reads one Corpus's source again — the one thing the Studio asks for that changes
+ * what the product holds.
+ *
+ * Asked for as a read and not as a reading, so it cannot be reached by following a
+ * link, and nothing that merely draws a page can set it off.
+ *
+ * A source that could not be read comes back as an answer rather than as a failure,
+ * because it is one: the documents are a separate checkout and a shelf outlives one.
+ * The sentence travels from the server, which is where the runner's copy of it lives
+ * too, so both say the same thing about the same failure (LAW-010).
+ */
+export async function readSourceAgain(id: string): Promise<SourceWasRead> {
+  const response = await fetch(`/corpus/${encodeURIComponent(id)}/reads`, { method: 'POST' });
+  if (response.status === 404) throw new Error(whatIsNotHeld('corpus'));
+  if (!response.ok) throw new Error('The Studio could not reach the knowledge it holds.');
+
+  const answer = sourceWasReadSchema.safeParse(await response.json());
   if (!answer.success) throw new Error('The Studio was sent something it could not read.');
 
   return answer.data;

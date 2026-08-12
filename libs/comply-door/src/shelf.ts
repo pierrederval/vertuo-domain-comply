@@ -4,11 +4,15 @@ import { join } from 'node:path';
  * The three things a shelf holds, and where each of them sits.
  *
  * The knowledge as written down, the readings put on record, and the criteria each
- * of those readings was taken through. The last of the three is new: a Lens is
- * hand-authored and changes in place, so *which criteria were in force last
- * Tuesday* is unanswerable from the file itself, and a reading nobody can work out
- * again is a reading holding history that cannot be recomputed — which is what
- * LAW-011 refuses and what ADR-0016 closes.
+ * of those readings was taken through. The last of the three is answerable nowhere
+ * else: a Lens is hand-authored and changes in place, so *which criteria were in
+ * force last Tuesday* cannot be got from the file itself, and a reading nobody can
+ * work out again is a reading holding history that cannot be recomputed — which is
+ * what LAW-011 refuses and what ADR-0016 closes.
+ *
+ * Said once, here, because both the runner and the server write to and read from the
+ * same shelf. Two spellings of one layout is how a build comes to put a reading
+ * somewhere a person is never shown it.
  *
  * Not called `lenses`. The DDD Corpus's shelf **is** the directory called `lenses`,
  * so that name would put held criteria at `lenses/lenses/` — a path somebody would

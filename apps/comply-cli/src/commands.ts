@@ -1,11 +1,14 @@
-import { buildCorpus } from '@vertuo/comply-core';
-import { extractSeed, interpret } from '@vertuo/comply-ingestion';
-import { holdLens, loadLens } from '@vertuo/comply-lens';
-import { lastRecordedReading, recordReading } from '@vertuo/comply-readiness';
-import { holdSeed, readSeed, seedDigest, whatWasRead, type Seed } from '@vertuo/comply-seed';
+import {
+  readKnowledgeHeldAt,
+  readTheSourceAgain,
+  type KnowledgeWasRead,
+  type Shelf,
+} from '@vertuo/comply-door';
+import { extractSeed } from '@vertuo/comply-ingestion';
+import { loadLens } from '@vertuo/comply-lens';
+import { holdSeed, whatWasRead } from '@vertuo/comply-seed';
 import { prune, type WhatAPruneCost } from './prune.js';
-import { readCorpus } from './reading.js';
-import type { Shelf } from './shelf.js';
+import { sayWhereItStands } from './reading.js';
 
 /**
  * Writes down what a business already has, and says nothing about it.
@@ -45,36 +48,19 @@ export async function reportCommand(
   seedPath: string | undefined,
 ): Promise<string> {
   const lens = await loadLens(lensPath);
-
-  let seed: Seed;
-  if (seedPath === undefined) {
-    const held = await holdSeed(shelf.seeds, await extractSeed(lens));
-    seed = await readSeed(held.path);
-  } else {
-    seed = await readSeed(seedPath);
-  }
-
-  const { facts, findings } = interpret(seed, lens);
-
   const takenAt = new Date().toISOString();
-  const previous = await lastRecordedReading(shelf.readings, lens.id);
-  const reading = readCorpus(
-    buildCorpus(facts),
-    lens,
-    findings,
-    { takenAt, seedDigest: seedDigest(seed), previous },
-    whatWasRead(seed),
-  );
 
-  await holdLens(shelf.criteria, lens);
-  const kept = await recordReading(shelf.readings, reading.asRecorded);
+  const read: KnowledgeWasRead =
+    seedPath === undefined
+      ? await readTheSourceAgain(shelf, lens, takenAt)
+      : await readKnowledgeHeldAt(shelf, lens, takenAt, seedPath);
 
   return [
-    reading.text,
+    sayWhereItStands(read.reading, whatWasRead(read.knowledge), lens.adapter.root),
     '',
-    kept.alreadyRecorded
-      ? `Neither the knowledge nor the criteria have changed since the last reading on record, so nothing was written down. That reading is still the one this is compared against: ${kept.path}`
-      : `On record, so a later reading has this to be compared against: ${kept.path}`,
+    read.alreadyOnRecord
+      ? `Neither the knowledge nor the criteria have changed since this reading was put on record, so nothing was written down: ${read.onRecordAt}`
+      : `On record, so a later reading has this to be compared against: ${read.onRecordAt}`,
   ].join('\n');
 }
 

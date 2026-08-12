@@ -26,7 +26,11 @@ The five most likely to be broken by accident:
 2. **One Door** (LAW-002). Never write to the Corpus outside the Door. The Door has exactly two
    operations: proposing a Change Request, and loading a Seed. Migrations and quick fixes are neither
    — express them as one of the two or not at all. A Seed load records one Genesis entry, never one
-   event per Fact (ADR-0012).
+   event per Fact (ADR-0012). The second operation is `readTheSourceAgain` in `libs/comply-door`, and
+   it is the only thing in the product that writes: the runner calls it, so does the action on Corpus
+   detail, and a second copy of that five-step sequence is how the two come to disagree about which
+   reading is true (ADR-0034). `loadCorpus` in `comply-ingestion` is the shortcut that keeps the Seed in
+   memory; every caller it has is a test, and it must stay that way.
 3. **Append-only** (LAW-003). No `UPDATE`, no `DELETE` against Fact versions. Corrections append.
 4. **Business language at the surface** (LAW-010). Never let *commit*, *branch*, *schema*, *parse*,
    *index*, *repository*, *migration*, or *null* reach a business-facing label, error, or empty state.
@@ -63,9 +67,11 @@ Three rules that are easy to break:
   grant, and a trigger backs it up. Do not attempt to work around this; it is LAW-003 made
   structural.
 - **Never assert about a class name.** Interface tests use `data-*` handles — `data-figure`,
-  `data-cell`, `data-movement`, `data-conspicuous` — because several of them are laws made testable,
-  and a guard tied to styling is deleted by whoever next changes the styling. `data-figure` appearing
-  exactly twice is LAW-006: two readings, never a third fused one.
+  `data-cell`, `data-movement`, `data-conspicuous`, `data-read-again` — because several of them are laws
+  made testable, and a guard tied to styling is deleted by whoever next changes the styling. `data-figure`
+  appearing exactly twice is LAW-006: two readings, never a third fused one. Do not reach for the word
+  `disabled` either: a vendored `Button` names it twice to say what it *looks* like when refused, so a test
+  looking for the word passes on a button that is merely styled for it.
 
 The interface's components are vendored into `apps/comply-studio/src/components/ui` and are ours to
 maintain (ADR-0018). Both vocabulary guards scan them like any other source, so LAW-004 and LAW-010
@@ -76,6 +82,13 @@ figure with its denominator removed, which is LAW-006. A badge may carry a state
 No percentage, no rate, no grade, no score. `—` means *no baseline* and never becomes `0%`.
 
 One library per bounded context, so the domain model's boundaries are enforced by the package graph.
+`libs/comply-door` is the exception and earns it: it is not a context but the one place the shelf is
+written, and it exists because both the runner and the server need that sequence — a write path living
+inside the library named for reading is a thing the next person will not look for (ADR-0034). It also owns
+`Shelf` and `shelfAt`, so where the knowledge, the readings and the criteria sit is said once.
+
+Also add a new package to `CORE_ROOTS` in `libs/comply-guards/test/core-vocabulary.test.ts`. That list is
+hand-maintained, unlike the surface guard's, which discovers every package from the workspace.
 
 ## Commands
 
@@ -90,7 +103,7 @@ Run all of these from the repository root.
 | `pnpm comply prune <lens.json> [keep]` | Drop what can be worked out again, and say what that cost |
 | `pnpm shelf:fixtures` | Put both fixture Corpus on the development shelf |
 | `pnpm dev` | Both processes below at once; one Ctrl-C stops both |
-| `pnpm api` | Serve that shelf, read-only, on port 4301 |
+| `pnpm api` | Serve that shelf on port 4301 — every route a GET but the one that reads a source again |
 | `pnpm studio` | The Studio, on port 4302, answering from the API |
 | `pnpm shelf:domain` | Write down what is at source in `vertuo-domain`, onto the `lenses` shelf |
 | `pnpm dev:domain` | The same two processes, serving that shelf instead of the fixtures |
@@ -193,8 +206,18 @@ through. It is `.comply` unless `COMPLY_SHELF` says otherwise; the scripts above
 `libs/comply-fixtures/corpus` so the interface runs against both fixture Corpus in development, which is
 where shape-leakage shows up (ADR-0001).
 
-Four things about recorded readings are worth knowing before touching them (ADR-0016, ADR-0032, ADR-0033):
+Five things about recorded readings are worth knowing before touching them (ADR-0016, ADR-0032, ADR-0033,
+ADR-0034):
 
+- **A reading is never compared against itself, and getting that wrong is invisible.** One goes on record the
+  moment either input changes, so the most recent one on any shelf is a reading of exactly the knowledge in
+  hand — and handed back as a baseline it reports *held steady* for every Module of every Corpus, forever.
+  That was the product's actual state until ADR-0034: 33 of 33 Modules across three shelves said the figure
+  had held, and not one of them had been compared with anything. Ask `earlierReading` and never
+  `readingsOnRecord(...).at(-1)`; `lastRecordedReading` is deleted because its name reads as the obvious
+  choice and its whole use was the defect. Both digests have to match for a reading to be the one in hand —
+  skipping every reading of this *knowledge* would reach past criteria that moved over untouched documents,
+  which is the one thing worth saying that morning.
 - **A reading is free; recording one is not automatic.** `report` puts a reading on record only where the
   Seed digest or the Lens digest differs from the last one — so running it four times in a morning leaves
   one baseline and not four. `recordReading` is the only way in, deliberately: `writeSnapshot` is gone,
@@ -211,8 +234,8 @@ Four things about recorded readings are worth knowing before touching them (ADR-
   LAW-006 by another route.
 - **A reading holds the figures and not the cells, so anything finer is worked out again.** Which Facet
   crossed the approved rung and which Finding started being found come from reading the cited Seed back and
-  applying the Lens to it a second time — one extra application per request, about 25ms on the DDD Corpus
-  against 30ms for the whole reading. Do not grow `RecordedReading` to hold cells to avoid that: it is a
+  applying the Lens to it a second time — one extra application per request, about 25ms on the DDD Corpus's
+  153 documents against 30ms for the whole reading. Do not grow `RecordedReading` to hold cells to avoid that: it is a
   cache nothing can invalidate, and the next change to how a Facet's state is decided would report as a
   Corpus's knowledge moving. There is no `readHeldLens` and none is needed — a comparison is only stated
   where the two Lens digests agree, which is exactly the case where the criteria in hand say what the
@@ -237,6 +260,6 @@ it are worth knowing before changing it:
 - **Nothing in CI touches a shelf or the sibling checkout.** The suite builds the fixtures it needs, and a
   test that required `vertuo-domain-fr` would fail there first.
 
-The surface guard now says what its verdict is about on every run — 93 files in 13 places, each place with
+The surface guard now says what its verdict is about on every run — 97 files in 14 places, each place with
 its own figure, because a package whose source moves out from under the guard keeps its `src` directory and
 simply falls to none (LAW-006).

@@ -7,8 +7,9 @@ import { buildCorpus } from '@vertuo/comply-core';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { extractSeed, interpret, loadCorpus } from '@vertuo/comply-ingestion';
 import { loadLens } from '@vertuo/comply-lens';
+import { composeReading } from '@vertuo/comply-reading';
 import { holdSeed, readSeed, whatWasRead } from '@vertuo/comply-seed';
-import { readCorpus } from '../src/reading.js';
+import { sayWhereItStands } from '../src/reading.js';
 
 /**
  * Fixed, and with nothing to be compared against, so the trend column reads the
@@ -97,7 +98,8 @@ describe.each([
     const lens = await loadLens(fixturePath(lensFile));
     const { corpus, findings, read } = await loadCorpus(lens);
 
-    const { text } = readCorpus(corpus, lens, findings, AS_READ, read);
+    const reading = composeReading(corpus, lens, findings, AS_READ);
+    const text = sayWhereItStands(reading, read, lens.adapter.root);
 
     expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
   });
@@ -114,9 +116,8 @@ describe.each([
     const shelved = await readSeed(held.path);
     const { facts, findings } = interpret(shelved, lens);
 
-    const { text } = readCorpus(
-      buildCorpus(facts), lens, findings, AS_READ, whatWasRead(shelved),
-    );
+    const reading = composeReading(buildCorpus(facts), lens, findings, AS_READ);
+    const text = sayWhereItStands(reading, whatWasRead(shelved), lens.adapter.root);
 
     expect(text).toBe(await readFile(baselinePath(baselineFile), 'utf8'));
   });

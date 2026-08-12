@@ -6,6 +6,7 @@ import { checkCoreVocabulary, REPO_ROOT } from '../src/index.js';
 
 const CORE_ROOTS = [
   'libs/comply-core/src',
+  'libs/comply-door/src',
   'libs/comply-readiness/src',
   'libs/comply-integrity/src',
   'libs/comply-ingestion/src',

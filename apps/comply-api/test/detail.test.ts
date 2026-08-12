@@ -49,16 +49,30 @@ async function writeDownKnowledge(file: string): Promise<void> {
   await utimes(held.path, WRITTEN_DOWN_AT, WRITTEN_DOWN_AT);
 }
 
+/** A writing-down of this source that came before the one in hand. */
+const EARLIER_KNOWLEDGE = 'e'.repeat(64);
+
 /**
- * Puts a reading on record, as the runner would, so a later one has something to be
- * compared against. Nothing on the server does this: a reading is recorded where a
- * Seed is loaded, and every route is a GET (ADR-0016).
+ * Puts a reading on record from an earlier writing-down of this source, so a fresh
+ * reading has something that is not itself to be compared against.
+ *
+ * The figures are this Corpus's own, read through these criteria; what is named as
+ * their knowledge is a writing-down that has since been superseded — which is what a
+ * comment changed at source leaves behind, a new digest and not one figure moved.
+ *
+ * A reading of the knowledge in hand would be no baseline at all, because it is the
+ * reading in hand: handed that, every Module reports *held steady* on a Corpus nobody
+ * has measured twice (ADR-0034).
  */
-async function putAReadingOnRecord(file: string, takenAt: string): Promise<void> {
+async function putAnEarlierReadingOnRecord(file: string, takenAt: string): Promise<void> {
   const lens = await loadLens(join(shelf, file));
   const seed = await readSeed((await holdSeed(join(shelf, 'seeds'), await extractSeed(lens))).path);
   const reading = readSeededCorpus(seed, lens, takenAt, null);
-  await recordReading(join(shelf, 'runs'), reading.asRecorded);
+
+  await recordReading(join(shelf, 'runs'), {
+    ...reading.asRecorded,
+    seedDigest: EARLIER_KNOWLEDGE,
+  });
 }
 
 async function readCorpus(id: string) {
@@ -180,14 +194,15 @@ describe('the whole reading of one Corpus', () => {
     for (const file of ['lens-a.json', 'lens-b.json']) {
       await shelveLens(file);
       await writeDownKnowledge(file);
-      await putAReadingOnRecord(file, '2026-01-02T00:00:00.000Z');
+      await putAnEarlierReadingOnRecord(file, '2026-01-02T00:00:00.000Z');
     }
 
     for (const id of ['corpus-a', 'corpus-b']) {
       const reading = await readGrid(id);
       expect(reading.modules.length).toBeGreaterThan(0);
-      // Same knowledge, same criteria, so every Module held steady — which is a
-      // different statement from the one above and is now reachable from a shelf.
+      // The same figures as the earlier reading, read the same way, so every Module
+      // held steady — a different statement from the one above, and one that needs a
+      // baseline that is not this reading to be reachable at all.
       for (const module of reading.modules) {
         expect(module.movement).toEqual({ comparedWith: 'the-last-reading', approvedDelta: 0 });
       }
@@ -197,7 +212,7 @@ describe('the whole reading of one Corpus', () => {
   it('says the criteria moved rather than reporting a loss, when a Facet is tightened', async () => {
     await shelveLens('lens-a.json');
     await writeDownKnowledge('lens-a.json');
-    await putAReadingOnRecord('lens-a.json', '2026-01-02T00:00:00.000Z');
+    await putAnEarlierReadingOnRecord('lens-a.json', '2026-01-02T00:00:00.000Z');
 
     const before = await readGrid('corpus-a');
     const approved = before.modules.reduce((sum, module) => sum + module.approved, 0);
@@ -224,7 +239,7 @@ describe('the whole reading of one Corpus', () => {
   it('is not thrown off by the criteria file moving, because a digest is over what a Lens says', async () => {
     await shelveLens('lens-a.json');
     await writeDownKnowledge('lens-a.json');
-    await putAReadingOnRecord('lens-a.json', '2026-01-02T00:00:00.000Z');
+    await putAnEarlierReadingOnRecord('lens-a.json', '2026-01-02T00:00:00.000Z');
 
     // The one thing a Lens declares that is a place on this machine, written
     // differently and pointing at the same source. A digest over the Lens as loaded

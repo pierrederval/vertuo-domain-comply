@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  lastRecordedReading,
+  earlierReading,
   readingsNamingNoInputs,
   readingsOnRecord,
   recordReading,
@@ -54,7 +54,9 @@ describe('a reading is recorded only when one of its inputs changes', () => {
     const again = await recordReading(dir, reading('2026-01-01T00:00:10.000Z', 3));
 
     expect(again.alreadyRecorded).toBe(true);
-    expect((await lastRecordedReading(dir, 'p'))?.scores[0]!.approved).toBe(1);
+    const onRecord = await readingsOnRecord(dir, 'p');
+    expect(onRecord).toHaveLength(1);
+    expect(onRecord[0]!.reading.scores[0]!.approved).toBe(1);
   });
 
   it('records again once the knowledge changes', async () => {
@@ -102,25 +104,33 @@ describe('a reading is recorded only when one of its inputs changes', () => {
   });
 });
 
+/** Knowledge and criteria that nothing on a shelf was ever read from. */
+const NEITHER_HELD = { seedDigest: 'f'.repeat(64), lensDigest: 'e'.repeat(64) };
+
+/** The two inputs a reading was made of, in the shape the store is asked with. */
+function inputsOf(held: RecordedReading): { seedDigest: string; lensDigest: string } {
+  return { seedDigest: held.seedDigest, lensDigest: held.lensDigest };
+}
+
 describe('the reading a trend is stated against', () => {
   it('reads back the most recent one on record', async () => {
     const dir = await shelf();
     await recordReading(dir, reading('2026-01-01T00:00:00.000Z', 1));
     await recordReading(dir, reading('2026-01-02T00:00:00.000Z', 2, { seedDigest: 'c'.repeat(64) }));
 
-    expect((await lastRecordedReading(dir, 'p'))?.takenAt).toBe('2026-01-02T00:00:00.000Z');
+    expect((await earlierReading(dir, 'p', NEITHER_HELD))?.takenAt).toBe('2026-01-02T00:00:00.000Z');
   });
 
   it('is nothing where none has been recorded, and where the place holds none at all', async () => {
     const dir = await shelf();
-    expect(await lastRecordedReading(dir, 'p')).toBeNull();
-    expect(await lastRecordedReading(join(dir, 'elsewhere'), 'p')).toBeNull();
+    expect(await earlierReading(dir, 'p', NEITHER_HELD)).toBeNull();
+    expect(await earlierReading(join(dir, 'elsewhere'), 'p', NEITHER_HELD)).toBeNull();
   });
 
   it('is never another Lens’s', async () => {
     const dir = await shelf();
     await recordReading(dir, { ...reading('2026-01-01T00:00:00.000Z', 1), lensId: 'other' });
-    expect(await lastRecordedReading(dir, 'p')).toBeNull();
+    expect(await earlierReading(dir, 'p', NEITHER_HELD)).toBeNull();
   });
 
   it('survives one unreadable file, which costs one comparison and not the history', async () => {
@@ -128,7 +138,9 @@ describe('the reading a trend is stated against', () => {
     await recordReading(dir, reading('2026-01-01T00:00:00.000Z', 1));
     await writeFile(join(dir, 'p-half-written.json'), '{ not readable', 'utf8');
 
-    expect((await lastRecordedReading(dir, 'p'))?.takenAt).toBe('2026-01-01T00:00:00.000Z');
+    expect((await earlierReading(dir, 'p', NEITHER_HELD))?.takenAt).toBe(
+      '2026-01-01T00:00:00.000Z',
+    );
   });
 
   it('reads one recorded before the Lens was renamed, so a baseline survives the rename', async () => {
@@ -148,7 +160,7 @@ describe('the reading a trend is stated against', () => {
       'utf8',
     );
 
-    const previous = await lastRecordedReading(dir, 'p');
+    const previous = await earlierReading(dir, 'p', NEITHER_HELD);
     expect(previous?.takenAt).toBe('2026-01-01T00:00:00.000Z');
     // Callers never meet the old key: what comes back names the Lens, whatever was written.
     expect(previous?.lensId).toBe('p');
@@ -174,7 +186,7 @@ describe('the reading a trend is stated against', () => {
       'utf8',
     );
 
-    expect(await lastRecordedReading(dir, 'p')).toBeNull();
+    expect(await earlierReading(dir, 'p', NEITHER_HELD)).toBeNull();
     // And it does not stop the next reading being recorded.
     expect((await recordReading(dir, reading('2026-01-02T00:00:00.000Z', 1))).alreadyRecorded).toBe(
       false,
@@ -186,6 +198,76 @@ describe('the reading a trend is stated against', () => {
       join(dir, 'p-2026-01-01T00-00-00-000Z.json'),
     ]);
     expect(await readingsNamingNoInputs(dir, 'other')).toEqual([]);
+  });
+
+  it('is nothing where the only reading on record is the reading in hand', async () => {
+    // The defect this closes, and it was the whole product's normal state. A reading
+    // goes on record the moment either input changes, so the most recent one on any
+    // shelf is a reading of the knowledge in hand — and handed back as a baseline it
+    // makes every figure report *held steady* on a Corpus nobody has ever measured
+    // twice. *No baseline* and *no change* are different facts (LAW-006), and that is
+    // the one place they were fused.
+    const dir = await shelf();
+    const inHand = reading('2026-01-01T00:00:00.000Z', 1);
+    await recordReading(dir, inHand);
+
+    expect(await earlierReading(dir, 'p', inputsOf(inHand))).toBeNull();
+  });
+
+  it('is the one before it, where the reading in hand is itself on record', async () => {
+    // Reading the source again writes the knowledge down and records a reading of
+    // it, so what a person meets afterwards is this: the reading they just caused,
+    // on record. What moved is stated against the reading before it, which is what
+    // §6 means by *since the last time either input changed* — and it goes on saying
+    // so however many times the page is asked again.
+    const dir = await shelf();
+    const before = reading('2026-01-01T00:00:00.000Z', 1);
+    const inHand = reading('2026-01-02T00:00:00.000Z', 3, { seedDigest: 'c'.repeat(64) });
+    await recordReading(dir, before);
+    await recordReading(dir, inHand);
+
+    const previous = await earlierReading(dir, 'p', inputsOf(inHand));
+    expect(previous?.takenAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(trend(inHand, previous)).toEqual([
+      { moduleId: 'alpha', comparedWith: 'the-last-reading', approvedDelta: 2 },
+    ]);
+  });
+
+  it('reaches past the reading in hand to one taken under other criteria', async () => {
+    // Criteria tightened over unchanged knowledge. Skipping every reading of this
+    // knowledge would reach past the one thing worth saying, so what is passed over
+    // is the reading in hand and not the knowledge it was made of: both inputs have
+    // to match for a reading to be this one.
+    const dir = await shelf();
+    await recordReading(dir, reading('2026-01-01T00:00:00.000Z', 3));
+    const stricter = reading('2026-01-02T00:00:00.000Z', 1, { lensDigest: 'd'.repeat(64) });
+    await recordReading(dir, stricter);
+
+    const previous = await earlierReading(dir, 'p', inputsOf(stricter));
+    expect(previous?.takenAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(trend(stricter, previous)).toEqual([
+      { moduleId: 'alpha', comparedWith: 'a-reading-under-other-criteria' },
+    ]);
+  });
+
+  it('passes over every reading of the inputs in hand, not only the most recent', async () => {
+    // One shelf can hold two readings of one pair: a prune that kept both, or a
+    // reading written where the store's deduplication could not see it. Either is
+    // the reading in hand twice over, and comparing against the second copy is the
+    // first defect with an extra step.
+    const dir = await shelf();
+    const inHand = reading('2026-01-02T00:00:00.000Z', 1);
+    await recordReading(dir, reading('2026-01-01T00:00:00.000Z', 1, { seedDigest: 'c'.repeat(64) }));
+    await recordReading(dir, inHand);
+    await writeFile(
+      join(dir, 'p-2026-01-03T00-00-00-000Z.json'),
+      JSON.stringify({ ...inHand, takenAt: '2026-01-03T00:00:00.000Z' }),
+      'utf8',
+    );
+
+    expect((await earlierReading(dir, 'p', inputsOf(inHand)))?.takenAt).toBe(
+      '2026-01-01T00:00:00.000Z',
+    );
   });
 
   it('lists every reading on record for one Lens, oldest first', async () => {

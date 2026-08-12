@@ -1,5 +1,5 @@
 import { extractCommand, pruneCommand, reportCommand } from './commands.js';
-import { shelfAt } from './shelf.js';
+import { shelfAt } from '@vertuo/comply-door';
 
 /**
  * The shelf this runner writes to, which is the one the server reads. Both take

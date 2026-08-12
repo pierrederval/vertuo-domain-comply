@@ -183,6 +183,13 @@ business surface (LAW-010).
 The single write interface through which every Change Request is committed. There is no second path
 (LAW-002).
 
+It accepts two operations, and the second of them — loading a Seed — is one function that every
+trigger calls: the runner, the action on Corpus detail, and a build. It writes down what is at source,
+reads that back, and reads a Corpus from it; there is no shorter route that keeps the knowledge in
+memory, because a second route from a source to a Corpus is how two answers to one question appear
+(ADR-0012, ADR-0034). Reading unchanged source finds what is already written down and writes nothing,
+so it may be asked for four times in a morning and leave what one asking left.
+
 ### Check
 
 An automated test run against a Change Request or the whole Corpus. A Check that fails produces
@@ -240,10 +247,18 @@ lets LAW-011 apply to it: it is a cache, and deleting every one of them loses no
 prunable — pruning costs the ability to work out where a Corpus stood before the oldest one kept, and can
 never cost a Fact.
 
-A trend is stated against the last Recorded Reading, and it can say three things and not two: there is
-none to compare with, the figure moved by so much, or **the last one was taken against other criteria**.
-The third exists because a Facet asking for more than it did drops a figure with nothing written down: a
-stricter Lens is not a regression in the Corpus, and no shape can carry that fall as a loss (ADR-0032).
+A trend is stated against **the last Recorded Reading that is not the reading in hand**, and it can say
+three things and not two: there is none to compare with, the figure moved by so much, or **the last one
+was taken against other criteria**. The third exists because a Facet asking for more than it did drops a
+figure with nothing written down: a stricter Lens is not a regression in the Corpus, and no shape can carry
+that fall as a loss (ADR-0032).
+
+*Not the reading in hand* is load-bearing and was learned the hard way. One is recorded the moment either
+input changes, so the most recent one on any shelf is a reading of exactly the knowledge in hand: taken as
+a baseline it reports every figure as having held steady, on a Corpus nobody has ever measured twice. That
+is *no change* standing in for *no baseline*, which LAW-006 exists to keep apart, and it was true of every
+Corpus in the product until ADR-0034. A reading is compared against the state before the last time an input
+changed, which is what *since the last time either the knowledge or the criteria changed* means.
 
 Because it holds the figures and not the Facets they were counted from, **anything finer than a figure is
 worked out again** from the Seed it cites, by applying the Lens to that knowledge a second time — which is

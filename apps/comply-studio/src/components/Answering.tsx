@@ -13,11 +13,22 @@ import { NothingToShow } from './layout.js';
 export function Answering<T>({
   ask,
   about,
+  since,
   children,
 }: {
   ask: () => Promise<T>;
   /** What is being asked about. Asking again when it changes is the point. */
   about: string;
+  /**
+   * How many times this Corpus's source has been read again, so an answer that is
+   * about older knowledge is asked for afresh.
+   *
+   * Every surface here is derived from the knowledge on the shelf, so every one of
+   * them is stale the moment a read brings new knowledge in. Left out, a page would go
+   * on drawing yesterday's figures beside a shell reporting the new age — two answers
+   * about one Corpus, and no way for a reader to tell which of them to act on.
+   */
+  since?: number;
   children: (answer: T) => ReactNode;
 }) {
   const [answer, setAnswer] = useState<T | null>(null);
@@ -39,8 +50,9 @@ export function Answering<T>({
     };
     // Asked again when the subject changes, not when the asking is redefined:
     // the caller builds a new function every render, and depending on that would
-    // ask forever.
-  }, [about]);
+    // ask forever. Knowledge arriving changes the subject as surely as a new address
+    // does — it is a different Corpus in every respect but its name.
+  }, [about, since]);
 
   if (trouble !== null) return <NothingToShow>{trouble}</NothingToShow>;
   if (answer === null) return <NothingToShow>Reading the shelf.</NothingToShow>;

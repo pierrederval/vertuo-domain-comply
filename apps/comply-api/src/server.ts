@@ -14,6 +14,7 @@ import {
   corpusListSchema,
   corpusModuleSchema,
   notHeldSchema,
+  sourceWasReadSchema,
   type CitedPlace,
   type CorpusDetail,
   type CorpusFact,
@@ -33,14 +34,17 @@ import {
   type ReadinessFigure,
   type RoutedFindings,
   type SourceText,
+  type SourceWasRead,
   type WrittenPart,
 } from '@vertuo/comply-contract';
 import type { AttributeValue, Finding, SourceLocation } from '@vertuo/comply-core';
+import type { Lens } from '@vertuo/comply-lens';
+import { readTheSourceAgain, shelfAt } from '@vertuo/comply-door';
 import { factsUnder, type TrendRow } from '@vertuo/comply-readiness';
 import { readSeededCorpus, type Reading } from '@vertuo/comply-reading';
 import type { Seed } from '@vertuo/comply-seed';
 import { whatMoved, whenReadFromSource } from './home.js';
-import { readShelf, type ShelvedCorpus } from './shelf.js';
+import { everyLensOn, readShelf, type ShelvedCorpus } from './shelf.js';
 
 /**
  * The two readings of one Corpus, each carrying what it is counted against.
@@ -65,11 +69,12 @@ function figures(reading: Reading): { readiness: ReadinessFigure; integrity: Int
  * What the product can say about one Corpus right now.
  *
  * The reading is computed on request and is never written down here: a reading is
- * free, and one goes on record only when the knowledge or the criteria change,
- * which happens where a Seed is loaded (ADR-0016). Every route below is a GET and
- * this is why it can stay that way.
+ * free, and one goes on record only where a Seed is loaded, which is the one route
+ * below that writes (ADR-0016). This is why answering about a Corpus is a GET however
+ * often it is asked.
  *
- * What it is compared against is the last reading on record, read off the shelf.
+ * What it is compared against is the reading on record that is not this one, read off
+ * the shelf.
  * The age reported is the age of the knowledge the reading was made from — never
  * the moment the figures happened to be computed, which would claim the source had
  * just been looked at.
@@ -612,16 +617,83 @@ function inboxOf(shelved: ShelvedCorpus, takenAt: string): CorpusInbox {
 }
 
 /**
- * The read-only surface over a shelf.
+ * Reads one Corpus's source again, and says what that did to the knowledge.
  *
- * Every route is a GET. Nothing here writes: re-reading the source is the one
- * write this design has, and it is #26. Until then a request cannot change what
- * the product holds, whatever it asks for.
+ * The whole operation is `@vertuo/comply-door`'s and is not written twice: the runner
+ * reads the source through the same function, so what a build says about a Corpus and
+ * what a person is shown are readings of the same knowledge, arrived at the same way
+ * (LAW-002, spec §5.5).
+ *
+ * A failure is an answer and not a fault. The documents are a separate checkout and a
+ * shelf outlives one, so a reader meets this — with the previous reading untouched
+ * beside it, because nothing is written until the source has been read.
+ */
+async function readSourceOf(shelf: string, lens: Lens): Promise<SourceWasRead> {
+  try {
+    const read = await readTheSourceAgain(shelfAt(shelf), lens, new Date().toISOString());
+    return { outcome: 'read', unchangedAtSource: read.unchangedAtSource };
+  } catch (cause) {
+    // The sentence is the Door's, so the runner and this say the same thing about the
+    // same failure — and every way out of that operation carries one, which is why this
+    // passes the words through rather than choosing its own (LAW-010).
+    return {
+      outcome: 'could-not-read',
+      because:
+        cause instanceof Error
+          ? cause.message
+          : 'This Corpus could not be read from its source. Nothing that was already read has changed.',
+    };
+  }
+}
+
+/**
+ * One read of one Corpus at a time, in this process.
+ *
+ * Extraction takes milliseconds on a fixture Corpus and up to a quarter of a second
+ * on the real one, so a second press landing inside the first is something that
+ * happens rather than something to imagine. Left to overlap, both find nothing on
+ * record and both write — the duplicated reading ADR-0016 exists to prevent, arriving
+ * by a route its deduplication cannot see — and both then tell a reader that something
+ * came in, when the source changed once.
+ *
+ * Waiting is per Corpus. One shelf holds twenty, and a queue across all of them would
+ * make the twentieth person wait out the nineteen ahead of them for a read of a source
+ * nobody else was touching.
+ *
+ * This is one process's promise and not the shelf's. The runner writes to the same
+ * shelf and knows nothing of this, which is safe for the reason a Seed is safe — every
+ * write here is digest-named, written aside and moved into place, so the worst two
+ * writers can do is one extra reading on record, which a prune drops and no comparison
+ * is stated against (see `earlierReading`).
+ */
+function oneAtATime(): (id: string, read: () => Promise<SourceWasRead>) => Promise<SourceWasRead> {
+  const after = new Map<string, Promise<unknown>>();
+
+  return (id, read) => {
+    const reading = (after.get(id) ?? Promise.resolve()).then(read, read);
+    // Settled either way, so a read that failed does not hold up the one behind it —
+    // and the one behind it is often somebody putting right what made it fail.
+    after.set(
+      id,
+      reading.catch(() => undefined),
+    );
+    return reading;
+  };
+}
+
+/**
+ * The surface over a shelf.
+ *
+ * Every route that answers about a Corpus is a GET, and exactly one writes: reading
+ * the source again, which is the Door's second operation and the only way knowledge
+ * arrives (LAW-002). It is asked for as what it is, so a read cannot be reached by
+ * following a link — and a reading, which is free, is never mistaken for one.
  */
 export function buildServer(shelf: string): FastifyInstance {
   const server = Fastify().withTypeProvider<ZodTypeProvider>();
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
+  const queued = oneAtATime();
 
   server.get('/corpus', { schema: { response: { 200: corpusListSchema } } }, async () => {
     const { corpus, passedOver } = await readShelf(shelf);
@@ -689,6 +761,36 @@ export function buildServer(shelf: string): FastifyInstance {
           'the knowledge the last reading on record was made of could not be read back',
         ),
       );
+    },
+  );
+
+  server.post(
+    '/corpus/:id/reads',
+    {
+      schema: {
+        params: z.object({ id: z.string().min(1) }),
+        /**
+         * A failure comes back as an answer with a 200, as *nothing written down yet*
+         * does. Both are facts about a Corpus rather than a request that went wrong,
+         * and both are things a reader is owed a sentence about — inventing a second
+         * language of status codes to carry one of them would leave the sentence
+         * somewhere the surface has to guess at it.
+         */
+        response: { 200: sourceWasReadSchema, 404: z.object({ id: z.string().min(1) }) },
+      },
+    },
+    async (request, reply) => {
+      // The criteria, and not a reading of the knowledge. A Corpus whose knowledge is
+      // written down in a form this can no longer read is passed over by every reading
+      // there is, and reading its source again is precisely the one thing to do about
+      // it — so the action has to be reachable on exactly the Corpus that cannot be
+      // reported on.
+      const { lenses } = await everyLensOn(shelf);
+      const lens = lenses.find((held) => held.id === request.params.id);
+
+      if (lens === undefined) return reply.status(404).send({ id: request.params.id });
+
+      return queued(lens.id, () => readSourceOf(shelf, lens));
     },
   );
 
