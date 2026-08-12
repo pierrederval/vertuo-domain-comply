@@ -426,6 +426,8 @@ because no such figure exists.
 1. Does the grid hold up against a real Corpus with more than forty Modules?
 2. What retention do Seeds and Lens versions get before pruning, given that pruning costs recomputable
    history and can never cost a Fact?
-3. Is `excerpt` a fixed number of lines, the extracted span, or the whole containing block?
+3. ~~Is `excerpt` a fixed number of lines, the extracted span, or the whole containing block?~~
+   Answered by ADR-0017 and settled by ADR-0036: the extracted span, up to 4,000 characters, cut where
+   the source last breaks between words and saying that it was cut.
 4. When the shared design system becomes reachable, is the thin component layer swapped wholesale or
    left in place behind it?

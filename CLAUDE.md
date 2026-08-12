@@ -260,6 +260,29 @@ ADR-0034):
   where the two Lens digests agree, which is exactly the case where the criteria in hand say what the
   retained ones say.
 
+**A quotation carries 4,000 characters and cuts where the source last breaks between words** (ADR-0036).
+It was 600 cut to whole source lines, which left 183 of the DDD Corpus's 183 Business Rules short and gave
+one Overview four headings and no knowledge — a whole-line cut keeps only as much as the longest line the
+source happens to write, and nothing bounds that. Four things about it:
+
+- **Changing it writes down a new Seed over documents nobody touched**, because a Seed's digest is over its
+  content and its content is its quotations. On the DDD shelf that was two writings-down twelve seconds
+  apart with zero changes between them. The change feed used to call each one *the source said something
+  new*; it now says the source was read and something was written down, and the comparison beside it is
+  what says whether anything moved. Any future change to extraction does the same thing, and ADR-0023 and
+  ADR-0025 both did it silently.
+- **Only the DDD shelf needs writing down again** — `pnpm shelf:domain`. No quotation in either fixture was
+  ever cut, so both Seed digests are byte-identical and `pnpm shelf:fixtures` adds nothing. Nothing in the
+  repository holds a shelf, so "every shelf written down again" is two commands on a laptop and never a
+  migration.
+- **`EXCERPT_LIMIT` is exported so a test can build a span longer than it.** Two tests had a length written
+  into them and would have gone on passing over a span the new budget no longer cuts. A test that has
+  quietly stopped testing is the failure mode here, not a wrong assertion.
+- **A quotation reaches two surfaces and nothing else** — Fact detail and the Inbox, both behind `data-cut`.
+  It is in no Check and no criterion, which is why the size could be chosen on what a reader needs rather
+  than on what a figure would do. It also means no fixture needs to be lengthened to exercise a cut: length
+  is a size and not a shape, and ADR-0001 asks for shapes.
+
 There is no lint step. Every pull request runs the whole suite under
 [`.github/workflows/build-gate.yml`](./.github/workflows/build-gate.yml), so LAW-004 and LAW-010 are
 enforced on a pull request and not only on the laptop of whoever remembered (ADR-0028). Four things about

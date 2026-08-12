@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixturePath } from '@vertuo/comply-fixtures';
-import { extractSeed } from '@vertuo/comply-ingestion';
+import { EXCERPT_LIMIT, extractSeed } from '@vertuo/comply-ingestion';
 import { loadLens, type Lens } from '@vertuo/comply-lens';
 import { seedDigest } from '@vertuo/comply-seed';
 
@@ -114,7 +114,11 @@ describe('the source text an excerpt carries', () => {
   });
 
   it('cuts a long span and says so, rather than shortening what the source says', async () => {
-    const long = Array.from({ length: 40 }, (_, i) => `Sentence number ${i} of a long passage.`).join('\n');
+    // Built from the budget rather than from a count of lines, so a change to how
+    // much a quotation carries cannot leave this passing over a span it no longer
+    // cuts — which is a test that has quietly stopped testing anything.
+    const sentence = (i: number) => `Sentence number ${i} of a long passage.`;
+    const long = Array.from({ length: Math.ceil(EXCERPT_LIMIT / sentence(0).length) + 10 }, (_, i) => sentence(i)).join('\n');
     const root = await corpusWith(`---\narea: m\nkind: notes\nstate: high\n---\n\n## A\n\n${long}\n`);
     const [document] = (await extractSeed(makeLens(root))).documents;
     const item = document?.items[0];
