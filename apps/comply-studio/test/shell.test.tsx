@@ -121,11 +121,28 @@ describe('the shell', () => {
     expect(draw({ corpus: { corpus: [], criteriaNotFollowed: [] }, trouble: null })).not.toMatch(/Alpha|corpus-a|corpus-b/);
   });
 
-  it('names the Corpus being read, and marks it on the shelf', () => {
+  it('names the Corpus being read, and marks it among the others', () => {
     const drawn = draw(READ, '/corpus/corpus-a/readiness');
 
     expect(drawn).toContain('Alpha');
-    expect(drawn).toContain('data-active="true"');
+    /*
+     * Read off the Corpus's own entry and not off `data-active`, which the rail also
+     * puts on the destination the reader stands at. Asserted loosely this passed on a
+     * frame that had stopped marking the Corpus at all and was only marking Readiness —
+     * a test that has quietly stopped testing, which is worse here than a wrong one.
+     */
+    expect(drawn).toMatch(/data-corpus="corpus-a"[^>]*data-here=""/);
+    expect(drawn).not.toMatch(/data-corpus="corpus-b"[^>]*data-here=""/);
+  });
+
+  it('says which Corpus a reader is in before saying where they can go in it', () => {
+    // The containment is the whole of the arrangement: every figure, queue and Finding
+    // in the product belongs to one Corpus. Drawn the other way round, the frame holds
+    // two lists of equal weight and neither says it is inside the other.
+    const drawn = draw(READ, '/corpus/corpus-a/readiness');
+
+    expect(drawn.indexOf('data-switcher')).toBeGreaterThan(-1);
+    expect(drawn.indexOf('data-switcher')).toBeLessThan(drawn.indexOf('data-destination'));
   });
 
   it('carries the Module inside the Corpus it belongs to', () => {

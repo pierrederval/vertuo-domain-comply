@@ -42,12 +42,28 @@ export function Moved({ movement }: { movement: Movement }) {
     );
   }
   if (movement.approvedDelta === 0) {
-    return <span data-movement="steady">held steady</span>;
+    // The quietest of the four, because it is the one that asks nothing of anybody.
+    // Drawn at the weight of a figure that moved, a column of *held steady* is what
+    // makes a list of movements read as a list of nothing.
+    return (
+      <span className="text-ink-faint" data-movement="steady">
+        held steady
+      </span>
+    );
   }
 
   const gained = movement.approvedDelta > 0;
   return (
-    <span className="font-semibold text-foreground" data-movement={gained ? 'gained' : 'lost'}>
+    // A figure that moved is the only thing in this column worth catching an eye, so it
+    // is the only one drawn to. Which way it went is said by the mark and by the word
+    // in the title, never by colour alone.
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+        gained ? 'bg-sunken text-foreground' : 'bg-mark-quiet text-mark'
+      }`}
+      data-movement={gained ? 'gained' : 'lost'}
+      title={gained ? 'gained since the last reading kept' : 'lost since the last reading kept'}
+    >
       {`${gained ? '▲' : '▼'} ${Math.abs(movement.approvedDelta)}`}
     </span>
   );

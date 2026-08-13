@@ -86,22 +86,34 @@ The interface's components are vendored into `apps/comply-studio/src/components/
 maintain (ADR-0018). Both vocabulary guards scan them like any other source, so LAW-004 and LAW-010
 apply to a vendored component as much as to one written here.
 
-Six things about the frame are worth knowing before changing it (ADR-0038):
+Eight things about the frame and its surfaces are worth knowing before changing them (ADR-0038,
+ADR-0039):
 
+- **A Corpus is the workspace, and everywhere a reader can go sits under it in the rail.** That order
+  is the point: everything in the product is scoped to one Corpus, and drawn as two lists of equal
+  weight — the shelf in the rail, the destinations above the content — the frame never said which
+  contained the other. ADR-0038 had it the second way and ADR-0039 reverses it. `data-switcher` is the
+  handle, and a test asserts it comes before the first `data-destination`.
+- **The switcher is a native disclosure and must stay one.** A menu in a portal is not in the document
+  until it opens, and `renderToStaticMarkup` renders no portal at all — so the shell's own test could
+  not see that a second Corpus exists. Reach for `DropdownMenu` here and the shelf becomes untestable.
 - **The heading names the surface and never the Corpus.** The Corpus is in the trail above it; a Corpus
   named twice on one screen reads as two things, and the second is what somebody forgets to change. A
   Module page is headed by the Module, because a Module is not a destination. `data-surface` carries
   which of the three it is — `shelf`, `module`, or a destination's name.
-- **A `Destination` must say what it answers, and `describes` is required.** ADR-0019's *a Facet says
-  what it is* applied to the product's own surfaces: three bare words could only be learned by clicking
-  all of them. A Module has no declaration to describe it from, so its sentence is written in the shell
-  — and it is written rather than left out, because the block would otherwise be one line shorter there
-  and the destinations shifting up as a reader steps into a Module reads as a page that reloaded into
-  something else.
+- **A `Destination` must say what it answers and carry its own figure.** `describes` is ADR-0019's *a
+  Facet says what it is* applied to the product's own surfaces: three bare words could only be learned
+  by clicking all of them. `icon` is declared beside the name so a fourth destination is one entry and
+  not one entry plus a lookup somebody finds out about when it draws with nothing beside it.
 - **The one action that writes lives in the frame, and there is still one of it.** `ReadAgain` reached
   one destination of three, so a reader working a queue had to walk back to the grid to bring knowledge
   in. It is now beside the age of the reading — the fact it changes — on every surface of a Corpus,
   including the two ADR-0035 says it is the whole remedy for.
+- **A Finding is a row at one height, and the evidence is one disclosure away.** `details` is the whole
+  mechanism, and it is why the Inbox has no `<button>` and no `<input>` — which its own test asserts,
+  because a control for dismissing a Finding is how something a rebuild could not reproduce arrives
+  (LAW-011). The place stays visible closed; the quotation is behind the disclosure, on the same
+  surface, with no navigation. ADR-0039 §2 records why that is LAW-009 kept rather than bent.
 - **A heading decides a column's width, and the grid has no spare.** Set at the body's size in capitals,
   the DDD Corpus's eight Facet columns pushed `Approved` and `Movement` off the right edge at 1440px —
   the two a row is read for. At 11px and `px-2` it measures 1281 against 1281 of room. Any change to
@@ -110,9 +122,20 @@ Six things about the frame are worth knowing before changing it (ADR-0038):
   the parent outranks a class on the child, so a Facet no Module has anything under would lose the mark
   in its own heading — which is the whole reason the grid is drawn as a grid. The cost is that a `th`
   with `scope="row"` says at its call site that it is a row's name; two of them do.
-- **`overflow-x` on one axis promotes the other to `auto`.** That is how the destinations came to carry
-  a 13-pixel vertical scrollbar on every screen in the product, from the one pixel each mark hangs
-  below the rule. A row of three short words needs no scrolling box.
+
+Three traps in this area that cost real time:
+
+- **`overflow-x` on one axis promotes the other to `auto`.** That is how a row of three destinations
+  came to carry a 13-pixel vertical scrollbar on every screen in the product, from the one pixel each
+  mark hung below its rule.
+- **A `sticky` heading needs a box that scrolls.** Unbounded, it resolves against a container that
+  never scrolls vertically and sits exactly where it already was — it looks done and does nothing.
+  The grid is capped in height for this reason. And a collapsed table gives its borders to the row
+  below, so a pinned heading's rule has to be an inset shadow or there is no rule at all.
+- **A figure and its denominator are two elements and one phrase.** `**0** of 8` cannot be asserted
+  with `toContain('0 of 8')` against markup. Two test files carry a `words()` helper that strips tags
+  *without* inserting a space; the alternative is writing the markup into the assertion, which is the
+  class-name assertion this repository refuses by another route.
 
 `--here` is the accent, and it is `--focus` promoted rather than a second colour: that blue already
 meant *this is the thing you are on*, and `data-here` was already the handle for it. It is deliberately

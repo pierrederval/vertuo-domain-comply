@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Library } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router';
 import type { CorpusList, CorpusSummary } from '@vertuo/comply-contract';
 import { Age } from '../components/Age.js';
@@ -9,7 +8,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -18,6 +16,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '../components/ui/sidebar.js';
+import { Switcher } from './Switcher.js';
 import { DESTINATIONS, OPENS_AT } from './destinations.js';
 import { whereTheReaderIs } from './where.js';
 
@@ -47,122 +46,59 @@ export interface ReadingTheSource {
   read: (corpusId: string) => void;
 }
 
-/** Every Corpus on the shelf, as the sidebar's own list of places to go. */
-function Shelf({ shelf, reading }: { shelf: ShelfState; reading: string | null }) {
-  if (shelf.trouble !== null) {
-    /*
-     * The shelf could not be read, and only the shelf. The page beside this keeps
-     * whatever it managed to answer, because a shell that empties itself when one
-     * list fails to arrive turns one failure into all of them — and a reader then
-     * cannot tell which of the two happened.
-     */
-    return <p className="px-2 py-1 text-sm text-muted-foreground">{shelf.trouble}</p>;
-  }
-
-  if (shelf.corpus === null) {
-    return <p className="px-2 py-1 text-sm text-muted-foreground">Reading the shelf.</p>;
-  }
-
-  if (shelf.corpus.corpus.length === 0) {
-    /*
-     * A menu is somewhere to go, and a set of criteria that could not be followed is
-     * nowhere: it has no id and no page, so it is named on the list and not here. But
-     * *nothing is on the shelf yet* is what this said about a shelf holding one, which
-     * is exactly what a shelf holding nothing says (LAW-006, spec §8).
-     */
-    return (
-      <p className="px-2 py-1 text-sm text-muted-foreground">
-        {shelf.corpus.criteriaNotFollowed.length === 0
-          ? 'Nothing is on the shelf yet.'
-          : 'Nothing on the shelf can be read yet. The list says which file to put right.'}
-      </p>
-    );
-  }
-
-  return (
-    <SidebarMenu>
-      {shelf.corpus.corpus.map((entry) => (
-        <SidebarMenuItem key={entry.id}>
-          {/*
-            Every word in this list arrived in the payload. A sidebar that draws
-            one item per Corpus it was told about cannot learn a business word,
-            which is LAW-004 holding by construction rather than by review.
-
-            Where the reader is gets its own ground and its own weight rather than
-            the tint the pointer leaves, which the vendored button gives both. Two
-            states drawn identically means the rail cannot say which Corpus is open
-            while a pointer is anywhere near it.
-          */}
-          <SidebarMenuButton
-            asChild
-            isActive={entry.id === reading}
-            tooltip={entry.name}
-            className="h-9 data-[active=true]:bg-here-quiet data-[active=true]:font-semibold data-[active=true]:text-here"
-          >
-            <Link to={`/corpus/${encodeURIComponent(entry.id)}`} data-corpus={entry.id}>
-              <Library aria-hidden="true" />
-              <span>{entry.name}</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
-  );
-}
-
 /**
- * The Corpus's own destinations, across the top of it.
+ * Where a person can go inside the Corpus they are reading.
  *
- * Drawn as links and not as tab panels, because that is what they are: each one
- * is somewhere a reader can be sent, bookmark, and come back to. A control that
- * looks like navigation and is not is the one thing worse than either.
+ * The rail's own menu, which is what these are: each is somewhere a reader can be
+ * sent, bookmark and come back to. They were a row of three words above the content,
+ * drawn at the same weight as the list of Corpus in the rail — so the frame held two
+ * lists of equal standing and neither said it was inside the other. A reader had no
+ * way to see that Readiness belongs to Vertuoza and Vertuoza does not belong to
+ * Readiness.
  *
- * They sit *on* a rule that runs the width of the content, marked underneath. Drawn
- * as a segmented control in a tinted box, which is what this was, they read as a
- * filter over the page below — a control that changes what you are looking at rather
- * than where you are.
+ * Nothing is a tab panel. A control that looks like navigation and is not is the one
+ * thing worse than either.
  */
 function Destinations({ corpusId, standingAt }: { corpusId: string; standingAt: string | null }) {
   const held = `/corpus/${encodeURIComponent(corpusId)}`;
 
-  /*
-   * No scrolling box around this row. Three short words never need one, and
-   * `overflow-x` on one axis promotes the other to `auto` — so the one pixel each
-   * mark hangs below the rule gave the row a vertical scrollbar of its own, a
-   * 13-pixel stub beside the destinations on every screen in the product.
-   */
   return (
-    <nav aria-label="This Corpus" className="flex flex-wrap gap-6 border-b border-line-strong">
+    <SidebarMenu>
       {DESTINATIONS.map((destination) => {
         // Which one reads as current is decided from where the reader is, not from
         // whether this link's own address matches: a Module has no destination of
         // its own and is still somewhere inside one.
         const here = destination.at === standingAt;
+        const Figure = destination.icon;
 
         return (
-          <Link
-            key={destination.at}
-            to={`${held}/${destination.at}`}
-            data-destination=""
-            data-here={here ? '' : undefined}
-            aria-current={here ? 'page' : undefined}
-            title={destination.describes}
-            className={[
-              // The mark is on the rule itself and overlaps it, so the current
-              // destination reads as attached to the page below rather than as a
-              // word with a line under it.
-              '-mb-px shrink-0 border-b-2 px-1 pb-2.5 text-sm font-medium transition-colors',
-              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-              here
-                ? 'border-here text-here'
-                : 'border-transparent text-muted-foreground hover:border-line-strong hover:text-foreground',
-            ].join(' ')}
-          >
-            {destination.label}
-          </Link>
+          <SidebarMenuItem key={destination.at}>
+            {/*
+              Where the reader is gets its own ground and its own weight rather than
+              the tint the pointer leaves, which the vendored button gives both. Two
+              states drawn identically means the rail cannot say where a reader is
+              while a pointer is anywhere near it.
+            */}
+            <SidebarMenuButton
+              asChild
+              isActive={here}
+              tooltip={destination.describes}
+              className="h-9 data-[active=true]:bg-here-quiet data-[active=true]:font-semibold data-[active=true]:text-here"
+            >
+              <Link
+                to={`${held}/${destination.at}`}
+                data-destination=""
+                data-here={here ? '' : undefined}
+                aria-current={here ? 'page' : undefined}
+              >
+                <Figure aria-hidden="true" />
+                <span>{destination.label}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         );
       })}
-    </nav>
+    </SidebarMenu>
   );
 }
 
@@ -255,10 +191,12 @@ function Titled({
 /**
  * The frame every surface is read inside (ADR-0018).
  *
- * The shelf on the left, the trail and the age of the reading across the top, the
- * surface named beneath that with the one action beside it, and the Corpus's
- * destinations on the rule under all of it. A surface that cannot say how old its
- * reading is invites false confidence in it.
+ * The rail says which Corpus is being read and, beneath it, where a reader can go
+ * inside that Corpus — in that order, because the second is contained by the first and
+ * nothing else in the product is scoped any other way. The strip carries the trail and
+ * the age of the reading; the block under it names the surface, says what it answers,
+ * and holds the one action that writes. A surface that cannot say how old its reading
+ * is invites false confidence in it.
  *
  * There is no account and no settings here. Neither exists: a Module Owner is
  * free text lifted from a corpus, not somebody who signs in. An affordance for
@@ -326,15 +264,35 @@ export function AppShell({
             <span className="group-data-[collapsible=icon]:hidden">Comply</span>
           </p>
         </SidebarHeader>
+
+        {/*
+          Which Corpus is being read sits above everything it scopes, and everything
+          below it is inside it. That containment is the whole of this arrangement:
+          every figure, every queue and every Finding in the product belongs to one
+          Corpus, and the frame now says so by shape rather than leaving a reader to
+          infer it from two lists of equal weight.
+        */}
+        <div className="border-b border-sidebar-border px-3 py-3">
+          <Switcher shelf={shelf.corpus} reading={corpus} />
+          {shelf.trouble !== null && (
+            /*
+             * The shelf could not be read, and only the shelf. The page beside this
+             * keeps whatever it managed to answer, because a frame that empties itself
+             * when one list fails to arrive turns one failure into all of them — and a
+             * reader then cannot tell which of the two happened.
+             */
+            <p className="mt-2 text-sm text-muted-foreground">{shelf.trouble}</p>
+          )}
+        </div>
+
         <SidebarContent>
-          <SidebarGroup className="px-3 py-4">
-            <SidebarGroupLabel className="px-1 text-xs font-semibold tracking-wide text-ink-faint uppercase">
-              Corpus
-            </SidebarGroupLabel>
-            <SidebarGroupContent className="mt-1">
-              <Shelf shelf={shelf} reading={corpusId} />
-            </SidebarGroupContent>
-          </SidebarGroup>
+          {corpusId !== null && (
+            <SidebarGroup className="px-3 py-3">
+              <SidebarGroupContent>
+                <Destinations corpusId={corpusId} standingAt={standingAt} />
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
       </Sidebar>
 
@@ -349,11 +307,10 @@ export function AppShell({
           )}
         </header>
 
-        {/*
-          The heading, the action and the destinations are one block on one ground,
-          held apart from the surface below by the rule the destinations sit on.
-        */}
-        <div className="shrink-0 border-b border-border bg-panel px-gutter pt-6">
+        {/* The heading and the one action, on one ground, held apart from the surface
+            below by a rule. Where a reader can go is in the rail now, so this block is
+            what this surface is and what it will tell them, and nothing else. */}
+        <div className="shrink-0 border-b border-border bg-panel px-gutter py-6">
           <Titled
             surface={titled.surface}
             title={titled.title}
@@ -367,15 +324,6 @@ export function AppShell({
               )
             }
           />
-          {corpusId === null ? (
-            // Nothing to sit on the rule, so the block simply ends. An empty row of
-            // its own height would read as a row of destinations that failed to draw.
-            <div className="h-6" />
-          ) : (
-            <div className="mt-5">
-              <Destinations corpusId={corpusId} standingAt={standingAt} />
-            </div>
-          )}
         </div>
 
         <main className="min-w-0 flex-1 px-gutter py-8">

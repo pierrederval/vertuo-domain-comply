@@ -85,6 +85,18 @@ const OTHER: CorpusHome = corpusHomeSchema.parse({
   },
 });
 
+/**
+ * Just the words a reader meets, with the markup between them taken out.
+ *
+ * Tags are removed rather than replaced by a space, so a phrase split across two
+ * elements still reads as the one phrase it is on screen. A figure and the denominator
+ * beside it are set at two different weights and are one sentence — `1 of 2` — and this
+ * is what asserts a reader sees that rather than what asserts how it is marked up.
+ */
+function words(markup: string): string {
+  return markup.replace(/<[^>]*>/g, '');
+}
+
 function draw(home: CorpusHome): string {
   return renderToStaticMarkup(
     <MemoryRouter>
@@ -122,8 +134,8 @@ describe('the Modules where there is work', () => {
     const drawn = draw(corpus({}));
 
     expect(drawn.match(/data-needs-work=""/g)).toHaveLength(2);
-    expect(drawn).toContain('1 of 2');
-    expect(drawn).toContain('0 of 2');
+    expect(words(drawn)).toContain('1 of 2');
+    expect(words(drawn)).toContain('0 of 2');
   });
 
   it('marks a Module nobody answers for rather than leaving it blank', () => {

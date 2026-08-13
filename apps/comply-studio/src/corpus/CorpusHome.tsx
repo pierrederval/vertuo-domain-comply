@@ -42,8 +42,18 @@ function Work({ module, corpusId }: { module: NeedsWork; corpusId: string }) {
           <span className="text-xs text-muted-foreground">{module.owner}</span>
         )}
       </TableHead>
-      <TableCell className="text-sm text-muted-foreground">
-        {`${module.approved} of ${module.declaredFacets}`}
+      {/*
+        The count carries the row's weight and its denominator stays beside it, at the
+        weight of the words it is. Both halves were one grey at one size, so a column of
+        28 rows reading `0 of 8` had nothing in it for an eye to catch — the flatness was
+        not the spacing, it was that nothing on the row was more important than anything
+        else. Never a bar and never a share of the two: the denominator is a count of
+        Facets a Lens declares, and a figure drawn as a proportion of it is the reading
+        LAW-006 refuses.
+      */}
+      <TableCell className="text-sm">
+        <span className="font-semibold text-foreground">{module.approved}</span>
+        <span className="text-muted-foreground">{` of ${module.declaredFacets}`}</span>
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
         <Moved movement={module.movement} />
@@ -207,15 +217,20 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
     <Surface>
       <TwoReadings readiness={readiness} integrity={integrity} />
 
-      <Card>
-        <CardHeader>
+      <Card className="gap-0 overflow-hidden py-0">
+        <CardHeader className="gap-2 py-5">
           <CardTitle>Needs work</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        {/* Flush to the card's edges, so a row and the rule under it run the whole width
+            of the surface — the same shape a queue has, because both are lists of work.
+            The notes that qualify the figures keep their own padded region below. */}
+        <CardContent className="border-t border-border px-0">
           {needsWork.length === 0 ? (
-            <NothingToShow>
-              {`Every Module here has each of the ${count(declaredFacets, 'Facet')} its Lens declares approved. Knowledge nobody has written down anywhere is not counted, and cannot be.`}
-            </NothingToShow>
+            <div className="px-6 py-5">
+              <NothingToShow>
+                {`Every Module here has each of the ${count(declaredFacets, 'Facet')} its Lens declares approved. Knowledge nobody has written down anywhere is not counted, and cannot be.`}
+              </NothingToShow>
+            </div>
           ) : (
             <div className="w-full overflow-x-auto">
               {/*
@@ -241,7 +256,15 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
               </table>
             </div>
           )}
+        </CardContent>
 
+        {/*
+          What every figure above is counted out of, and what *approved* means here. On
+          its own ground beneath the list, because these are what the figures mean and
+          not more of them — mixed in at the foot of the same white surface they read as
+          a fourth and fifth row of the table (LAW-006).
+        */}
+        <div className="flex flex-col gap-2 border-t border-border bg-sunken px-6 py-4">
           <Aside>
             {`Every figure here is counted out of the ${count(declaredFacets, 'Facet')} this Corpus’s Lens declares, and a Module with all of them approved is not listed. What each one falls short of is on its own page, Facet by Facet.`}
           </Aside>
@@ -258,7 +281,7 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
               {`The last reading kept for this Corpus was taken against different criteria from these, so no figure above can be compared with it. What ${reading.lensId} asks of this Corpus changed; whether the knowledge did is not something this page can say yet.`}
             </Aside>
           )}
-        </CardContent>
+        </div>
       </Card>
 
       <Card>

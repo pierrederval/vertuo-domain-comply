@@ -1,3 +1,5 @@
+import { Grid2x2Check, House, Inbox, type LucideIcon } from 'lucide-react';
+
 /**
  * Where a person can go inside one Corpus.
  *
@@ -15,6 +17,14 @@ export interface Destination {
   /** The last part of the address, beneath the Corpus. */
   at: string;
   label: string;
+  /**
+   * The figure a reader picks this out of a list by.
+   *
+   * Declared beside the name rather than mapped where the list is drawn, so adding a
+   * fourth destination is one entry here and not one entry plus a lookup somebody
+   * finds out about when the fourth one draws with nothing beside it.
+   */
+  icon: LucideIcon;
   /**
    * The question this surface answers, in one line.
    *
@@ -35,16 +45,19 @@ export const DESTINATIONS: Destination[] = [
   {
     at: 'home',
     label: 'Home',
+    icon: House,
     describes: 'What needs a person in this Corpus, and what moved in it.',
   },
   {
     at: 'readiness',
     label: 'Readiness',
+    icon: Grid2x2Check,
     describes: 'Every Module against every Facet its Lens declares.',
   },
   {
     at: 'inbox',
     label: 'Inbox',
+    icon: Inbox,
     describes: 'Every Finding in this Corpus, as a queue for whoever answers for it.',
   },
 ];
