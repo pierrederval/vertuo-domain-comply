@@ -203,7 +203,16 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
     );
   }
 
-  const { readiness, integrity, needsWork, declaredFacets, ladder, writtenDown, since } = reading;
+  const {
+    readiness,
+    integrity,
+    needsWork,
+    declaredFacets,
+    facetsNobodyHasBegun,
+    ladder,
+    writtenDown,
+    since,
+  } = reading;
   const nothingToCompare = needsWork.some(
     (module) => module.movement.comparedWith === 'no-earlier-reading',
   );
@@ -281,6 +290,24 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
               {`The last reading kept for this Corpus was taken against different criteria from these, so no figure above can be compared with it. What ${reading.lensId} asks of this Corpus changed; whether the knowledge did is not something this page can say yet.`}
             </Aside>
           )}
+          {/*
+            A Facet the Lens declares that nobody has begun anywhere. Every figure above
+            is counted out of the declared Facets, so one this business does not have
+            deflates all of them out of one too many — and read along a row that is
+            invisible, while a work list is nothing but rows.
+
+            This is what the Corpus opening at the grid used to be for: a reader met the
+            one view that can show it before they met any figure. It is said here now, so
+            the figures a reader lands on carry their own warning (LAW-006).
+          */}
+          {facetsNobodyHasBegun.map((facet) => (
+            <Aside key={facet}>
+              <span data-nobody-has-begun="">
+                <Conspicuous>{`No Module has anything under “${facet}” yet.`}</Conspicuous>
+              </span>{' '}
+              {`It is declared by the Lens “${reading.lensId}”, so either nobody has begun it, or this Corpus does not have it and every figure above is counted out of one too many. The grid reads down that column.`}
+            </Aside>
+          ))}
         </div>
       </Card>
 

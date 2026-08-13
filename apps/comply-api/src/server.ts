@@ -206,6 +206,31 @@ async function homeOf(shelved: ShelvedCorpus, takenAt: string): Promise<CorpusHo
         ],
   );
 
+  /*
+   * A Facet the Lens declares that no Module has anything under. Every figure on this
+   * surface is counted out of the Lens's declared Facets, so one the business does not
+   * have deflates all of them out of one too many — a defect in the denominator, which
+   * is the thing LAW-006 exists to keep sayable.
+   *
+   * Said here and not left to the grid, because this is where a Corpus opens. Read down
+   * a column it is plain; read along a row it cannot be seen at all, and a work list is
+   * nothing but rows.
+   *
+   * Nothing where no Module has been written down: it would then be true of every
+   * declared Facet, and what is worth saying about that Corpus is that its source has
+   * produced no Module — which the surface says for itself.
+   */
+  const facetsNobodyHasBegun =
+    reading.matrix.rows.length === 0
+      ? []
+      : lens.facets
+          .filter((facet) =>
+            reading.matrix.rows.every(
+              (row) => row.cells.find((cell) => cell.facet === facet.name)?.state === 'absent',
+            ),
+          )
+          .map((facet) => facet.label ?? facet.name);
+
   return {
     id: lens.id,
     name,
@@ -216,6 +241,7 @@ async function homeOf(shelved: ShelvedCorpus, takenAt: string): Promise<CorpusHo
       ladder: { levels: lens.maturity.levels, approvedAtOrAbove: lens.maturity.approvedAtOrAbove },
       ...figures(reading),
       declaredFacets: lens.facets.length,
+      facetsNobodyHasBegun,
       needsWork,
       writtenDown: whenReadFromSource(shelved),
       since: await whatMoved(shelved, reading),

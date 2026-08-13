@@ -21,6 +21,7 @@ import { ModuleDetail } from './corpus/ModuleDetail.js';
 import { ReadAgain, type Doing } from './corpus/ReadAgain.js';
 import { AppShell, type ShelfState } from './shell/AppShell.js';
 import { OPENS_AT } from './shell/destinations.js';
+import { theOneCorpusToOpen } from './shell/where.js';
 
 /** Reading a Corpus's source again, as every surface that has to ask again sees it. */
 type ReadingTheSource = ReturnType<typeof useReadingTheSource>;
@@ -236,6 +237,23 @@ function OneFact({ reading }: { reading: ReadingTheSource }) {
   );
 }
 
+/**
+ * Where a reader arriving at the product is put.
+ *
+ * Into the one Corpus where the shelf holds one, and into the shelf otherwise. It waits
+ * rather than guessing: sending somebody into a Corpus on the strength of a shelf that
+ * has not been read yet is sending them to a page that has nothing on it, and the wait
+ * is one answer long.
+ */
+function Arriving({ shelf }: { shelf: ShelfState }) {
+  const only = theOneCorpusToOpen(shelf.corpus);
+
+  if (shelf.corpus === null && shelf.trouble === null) return <Says>Reading the shelf.</Says>;
+  if (only === null) return <Navigate to="/corpus" replace />;
+
+  return <Navigate to={`/corpus/${encodeURIComponent(only)}/${OPENS_AT}`} replace />;
+}
+
 /** Nothing is kept at the address the reader arrived at. */
 function Nowhere() {
   return (
@@ -256,7 +274,17 @@ export function App() {
   return (
     <Routes>
       <Route element={<AppShell shelf={shelf} reading={reading} />}>
-        <Route path="/" element={<Navigate to="/corpus" replace />} />
+        {/*
+          Where arriving lands. A shelf holding one Corpus has nothing to choose
+          between, so a reader is put into it rather than shown a list of one — and
+          into the surface it opens at, which is the work.
+
+          Only from the bare address. The shelf keeps its own, so *every Corpus on the
+          shelf* still goes there and does not bounce straight back to the Corpus a
+          reader just left it for. Until the shelf has been read, and wherever anything
+          on it could not be read at all, this stays the list (ADR-0040).
+        */}
+        <Route path="/" element={<Arriving shelf={shelf} />} />
         <Route path="/corpus" element={<EveryCorpus shelf={shelf} />} />
         {/*
           A Corpus opens where its reading is. The address without a destination

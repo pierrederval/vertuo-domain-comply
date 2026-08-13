@@ -29,6 +29,30 @@ const NOWHERE_IN_PARTICULAR: Whereabouts = {
   standingAt: null,
 };
 
+/**
+ * The one Corpus a reader arriving at the product should be put into, if there is one.
+ *
+ * A shelf holding exactly one Corpus has nothing to choose between, and a list of one
+ * is a decision asked of somebody who has none to make — so arriving lands them in it.
+ *
+ * Two things it refuses, both deliberate. It says nothing until the shelf has actually
+ * been read: sending a reader somewhere on the strength of an empty array is sending
+ * them nowhere. And it stays put where anything on the shelf could not be read at all,
+ * because a set of criteria that could not be followed has no page of its own — the
+ * shelf is the only surface that names it, and skipping past it hides the one thing
+ * there that somebody has to fix (ADR-0035).
+ *
+ * Only what a reader arriving is sent to. The shelf keeps its own address, so *every
+ * Corpus on the shelf* still goes there and does not bounce straight back.
+ */
+export function theOneCorpusToOpen(
+  shelf: { corpus: readonly { id: string }[]; criteriaNotFollowed: readonly unknown[] } | null,
+): string | null {
+  if (shelf === null) return null;
+  if (shelf.criteriaNotFollowed.length > 0) return null;
+  return shelf.corpus.length === 1 ? shelf.corpus[0]!.id : null;
+}
+
 export function whereTheReaderIs(
   pathname: string,
   destinations: readonly string[],

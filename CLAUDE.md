@@ -86,9 +86,20 @@ The interface's components are vendored into `apps/comply-studio/src/components/
 maintain (ADR-0018). Both vocabulary guards scan them like any other source, so LAW-004 and LAW-010
 apply to a vendored component as much as to one written here.
 
-Eight things about the frame and its surfaces are worth knowing before changing them (ADR-0038,
-ADR-0039):
+Ten things about the frame and its surfaces are worth knowing before changing them (ADR-0038,
+ADR-0039, ADR-0040):
 
+- **A Corpus opens at Home, and Home carries the warning that used to keep it from doing so.** Opening
+  at the grid was not a preference: read down a column, a Facet absent in *every* Module deflates every
+  figure Home draws out of one too many, and read along a row it cannot be seen. `facetsNobodyHasBegun`
+  puts that sentence on Home beside the figures it qualifies, worked out from the same reading the grid
+  uses — so the two cannot come to disagree about which column is empty (ADR-0040, reversing ADR-0033
+  §4). It is a list of names and never a count: *2 Facets unbegun* is a figure derived from the
+  denominator, which is what LAW-006 refuses, and it names nothing anybody can act on.
+- **Arriving lands in the one Corpus where the shelf holds one**, and nowhere else. `theOneCorpusToOpen`
+  stays put until the shelf has been read, and stays put whenever anything on the shelf could not be
+  read at all — that has no page of its own, so a reader sent past the list never learns there is a file
+  to put right (ADR-0035). It applies to the bare address only, so `/corpus` still means the shelf.
 - **A Corpus is the workspace, and everywhere a reader can go sits under it in the rail.** That order
   is the point: everything in the product is scoped to one Corpus, and drawn as two lists of equal
   weight — the shelf in the rail, the destinations above the content — the frame never said which
@@ -187,6 +198,12 @@ flatters the interface is a default that hides the work. `pnpm dev:fixtures` is 
 question wants, and it is the only one of the pair that needs nothing outside this repository — `pnpm dev`
 reads a sibling checkout, and without one the Corpus is on the shelf saying nothing has been written down
 from this source yet, with the action that reads it again (ADR-0035).
+
+**The Studio reloads itself and the API does not.** Vite watches; `tsx` runs the server without
+watching, so an API process started before a change to a payload goes on answering the old shape. The
+Studio then refuses it and says *the Studio was sent something it could not read* — which is the
+contract doing exactly its job, and is also precisely what a stale process looks like. Anything touching
+`comply-contract` or `comply-api` needs the pair restarted before a screen means anything (ADR-0040).
 
 Neither port moves if it is taken. A development server that quietly took the next port leaves two of
 itself running, and the one being read is then the one that was not just changed, which reads as a

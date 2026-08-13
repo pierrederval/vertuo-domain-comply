@@ -65,18 +65,21 @@ export const DESTINATIONS: Destination[] = [
 /**
  * Where a Corpus opens when a reader arrives with nothing more specific in mind.
  *
- * The grid, and not Home, though Home is the work surface and stands first in the
- * row. The grid carries a reading nothing else in the product can give: read down a
- * column, a Facet absent in *every* Module is as often a Lens declaring something
- * this business does not have as it is work nobody has begun — a defect in the
- * denominator, silently deflating every figure Home draws. Opening at Home would put
- * figures in front of the one view that can tell a reader those figures are counted
- * out of one too many.
+ * Home, which is the work surface: what needs a person in this Corpus, and what moved
+ * in it. A reader arriving is asking what to do, and that is the surface that answers
+ * it.
  *
- * This moves when Home's work list is meaningfully shorter than the Corpus. Today no
- * Module in any Corpus on any shelf has every Facet its Lens declares approved, so
- * that list *is* the whole grid without its cells, and the grid says more in the same
- * space. Both are one click apart either way, which is what the redirect above is
- * for.
+ * It was the grid, and the reason was real rather than a preference. Read down a
+ * column, a Facet absent in *every* Module is as often a Lens declaring something this
+ * business does not have as it is work nobody has begun — a defect in the denominator,
+ * silently deflating every figure Home draws — and no list of rows can show it. Opening
+ * at the grid put a reader in front of the one view that could, before they met any
+ * figure.
+ *
+ * What moved is not that reasoning but the need to spend a landing page on it. Home now
+ * states which Facets nobody has begun, in its own words, beneath the figures they
+ * qualify (`facetsNobodyHasBegun`, ADR-0040) — so the warning travels with the figures
+ * instead of being kept one page upstream of them, which is where it belonged. The grid
+ * is still the only place that column can be *read*, and Home says so and points at it.
  */
-export const OPENS_AT = 'readiness';
+export const OPENS_AT = 'home';

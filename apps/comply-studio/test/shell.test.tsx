@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { corpusListSchema, type CorpusSummary } from '@vertuo/comply-contract';
 import { AppShell, type ShelfState } from '../src/shell/AppShell.js';
 import { DESTINATIONS, OPENS_AT } from '../src/shell/destinations.js';
-import { whereTheReaderIs } from '../src/shell/where.js';
+import { theOneCorpusToOpen, whereTheReaderIs } from '../src/shell/where.js';
 
 /**
  * A shelf of deliberately unalike Corpus, as the server would answer for it: one
@@ -103,6 +103,37 @@ describe('where the reader is, read off the address', () => {
       corpusId: 'field service',
       moduleId: 'work orders',
     });
+  });
+});
+
+describe('where a reader arriving is sent', () => {
+  const held = (corpus: { id: string }[], criteriaNotFollowed: unknown[] = []) => ({
+    corpus,
+    criteriaNotFollowed,
+  });
+
+  it('is into the one Corpus, where the shelf holds one', () => {
+    // A list of one is a decision asked of somebody who has none to make.
+    expect(theOneCorpusToOpen(held([{ id: 'corpus-a' }]))).toBe('corpus-a');
+  });
+
+  it('is nowhere in particular where there is more than one to choose between', () => {
+    expect(theOneCorpusToOpen(held([{ id: 'corpus-a' }, { id: 'corpus-b' }]))).toBeNull();
+  });
+
+  it('is nowhere until the shelf has been read', () => {
+    // Sending a reader somewhere on the strength of an empty array sends them nowhere.
+    expect(theOneCorpusToOpen(null)).toBeNull();
+    expect(theOneCorpusToOpen(held([]))).toBeNull();
+  });
+
+  it('is nowhere while anything on the shelf could not be read at all', () => {
+    // A set of criteria that could not be followed has no page of its own: the shelf
+    // is the only surface that names it, and being sent past it hides the one thing
+    // there that somebody has to put right (ADR-0035).
+    expect(
+      theOneCorpusToOpen(held([{ id: 'corpus-a' }], [{ where: 'lens-b.json' }])),
+    ).toBeNull();
   });
 });
 

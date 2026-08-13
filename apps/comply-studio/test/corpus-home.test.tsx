@@ -20,6 +20,7 @@ function corpus(part: Record<string, unknown>): CorpusHome {
       readiness: { modulesFullyApproved: 0, modules: 2 },
       integrity: { openFindings: 3, lookedFor: ['a-check', 'b-check'] },
       declaredFacets: 2,
+      facetsNobodyHasBegun: [],
       needsWork: [
         {
           id: 'm-one',
@@ -71,6 +72,9 @@ const OTHER: CorpusHome = corpusHomeSchema.parse({
     readiness: { modulesFullyApproved: 1, modules: 2 },
     integrity: { openFindings: 0, lookedFor: ['g-check'] },
     declaredFacets: 3,
+    // The other shape carries one, so the pair covers a Corpus with a Facet nobody has
+    // begun and a Corpus with none (ADR-0001).
+    facetsNobodyHasBegun: ['Third Thing'],
     needsWork: [
       {
         id: 'n-two',
@@ -157,6 +161,35 @@ describe('the Modules where there is work', () => {
   it('says what approved means in this Corpus’s own words', () => {
     expect(draw(corpus({}))).toContain('low → middle → high');
     expect(draw(OTHER)).toContain('1 → 2');
+  });
+});
+
+describe('a Facet nobody has begun anywhere', () => {
+  it('is named as a defect in what every figure here is counted out of', () => {
+    /*
+     * The reading that kept a Corpus from opening at this surface. Every figure here is
+     * counted out of the Facets the Lens declares, so one this business does not have
+     * deflates all of them out of one too many — and read along a row it cannot be seen,
+     * while this whole surface is rows (LAW-006).
+     */
+    const drawn = draw(OTHER);
+
+    expect(drawn).toContain('data-nobody-has-begun');
+    expect(words(drawn)).toContain('No Module has anything under “Third Thing” yet.');
+    expect(words(drawn)).toContain('counted out of one too many');
+    // Marked, because it is work somebody has to settle rather than a note.
+    expect(drawn).toContain('data-conspicuous');
+    // And pointed at the one view that can actually be read down a column.
+    expect(words(drawn)).toContain('The grid reads down that column.');
+  });
+
+  it('says nothing at all where every declared Facet has been begun somewhere', () => {
+    // Not "0 Facets unbegun", and not an empty space where a warning goes: a Corpus
+    // with nothing wrong in its denominator has nothing to say about it.
+    const drawn = draw(corpus({}));
+
+    expect(drawn).not.toContain('data-nobody-has-begun');
+    expect(words(drawn)).not.toContain('No Module has anything under');
   });
 });
 
