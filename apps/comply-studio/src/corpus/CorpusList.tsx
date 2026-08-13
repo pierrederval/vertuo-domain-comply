@@ -14,7 +14,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.
  * disagrees — demand different work, and often different people. One figure for
  * both would hide which is failing.
  */
-function Reading({ reading }: { reading: CorpusSummary['reading'] }) {
+function Reading({
+  corpusId,
+  reading,
+}: {
+  corpusId: string;
+  reading: CorpusSummary['reading'];
+}) {
   if (reading.outcome !== 'read') return <WhyThereIsNoReading reading={reading} />;
 
   const { readiness, integrity } = reading;
@@ -24,7 +30,7 @@ function Reading({ reading }: { reading: CorpusSummary['reading'] }) {
       <p className="text-sm text-muted-foreground">
         Read from source <Age at={reading.sourceReadAt} />
       </p>
-      <TwoReadings readiness={readiness} integrity={integrity} />
+      <TwoReadings corpusId={corpusId} readiness={readiness} integrity={integrity} />
     </div>
   );
 }
@@ -76,7 +82,7 @@ export function CorpusList({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Reading reading={entry.reading} />
+            <Reading corpusId={entry.id} reading={entry.reading} />
           </CardContent>
         </Card>
       ))}

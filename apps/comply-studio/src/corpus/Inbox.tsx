@@ -1,23 +1,49 @@
-import { ArrowUpRight, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router';
-import type { CitedPlace, CorpusInbox, InboxFinding, RoutedFindings } from '@vertuo/comply-contract';
+import { ArrowUpRight, ChevronRight, Search, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router';
+import type { CitedPlace, CorpusInbox, InboxFinding } from '@vertuo/comply-contract';
 import { WhyThereIsNoReading } from '../components/NoReading.js';
 import { Conspicuous, NothingToShow, Surface } from '../components/layout.js';
+import { Person } from '../components/Person.js';
 import { opensAt, Where } from '../components/Where.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
+import { Card, CardContent } from '../components/ui/card.js';
 import { count } from '../words.js';
 
 /**
- * One queue's own page, so a person can bookmark theirs and be sent it (spec §5.2).
+ * How a reader has narrowed the queue, read off the address and nowhere else.
  *
- * Nobody's queue is addressed by the empty value, which is the one value that can
- * never be somebody's: an Owner is free text lifted from a corpus, so any word
- * reserved here is a word some corpus can write, and a reader would then be sent a
- * stranger's queue under their own name. Every owner field in the agreement refuses
- * an empty name, and that is what makes the empty one free.
+ * Every one of these is a query in the address, so a narrowed queue is a link
+ * somebody can send and come back to, and nothing about it is remembered anywhere a
+ * rebuild could not reproduce (LAW-011). That is also what keeps a filter from being
+ * the dismiss control this surface must never grow: a `select` whose value is in the
+ * address remembers nothing about a Finding.
  */
-function queueAt(corpusId: string, owner: string | null): string {
-  return `/corpus/${encodeURIComponent(corpusId)}/inbox?owner=${encodeURIComponent(owner ?? '')}`;
+export interface Narrowing {
+  /**
+   * Whose queue: a name, the empty value for the one reaching nobody, or nothing at
+   * all for everybody's.
+   *
+   * Nobody's is addressed by the empty value, which is the one value that can never
+   * be somebody's: an Owner is free text lifted from a corpus, so any word reserved
+   * here is a word some corpus can write, and a reader would then be sent a
+   * stranger's queue under their own name. Every owner field in the agreement refuses
+   * an empty name, and that is what makes the empty one free.
+   */
+  owner: string | null;
+  /** Which Check's Findings, by the name the Check gives itself. */
+  kind: string | null;
+  /** Which Module's, or nothing for every Module's. */
+  module: string | null;
+  /** Words that must appear in what a Finding says. Empty for all of them. */
+  says: string;
+}
+
+/** Nothing narrowed: every Finding in the Corpus. */
+export const EVERYTHING: Narrowing = { owner: null, kind: null, module: null, says: '' };
+
+/** One Finding, with who answers for it — which is a property of its queue and not of it. */
+interface Routed {
+  finding: InboxFinding;
+  owner: string | null;
 }
 
 /** Where the rest of one Module's knowledge is, for a Finding that belongs to one. */
@@ -107,14 +133,17 @@ function Cited({
 /**
  * One Finding, as the person who has to answer for it meets it.
  *
- * What was found, which Module it is about, and every place it concerns with the
- * text at each. Nothing to do to it but read it: a Finding is resolved by the
- * knowledge changing and the Finding no longer being found, so there is nothing here
- * to dismiss it, hide it, or remember having seen it — nothing in this product may
- * hold what a rebuild could not reproduce (LAW-011), and a control for it is how such
- * a thing arrives.
+ * What was found, which Check found it, which Module it is about, who answers for it,
+ * and where it is — on one line, at one row height. Opened, every place it concerns
+ * with the text at each.
+ *
+ * Nothing to do to it but read it: a Finding is resolved by the knowledge changing
+ * and the Finding no longer being found, so there is nothing here to dismiss it, hide
+ * it, or remember having seen it — nothing in this product may hold what a rebuild
+ * could not reproduce (LAW-011), and a control for it is how such a thing arrives.
  */
-function Found({ finding, corpusId }: { finding: InboxFinding; corpusId: string }) {
+function Found({ routed, corpusId }: { routed: Routed; corpusId: string }) {
+  const { finding, owner } = routed;
   const cited = [finding.cites, ...finding.alsoCites];
   // Where the whole Fact is, for the one action a row offers. A cited place that no
   // Module writes at has no page to open, so that row offers none.
@@ -124,7 +153,20 @@ function Found({ finding, corpusId }: { finding: InboxFinding; corpusId: string 
       : opensAt(corpusId, finding.cites.writtenUnder, finding.cites.at);
 
   return (
-    <li data-finding="" className="group/finding relative border-b border-border last:border-0">
+    <li
+      data-finding=""
+      data-routes-to={owner ?? ''}
+      /*
+       * The mark is on the row's own edge, which is what makes it survive the list
+       * being narrowed, sorted or bookmarked. It was on the edge of a card holding a
+       * hundred rows, so a reader four screens down was looking at unowned work with
+       * nothing on screen saying so (LAW-007). A row that has an Owner keeps the same
+       * edge in nothing, so the names below it stay on one line.
+       */
+      className={`group/finding relative border-b border-border last:border-0 ${
+        owner === null ? 'border-l-4 border-l-mark' : 'border-l-4 border-l-transparent'
+      }`}
+    >
       {/*
         A disclosure and not a control. `details` is the whole mechanism: nothing is
         remembered about a Finding between two draws of this page, because there is
@@ -134,15 +176,57 @@ function Found({ finding, corpusId }: { finding: InboxFinding; corpusId: string 
         is read it and the only actions on it are places to go.
       */}
       <details className="group/row">
-        {/* The right gutter is the action's, kept clear whether or not the action is
-            drawn. Sized to the action and not guessed: at a guess it overlapped the
-            place, and a row whose evidence is covered by a control is worse than one
-            with no control at all. */}
-        <summary className="grid cursor-pointer list-none grid-cols-[auto_1fr] items-center gap-x-3 py-2.5 pr-24 pl-4 outline-none group-hover/finding:bg-sunken focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:grid-cols-[auto_1fr_auto_auto]">
+        {/*
+          The right gutter is the action's, kept clear whether or not the action is
+          drawn. Sized to the action and not guessed: at a guess it overlapped the
+          place, and a row whose evidence is covered by a control is worse than one with
+          no control at all.
+
+          Every fixed column is as narrow as its content needs, because what a row is
+          read for is the sentence in the middle and it is the only column that gives.
+          At a 1440 window the four fixed ones came to 632px and left the sentence 299 —
+          which cut *Facet "state-machines" produced no content in this do…* four words
+          short of its point.
+
+          The Check's column is measured and not guessed: the longest code either corpus
+          writes is `missing-module-identity` at 166px, and `conflicting-definition` at
+          159. 10rem holds every code but the first, and that one loses a character. A
+          column wide enough for the longest would spend 24px of the sentence's width on
+          two rows in a hundred, and the codes are told apart three characters in. Every
+          column says its content in full to the pointer, because past this the only
+          column left to take from is the sentence.
+
+          The place is the sixth column and arrives at `2xl`, not `xl`. A breakpoint is
+          on the window and this row's width is the window less the rail and two gutters,
+          so six fixed columns at a 1280 window leave the sentence 264px — narrower than
+          the five-column arrangement gives it at the same width. Between the two the
+          place is the column to lose, because it is the only one the disclosure repeats.
+
+          `minmax` and not a bare `1fr`, so the sentence has a floor. Fixed columns cannot
+          shrink, and squeezed hard enough a bare `1fr` resolves to nothing at all — the
+          row keeps its Module, its Owner and its place, and loses the only part of it
+          that says what was found.
+        */}
+        <summary className="grid cursor-pointer list-none grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 py-2.5 pr-20 pl-3 outline-none group-hover/finding:bg-sunken focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:grid-cols-[auto_10rem_minmax(10rem,1fr)_auto_auto] 2xl:grid-cols-[auto_10rem_minmax(10rem,1fr)_8rem_8.5rem_8.5rem]">
           <ChevronRight
             aria-hidden="true"
             className="size-3.5 shrink-0 text-ink-faint transition-transform group-open/row:rotate-90"
           />
+          {/*
+            Which Check found it, in the Check's own words. The identifier a reader
+            groups by: of the real Corpus's 125 Findings, one kind accounts for most of
+            them, and until this column existed a queue of a hundred rows all beginning
+            *Facet "…" produced no content* could not be told from a hundred different
+            defects (ADR-0041). Quiet on purpose — it is what a row is filed under and
+            never what a row is about.
+          */}
+          <span
+            data-found-by={finding.foundBy}
+            title={finding.foundBy}
+            className="col-start-2 justify-self-start truncate rounded border border-border bg-sunken px-1.5 py-0.5 font-mono text-[0.6875rem] leading-4 text-muted-foreground md:max-w-full"
+          >
+            {finding.foundBy}
+          </span>
           {/*
             What was found leads, on one line, at one row height. A queue of a hundred
             was a hundred blocks of five lines apiece — and a list whose rows are all
@@ -150,26 +234,43 @@ function Found({ finding, corpusId }: { finding: InboxFinding; corpusId: string 
             surface unreadable at 103 Findings. Opened, it is no longer cut: a Finding
             too long for a row is exactly the one a reader needs the whole of.
           */}
-          <span className="min-w-0 truncate font-medium group-open/row:whitespace-normal">
+          <span
+            // Said in full to the pointer as well, because the width a sentence gets is
+            // whatever the window has left and no column arrangement can promise the
+            // longest one fits. Opening the row is the other way to the whole of it.
+            title={finding.says}
+            className="col-start-2 min-w-0 truncate font-medium group-open/row:whitespace-normal md:col-start-3"
+          >
             {finding.says}
           </span>
           {finding.moduleId === null ? (
             // The only place in the product this Finding appears at all. No Module's
             // page can show it, because showing it there would make it look answered
             // for by somebody.
-            <span className="col-start-2 text-xs md:col-start-3">
-              <Conspicuous>reaches nobody</Conspicuous>
+            <span className="col-start-2 text-xs md:col-start-4">
+              <Conspicuous>no Module</Conspicuous>
             </span>
           ) : (
-            <span className="col-start-2 truncate text-xs text-muted-foreground md:col-start-3">
+            // Named in full to the pointer as well as to the column, because a Module
+            // whose name is longer than its column is one a reader cannot identify —
+            // and identifying it is the whole use the column has.
+            <span
+              title={finding.moduleId}
+              className="col-start-2 truncate text-xs text-muted-foreground md:col-start-4"
+            >
               {finding.moduleId}
             </span>
           )}
+          {/* Who answers for it, on the row and not over a section of rows. */}
+          <span className="col-start-2 min-w-0 md:col-start-5">
+            <Person owner={owner} />
+          </span>
           {/* The end of a place is the part that identifies it, so it is the end that
               survives when there is not room for all of it. */}
           <span
             dir="rtl"
-            className="col-start-2 hidden max-w-[22ch] truncate text-left font-mono text-xs text-ink-faint md:col-start-4 md:block"
+            title={`${finding.cites.at.file}, line ${finding.cites.at.line}`}
+            className="col-start-2 hidden min-w-0 truncate text-left font-mono text-xs text-ink-faint 2xl:col-start-6 2xl:block"
           >
             {`${finding.cites.at.file}:${finding.cites.at.line}`}
           </span>
@@ -230,124 +331,265 @@ function Found({ finding, corpusId }: { finding: InboxFinding; corpusId: string 
 }
 
 /**
- * Everything reaching one person, or everything reaching nobody.
+ * One way of narrowing the queue, as a menu of what the reading itself offers.
  *
- * The queue reaching nobody says what nobody answering for it costs, and not only
- * that nobody does. A mark says there is a defect; a reader who does not know why the
- * top of the page is loud reads the mark as decoration (LAW-007).
+ * Native, and it has to stay native. A menu in a portal is not in the document until
+ * it opens and `renderToStaticMarkup` renders no portal at all, so the options a
+ * reader is offered would be untestable — and what is offered here is drawn from the
+ * reading, which is exactly the thing a test has to be able to check has not been
+ * written into this file (LAW-004).
+ *
+ * What a reader picks is carried as the option's *position* and never as its value.
+ * The queue reaching nobody is narrowed to by the empty value — the one value no Owner
+ * can ever have — and *narrowed to nothing at all* has to be a value too. As two
+ * strings those are the same string, so the menu could neither show that nobody's queue
+ * was chosen nor let a reader choose it: picking *Nobody* cleared the filter. A
+ * position cannot collide with a name a corpus writes, which no reserved word can
+ * promise (LAW-004).
  */
-function Queue({
-  queue,
-  corpusId,
-  narrowed,
+function Narrow({
+  label,
+  of,
+  chosen,
+  options,
+  all,
+  onto,
 }: {
-  queue: RoutedFindings;
-  corpusId: string;
-  narrowed: boolean;
+  label: string;
+  of: string;
+  chosen: string | null;
+  options: { value: string; label: string }[];
+  all: string;
+  onto: (value: string | null) => void;
 }) {
-  const { owner, findings } = queue;
+  const at = options.findIndex((option) => option.value === chosen);
 
   return (
-    /*
-     * The queue reaching nobody is marked as a whole surface and not only in its
-     * heading. LAW-007 makes it the loudest thing on the page, and one amber phrase
-     * at the top of a card the same colour as every other card is not louder than
-     * anything — it is a heading a reader scrolls past on the way to their own name.
-     */
-    <Card
-      data-queue={owner ?? ''}
-      /*
-       * The mark is on the queue's edge and its heading, never across its rows. Tinted
-       * whole, the amber ground was within a shade of the tint a row takes under the
-       * pointer — so the loudest surface on the page was also the only one where a
-       * reader could not tell which row they were about to open.
-       */
-      className={`gap-0 overflow-hidden py-0 ${
-        owner === null ? 'border-mark/40 border-l-4 border-l-mark' : ''
-      }`}
-    >
-      <CardHeader className={`gap-2 py-5 ${owner === null ? 'bg-mark-quiet/60' : ''}`}>
-        <CardTitle>
-          {owner === null ? <Conspicuous>Routes to nobody</Conspicuous> : owner}
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {/*
-            Not *until somebody answers for the Module each belongs to*: some of
-            these belong to no Module, so there is no Module to name anybody
-            against, and each of those says so where it is. What is true of all of
-            them is that nobody has been named.
-          */}
-          {owner === null
-            ? `${count(findings.length, 'Finding')}, and nothing will be done about them until somebody is named to answer for them.`
-            : `${count(findings.length, 'Finding')} to answer for.`}
-        </p>
-        {/*
-          Somewhere to be sent, rather than a control that hides the rest of the
-          page. A reader already looking at one queue has nowhere to be sent to.
-        */}
-        {!narrowed && (
-          <p className="text-sm">
-            <Link
-              to={queueAt(corpusId, owner)}
-              className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
-            >
-              This queue on its own
-            </Link>
-          </p>
-        )}
-      </CardHeader>
-      {/* Flush to the card's edges, so a row and the rule under it run the whole width
-          of the surface. Inset, each row read as a paragraph in a document rather than
-          as a line in a queue. */}
-      <CardContent className="border-t border-border px-0">
-        <ul>
-          {findings.map((finding) => (
-            <Found
-              key={`${finding.cites.at.file}:${finding.cites.at.line}:${finding.says}`}
-              finding={finding}
-              corpusId={corpusId}
-            />
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+    <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+      <span className="sr-only">{label}</span>
+      <select
+        // Two handles: one says this way of narrowing exists, the other says it is on.
+        // A reader who cannot see which filters are on reads a slice as the whole
+        // (LAW-006), so *on* is a fact about the page and not only a colour.
+        data-narrows={of}
+        data-narrowed={chosen === null ? undefined : of}
+        aria-label={label}
+        value={at === -1 ? '' : String(at)}
+        onChange={(event) =>
+          onto(event.target.value === '' ? null : options[Number(event.target.value)]!.value)
+        }
+        className={`min-w-0 max-w-[13rem] truncate rounded-md border px-2.5 py-1.5 text-xs transition-colors hover:border-line-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+          chosen === null
+            ? 'border-border bg-panel text-muted-foreground'
+            : // A filter that is on says so by looking different from one that is not.
+              // Four menus that look identical whether or not they are narrowing is how
+              // a reader comes to read a slice as the whole (LAW-006).
+              'border-here bg-here-quiet font-medium text-here'
+        }`}
+      >
+        <option value="">{all}</option>
+        {options.map((option, position) => (
+          <option key={option.value} value={String(position)}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
 /**
- * One Corpus's Findings as a queue apiece, the ones reaching nobody first
- * (spec §5.2).
+ * Everything a reader can narrow the queue by, and what the whole of it still is.
  *
- * The other reading, become a list of specific work for a named person. The queue
- * reaching nobody is deliberately the loudest thing here: a violation belonging to
- * nobody is how a knowledge base quietly dies, and mixed in among named queues these
- * reproduce exactly the failure LAW-007 exists to prevent.
+ * The figure and its denominator are drawn here, narrowed or not, and they are always
+ * the Corpus's own. A narrowed page reporting its own slice as the total is how a
+ * queue comes to look finished, which is why nothing on this page is recomputed per
+ * view (LAW-006).
+ */
+function Toolbar({
+  found,
+  shown,
+  ran,
+  narrowing,
+  owners,
+  kinds,
+  modules,
+  onto,
+}: {
+  found: number;
+  shown: number;
+  ran: string;
+  narrowing: Narrowing;
+  owners: (string | null)[];
+  kinds: string[];
+  modules: string[];
+  onto: (part: Partial<Narrowing>) => void;
+}) {
+  const narrowed =
+    narrowing.owner !== null ||
+    narrowing.kind !== null ||
+    narrowing.module !== null ||
+    narrowing.says !== '';
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-panel px-4 py-3.5">
+      <div className="flex flex-wrap items-center gap-2">
+        {/*
+          Words a Finding has to contain. The one filter that needs no list behind it,
+          and the only way to narrow by something no Check and no Module names — the
+          word a defect is about.
+        */}
+        {/* Capped rather than given the rest of the row. Stretched, one text field ran
+            the width of the page and the three menus beside it read as an afterthought
+            pushed to the far edge — a toolbar is four ways to ask one question and they
+            are the same size. */}
+        <div className="relative w-full min-w-[13rem] sm:w-[16rem]">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ink-faint"
+          />
+          <input
+            type="search"
+            data-narrows="says"
+            data-narrowed={narrowing.says === '' ? undefined : 'says'}
+            aria-label="Words a Finding says"
+            placeholder="Search what was found"
+            value={narrowing.says}
+            onChange={(event) => onto({ says: event.target.value })}
+            className="w-full rounded-md border border-border bg-panel py-1.5 pr-2.5 pl-8 text-xs transition-colors placeholder:text-ink-faint hover:border-line-strong focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          />
+        </div>
+        <Narrow
+          label="Which Check found it"
+          of="kind"
+          chosen={narrowing.kind}
+          all="Every Check"
+          options={kinds.map((kind) => ({ value: kind, label: kind }))}
+          onto={(kind) => onto({ kind })}
+        />
+        <Narrow
+          label="Who answers for it"
+          of="owner"
+          chosen={narrowing.owner}
+          all="Everybody"
+          /* The empty value is nobody's queue, and it keeps the position the payload
+             gives it — first, because that is LAW-007 made into an order. */
+          options={owners.map((owner) => ({
+            value: owner ?? '',
+            label: owner ?? 'Nobody',
+          }))}
+          onto={(owner) => onto({ owner })}
+        />
+        <Narrow
+          label="Which Module it is about"
+          of="module"
+          chosen={narrowing.module}
+          all="Every Module"
+          options={modules.map((module) => ({ value: module, label: module }))}
+          onto={(module) => onto({ module })}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-border pt-3 text-sm text-muted-foreground">
+        {/*
+          What is in this Corpus and what was looked for to find it. It is the
+          denominator every row below is read against (LAW-006), and it was a line of
+          grey text floating above the first card — the position a reader learns to
+          skip, and the one sentence on this page that must not be skipped.
+
+          One phrase and two weights. All one grey, the figure was the quietest thing on
+          a page whose every row is louder than it; the names of the Checks stay quiet
+          because a reader reads them once and the figure every time. Never two elements
+          a stylesheet could put on two lines: read as one sentence it cannot be halved.
+        */}
+        <span>
+          <span className="font-semibold text-foreground">{count(found, 'Finding')}</span>
+          {` in this Corpus, from ${ran}.`}
+        </span>
+        {narrowed && (
+          <span data-showing="" className="font-medium text-foreground">
+            {`Showing ${shown} of ${found}.`}
+          </span>
+        )}
+        {narrowed && (
+          <button
+            type="button"
+            /* Takes every query out of the address. Not a thing done to a Finding —
+               there is no such control on this surface and no room for one to arrive:
+               what this clears is four queries in an address, and the page is drawn
+               from the address (LAW-011). */
+            onClick={() => onto(EVERYTHING)}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            <X aria-hidden="true" className="size-3" />
+            Everything in this Corpus
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One Corpus's Findings as one list a reader can narrow, the ones reaching nobody
+ * first (spec §5.2).
  *
- * A queue can be read on its own, so that somebody can bookmark theirs — and it is
- * still told what reaches nobody, because a bookmark is otherwise how the loudest
- * thing on a page stops being seen.
+ * The other reading, become a list of specific work for a named person. What routes
+ * to nobody is deliberately the loudest thing here: a violation belonging to nobody is
+ * how a knowledge base quietly dies, and it keeps three marks rather than one — it
+ * sorts first, every such row carries the mark on its own edge, and a band above the
+ * list states how many there are wherever a reader has narrowed away from them.
+ *
+ * It was one card per Owner. On the real Corpus that is a card of 103 and a card of
+ * 22, which divides the page without making either half readable, and puts the one
+ * fact LAW-007 exists to keep visible into a heading a reader scrolls past. Every row
+ * carries its own Owner now, so the sections have nothing left to say (ADR-0041).
  *
  * Every figure here is the whole Corpus's and is stated against the Checks that ran.
  * A narrowed page reporting its own slice as the total is how a queue comes to look
  * finished (LAW-006). There is no figure for how much of a queue somebody has dealt
  * with, because no such reading has a denominator a rebuild could reproduce.
  *
- * Nothing here knows what any of it is called. Every name, every person and every
- * sentence a Check wrote arrives in the payload, so this draws the Findings of a
- * Corpus it has never met without being changed (LAW-004).
+ * Nothing here knows what any of it is called. Every name, every person, every Check
+ * and every sentence a Check wrote arrives in the payload, so this draws the Findings
+ * of a Corpus it has never met without being changed (LAW-004).
  */
 export function Inbox({
   inbox,
-  narrowedTo,
+  narrowing,
 }: {
   inbox: CorpusInbox;
-  /**
-   * Whose queue to show on its own: a name, the empty value for the one reaching
-   * nobody, or nothing at all for the whole Inbox.
-   */
-  narrowedTo: string | null;
+  narrowing: Narrowing;
 }) {
+  const [asked, setAsked] = useSearchParams();
   const { reading } = inbox;
+
+  /**
+   * Narrowing, put in the address rather than kept.
+   *
+   * `replace` so that narrowing four times does not leave four steps for a reader to
+   * walk back through to leave the page — and typing a word does not leave one step
+   * per letter.
+   */
+  const onto = (part: Partial<Narrowing>) => {
+    const next = new URLSearchParams(asked);
+    for (const [of, value] of Object.entries({ ...narrowing, ...part })) {
+      /*
+       * Out of the address entirely rather than present and empty, so an address a
+       * reader sends somebody says a filter is on only where one is.
+       *
+       * `owner` is the exception and has to be: its empty value is the queue reaching
+       * nobody, which is a narrowing and not the absence of one. Treated like the
+       * others, choosing that queue took the query straight back out of the address and
+       * showed the reader everybody's — and the loudest thing in the product was the one
+       * thing that could not be asked for (LAW-007). Nothing is narrowed here only when
+       * the value is nothing at all.
+       */
+      if (value === null || (value === '' && of !== 'owner')) next.delete(of);
+      else next.set(of, String(value));
+    }
+    setAsked(next, { replace: true });
+  };
 
   if (reading.outcome !== 'read') {
     return (
@@ -362,12 +604,27 @@ export function Inbox({
   const { routesTo, lookedFor } = reading;
   const corpusId = inbox.corpus.id;
   const ran = `the ${count(lookedFor.length, 'Check')} that ran: ${lookedFor.join(', ')}`;
-  const found = routesTo.reduce((so, queue) => so + queue.findings.length, 0);
-  const nobody = routesTo.find((queue) => queue.owner === null) ?? null;
-  const shown =
-    narrowedTo === null
-      ? routesTo
-      : routesTo.filter((queue) => (queue.owner ?? '') === narrowedTo);
+
+  /*
+   * One list, in the order the payload already guarantees: what routes to nobody
+   * first, then each person in the order they first answer for a Module in this
+   * Corpus. Nothing about that order is decided here, so the two refinements the
+   * agreement makes about it keep their force.
+   */
+  const every: Routed[] = routesTo.flatMap((queue) =>
+    queue.findings.map((finding) => ({ finding, owner: queue.owner })),
+  );
+  const found = every.length;
+  const nobody = every.filter((routed) => routed.owner === null).length;
+
+  const shown = every.filter(
+    (routed) =>
+      (narrowing.owner === null || (routed.owner ?? '') === narrowing.owner) &&
+      (narrowing.kind === null || routed.finding.foundBy === narrowing.kind) &&
+      (narrowing.module === null || routed.finding.moduleId === narrowing.module) &&
+      (narrowing.says === '' ||
+        routed.finding.says.toLocaleLowerCase().includes(narrowing.says.toLocaleLowerCase())),
+  );
 
   if (found === 0) {
     // The empty Inbox is the harder page. *Nothing was found* is a claim about a
@@ -386,74 +643,97 @@ export function Inbox({
     );
   }
 
+  /*
+   * What each menu offers, taken from the reading and never from this file.
+   *
+   * The Owners keep the payload's order, because nobody's queue coming first is
+   * LAW-007 made into an order and not a convenience. The Checks are what was looked
+   * for, which means one that found nothing is still offered — *this Check ran and
+   * found nothing here* is worth being able to ask, and is a different answer from a
+   * Check that was never run. The Modules are sorted, which is not a ranking: a menu
+   * is somewhere a reader finds a name they already have in mind.
+   */
+  const owners = routesTo.map((queue) => queue.owner);
+  const modules = [
+    ...new Set(
+      every
+        .map((routed) => routed.finding.moduleId)
+        .filter((moduleId): moduleId is string => moduleId !== null),
+    ),
+  ].sort((one, other) => one.localeCompare(other));
+
   return (
     <Surface>
-      {/*
-        What is in this Corpus and what was looked for to find it, on a surface of its
-        own. It is the denominator every queue below is read against (LAW-006), and it
-        was a line of grey text floating above the first card — the position a reader
-        learns to skip, and the one sentence on this page that must not be skipped.
-      */}
-      <p className="rounded-lg border border-border bg-panel px-5 py-4 text-sm text-muted-foreground">
-        {`${count(found, 'Finding')} in this Corpus, from ${ran}.`}
-      </p>
-
-      {narrowedTo !== null && (
-        <p className="text-sm text-muted-foreground">
-          {narrowedTo === ''
-            ? 'Showing only what routes to nobody. '
-            : `Showing only what routes to “${narrowedTo}”. `}
-          <Link
-            to={`/corpus/${encodeURIComponent(corpusId)}/inbox`}
-            className="text-foreground underline underline-offset-4"
-          >
-            Everything in this Corpus
-          </Link>
-          {' is the rest of it.'}
-        </p>
-      )}
+      <Toolbar
+        found={found}
+        shown={shown.length}
+        ran={ran}
+        narrowing={narrowing}
+        owners={owners}
+        kinds={lookedFor}
+        modules={modules}
+        onto={onto}
+      />
 
       {/*
-        Said on somebody's own queue too, because a bookmark is how the top of this
-        page stops being read. Not said on nobody's own queue, where it would be
-        the page telling a reader twice what they are already looking at.
+        What reaches nobody, wherever a reader has narrowed away from it. A bookmark is
+        how the loudest thing on a page stops being seen, and a filter is a bookmark
+        somebody made for themselves (LAW-007). Not drawn where they are already
+        looking at exactly these, which would be the page telling them twice what they
+        can see.
       */}
-      {narrowedTo !== null && narrowedTo !== '' && nobody !== null && (
-        <p className="text-sm">
+      {nobody > 0 && narrowing.owner !== '' && (
+        <p
+          data-reaches-nobody=""
+          className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-mark/40 border-l-4 border-l-mark bg-mark-quiet/60 px-4 py-3 text-sm"
+        >
           <Conspicuous>
-            {`${count(nobody.findings.length, 'Finding')} in this Corpus ${nobody.findings.length === 1 ? 'routes' : 'route'} to nobody.`}
-          </Conspicuous>{' '}
-          <Link to={queueAt(corpusId, null)} className="underline underline-offset-4">
-            Read them
-          </Link>
-          {'.'}
+            {`${count(nobody, 'Finding')} in this Corpus ${nobody === 1 ? 'routes' : 'route'} to nobody.`}
+          </Conspicuous>
+          <span className="text-muted-foreground">
+            {'Nothing will be done about them until somebody is named to answer for them. '}
+            <button
+              type="button"
+              onClick={() => onto({ ...EVERYTHING, owner: '' })}
+              className="text-foreground underline underline-offset-4"
+            >
+              Read them
+            </button>
+            {'.'}
+          </span>
         </p>
       )}
 
       {shown.length === 0 ? (
-        // A bookmarked queue that has emptied. The good outcome, and not the same
-        // claim as the Corpus being clean — the figure above says what is still
-        // here, and it belongs to other people. Drawn where a queue would have
-        // been, because a sentence where every other queue is a surface reads as a
-        // surface that failed to arrive.
+        // Narrowed to nothing. The good outcome where it is somebody's own queue that
+        // has emptied, and not the same claim as the Corpus being clean — the figure
+        // above says what is still here, and it belongs to other people. Drawn where
+        // the list would have been, because a sentence where a surface belongs reads
+        // as a surface that failed to arrive.
         <Card className="border-dashed shadow-none">
           <CardContent>
             <NothingToShow>
-              {narrowedTo === ''
-                ? 'Nothing that these Checks found routes to nobody.'
-                : `Nothing that these Checks found routes to “${narrowedTo ?? ''}”.`}
+              {`Nothing that these Checks found matches what you have narrowed this to. ${count(found, 'Finding')} in this Corpus ${found === 1 ? 'does' : 'do'} not.`}
             </NothingToShow>
           </CardContent>
         </Card>
       ) : (
-        shown.map((queue) => (
-          <Queue
-            key={queue.owner ?? ''}
-            queue={queue}
-            corpusId={corpusId}
-            narrowed={narrowedTo !== null}
-          />
-        ))
+        <Card className="gap-0 overflow-hidden py-0">
+          {/* Flush to the card's edges, so a row and the rule under it run the whole
+              width of the surface. Inset, each row read as a paragraph in a document
+              rather than as a line in a queue. */}
+          <CardContent className="px-0">
+            <ul>
+              {shown.map((routed) => (
+                <Found
+                  key={`${routed.finding.cites.at.file}:${routed.finding.cites.at.line}:${routed.finding.says}`}
+                  routed={routed}
+                  corpusId={corpusId}
+                />
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </Surface>
   );

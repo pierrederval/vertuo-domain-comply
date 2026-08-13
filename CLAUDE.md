@@ -73,11 +73,16 @@ Three rules that are easy to break:
   structural.
 - **Never assert about a class name.** Interface tests use `data-*` handles — `data-figure`,
   `data-cell`, `data-movement`, `data-conspicuous`, `data-read-again`, `data-cannot-be-read`,
-  `data-surface` — because
+  `data-surface`, `data-routes-to`, `data-answers-for`, `data-found-by`, `data-narrows`,
+  `data-narrowed` — because
   several of them are laws made testable, and a guard tied to styling is deleted by whoever next changes the
   styling. `data-figure` appearing exactly twice is LAW-006: two readings, never a third fused one.
   `data-cannot-be-read` carries `"knowledge"` or `"criteria"`, so a test tells the two kinds of unreadable
-  apart and counts either. Do not reach for the word `disabled` either: a vendored `Button` names it twice to
+  apart and counts either. `data-routes-to` and `data-answers-for` both carry an Owner's name or are empty
+  for nobody, which is LAW-007 made countable per row, and `data-narrows`/`data-narrowed` are a pair
+  deliberately: one says a way of narrowing exists, the other says it is on, and a reader who cannot see
+  which filters are on reads a slice as the whole (LAW-006). Do not reach for the word `disabled` either: a
+  vendored `Button` names it twice to
   say what it *looks* like when refused, so a test looking for the word passes on a button that is merely
   styled for it. And do not assert on a quoted word in drawn markup — React writes `"` as `&quot;`, so a test
   looking for `"signed-off"` fails on a page showing exactly that.
@@ -86,8 +91,8 @@ The interface's components are vendored into `apps/comply-studio/src/components/
 maintain (ADR-0018). Both vocabulary guards scan them like any other source, so LAW-004 and LAW-010
 apply to a vendored component as much as to one written here.
 
-Ten things about the frame and its surfaces are worth knowing before changing them (ADR-0038,
-ADR-0039, ADR-0040):
+Fourteen things about the frame and its surfaces are worth knowing before changing them (ADR-0038,
+ADR-0039, ADR-0040, ADR-0041):
 
 - **A Corpus opens at Home, and Home carries the warning that used to keep it from doing so.** Opening
   at the grid was not a preference: read down a column, a Facet absent in *every* Module deflates every
@@ -115,16 +120,44 @@ ADR-0039, ADR-0040):
 - **A `Destination` must say what it answers and carry its own figure.** `describes` is ADR-0019's *a
   Facet says what it is* applied to the product's own surfaces: three bare words could only be learned
   by clicking all of them. `icon` is declared beside the name so a fourth destination is one entry and
-  not one entry plus a lookup somebody finds out about when it draws with nothing beside it.
+  not one entry plus a lookup somebody finds out about when it draws with nothing beside it. Both are
+  also what the two readings are drawn from — `destinationAt` is how a surface asks the rail, so a tile
+  cannot come to disagree with it about what Readiness is for (ADR-0041).
+- **The two readings are ways in, and the whole tile is the link.** `Figure` takes an `icon`, a `to`
+  and an `answers` beside its `outOf`, and Readiness reaches the grid while Integrity reaches the
+  queue; a Module's Integrity reaches the queue narrowed to that Module. A figure a reader cannot get
+  from to the thing it counts is the dashboard LAW-007 names, and on the shelf it was a figure with
+  nowhere at all to go. Still no ring, no bar, no percentage: the tile's three banded strips are gone
+  because banded, a tile holding one number read as a table with a heading and a footer, and the number
+  was the emptiest thing on it.
 - **The one action that writes lives in the frame, and there is still one of it.** `ReadAgain` reached
   one destination of three, so a reader working a queue had to walk back to the grid to bring knowledge
   in. It is now beside the age of the reading — the fact it changes — on every surface of a Corpus,
   including the two ADR-0035 says it is the whole remedy for.
 - **A Finding is a row at one height, and the evidence is one disclosure away.** `details` is the whole
-  mechanism, and it is why the Inbox has no `<button>` and no `<input>` — which its own test asserts,
-  because a control for dismissing a Finding is how something a rebuild could not reproduce arrives
-  (LAW-011). The place stays visible closed; the quotation is behind the disclosure, on the same
-  surface, with no navigation. ADR-0039 §2 records why that is LAW-009 kept rather than bent.
+  mechanism, and the guard it earns is that **no Finding row holds a control of any kind** — which the
+  Inbox's own test asserts of each row, because a control for dismissing a Finding is how something a
+  rebuild could not reproduce arrives (LAW-011). It used to be asserted of the whole page, and the
+  toolbar is why it no longer can be: a `select` whose value is in the address remembers nothing about a
+  Finding (ADR-0041, amending ADR-0039 §2). The place stays visible closed; the quotation is behind the
+  disclosure, on the same surface, with no navigation. ADR-0039 §2 records why that is LAW-009 kept
+  rather than bent.
+- **The Inbox is one list a reader narrows, and never a section per Owner.** One card per Owner was a
+  card of 103 and a card of 22 on the real Corpus, which divided the page without making either half
+  readable — and put LAW-007's fact into a heading a reader had scrolled past. Every row carries its own
+  Owner now, its own Check's code, and the mark on its own edge where it routes to nobody. `foundBy` is
+  what makes a queue of a hundred readable at all: ADR-0035 already settled that a Finding's code is a
+  surface, and it was printed in the denominator sentence while being withheld from the one place it
+  says something.
+- **Every filter lives in the address and `owner`'s empty value is a narrowing.** *Nobody's queue* is
+  the empty value and *everybody's* is absence, so the two cannot both be empty: treated alike, choosing
+  nobody's queue cleared the filter and the loudest thing in the product became the one thing that could
+  not be asked for. And a menu carries an option's **position** as its value, never an Owner's name —
+  no reserved word can be safe when an Owner is free text lifted from a corpus (LAW-004). What may be
+  chosen comes from the reading: Checks from `lookedFor`, so one that found nothing is still offered.
+- **A narrowed queue states the whole Corpus's figure and its own slice beside it.** `125 Findings … 
+  Showing 40 of 125`, never the slice alone — a narrowed page reporting its own slice as the total is
+  how a queue comes to look finished (LAW-006). Nothing on the page is recomputed per view.
 - **A heading decides a column's width, and the grid has no spare.** Set at the body's size in capitals,
   the DDD Corpus's eight Facet columns pushed `Approved` and `Movement` off the right edge at 1440px —
   the two a row is read for. At 11px and `px-2` it measures 1281 against 1281 of room. Any change to
@@ -134,7 +167,7 @@ ADR-0039, ADR-0040):
   in its own heading — which is the whole reason the grid is drawn as a grid. The cost is that a `th`
   with `scope="row"` says at its call site that it is a row's name; two of them do.
 
-Three traps in this area that cost real time:
+Five traps in this area that cost real time:
 
 - **`overflow-x` on one axis promotes the other to `auto`.** That is how a row of three destinations
   came to carry a 13-pixel vertical scrollbar on every screen in the product, from the one pixel each
@@ -144,9 +177,20 @@ Three traps in this area that cost real time:
   The grid is capped in height for this reason. And a collapsed table gives its borders to the row
   below, so a pinned heading's rule has to be an inset shadow or there is no rule at all.
 - **A figure and its denominator are two elements and one phrase.** `**0** of 8` cannot be asserted
-  with `toContain('0 of 8')` against markup. Two test files carry a `words()` helper that strips tags
+  with `toContain('0 of 8')` against markup. Three test files carry a `words()` helper that strips tags
   *without* inserting a space; the alternative is writing the markup into the assertion, which is the
-  class-name assertion this repository refuses by another route.
+  class-name assertion this repository refuses by another route. The Inbox joined them when its figure
+  stopped being one grey run-on line: `4 Findings in this Corpus` is now two elements.
+- **A breakpoint is on the window and a row is narrower than the window.** A Finding row's width is
+  the window less the rail and two gutters, so its sixth column arrives at `2xl` and not `xl` — six
+  fixed columns at a 1280 window leave the sentence 264px, narrower than the five-column arrangement
+  gives it at the same width. The sentence is `minmax(10rem,1fr)` and not `1fr`: fixed columns cannot
+  shrink, and squeezed hard enough a bare `1fr` resolves to nothing, leaving a row with its Module, its
+  Owner and its place and none of what was found.
+- **React writes a `select`'s chosen option as `value="…" selected=""`, in that order.** A test
+  matching `selected` first finds nothing and passes for the wrong reason. And every menu has a chosen
+  option even when nothing is narrowed — it is the one standing for all of them — so *nothing chosen*
+  is asserted as the empty value, never as an empty list.
 
 `--here` is the accent, and it is `--focus` promoted rather than a second colour: that blue already
 meant *this is the thing you are on*, and `data-here` was already the handle for it. It is deliberately

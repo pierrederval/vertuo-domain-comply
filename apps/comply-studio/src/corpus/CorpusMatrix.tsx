@@ -190,7 +190,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
 
   return (
     <Surface>
-      <TwoReadings readiness={readiness} integrity={integrity} />
+      <TwoReadings corpusId={corpus.id} readiness={readiness} integrity={integrity} />
 
       <Card className="gap-0 overflow-hidden py-0">
         <CardContent className="px-0">

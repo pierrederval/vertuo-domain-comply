@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { corpusInboxSchema, type CorpusInbox } from '@vertuo/comply-contract';
-import { Inbox } from '../src/corpus/Inbox.js';
+import { EVERYTHING, Inbox, type Narrowing } from '../src/corpus/Inbox.js';
 
 /**
  * One Corpus's Findings as the server would answer for them: the ones reaching
@@ -29,6 +29,7 @@ const INBOX: CorpusInbox = corpusInboxSchema.parse({
         findings: [
           {
             says: 'two things here are called the same and are not the same',
+            foundBy: 'a-check',
             moduleId: 'm2',
             cites: {
               at: { file: 'two.md', line: 4 },
@@ -39,6 +40,7 @@ const INBOX: CorpusInbox = corpusInboxSchema.parse({
           },
           {
             says: 'nothing could be read out of this at all',
+            foundBy: 'another-check',
             moduleId: null,
             cites: { at: { file: 'four.md', line: 1 }, writtenUnder: null, quoted: null },
             alsoCites: [],
@@ -50,6 +52,7 @@ const INBOX: CorpusInbox = corpusInboxSchema.parse({
         findings: [
           {
             says: 'one word is written down two different ways',
+            foundBy: 'a-check',
             moduleId: 'm1',
             cites: {
               at: { file: 'one.md', line: 3 },
@@ -71,6 +74,7 @@ const INBOX: CorpusInbox = corpusInboxSchema.parse({
         findings: [
           {
             says: 'this points at something that is not there',
+            foundBy: 'another-check',
             moduleId: 'm3',
             cites: {
               at: { file: 'three.md', line: 6 },
@@ -82,7 +86,7 @@ const INBOX: CorpusInbox = corpusInboxSchema.parse({
         ],
       },
     ],
-    lookedFor: ['a-check', 'another-check'],
+    lookedFor: ['a-check', 'another-check', 'a-check-that-found-nothing'],
   },
 });
 
@@ -91,37 +95,104 @@ function like(part: Record<string, unknown>): CorpusInbox {
   return corpusInboxSchema.parse({ ...INBOX, reading: { ...INBOX.reading, ...part } });
 }
 
-/** Drawn where links work, because every route out of this page is one. */
-function draw(inbox: CorpusInbox, narrowedTo: string | null = null): string {
+/** Narrowed one way and no other. */
+function only(part: Partial<Narrowing>): Narrowing {
+  return { ...EVERYTHING, ...part };
+}
+
+/**
+ * The address a reader would be at, narrowed that way.
+ *
+ * Built from the narrowing rather than written beside it, so the page is always drawn
+ * where it says it is: how it is narrowed lives in the address and nowhere else, and a
+ * test that set the two independently could pass over a page reading one and drawing
+ * the other.
+ */
+function addressOf(narrowing: Narrowing): string {
+  const asked = new URLSearchParams();
+  for (const [of, value] of Object.entries(narrowing)) {
+    if (value !== null && value !== '') asked.set(of, String(value));
+  }
+  const query = asked.toString();
+  return `/corpus/c1/inbox${query === '' ? '' : `?${query}`}`;
+}
+
+/** Drawn where links work and the address is the one the reader is at. */
+function draw(inbox: CorpusInbox, narrowing: Narrowing = EVERYTHING): string {
   return renderToStaticMarkup(
-    <MemoryRouter>
-      <Inbox inbox={inbox} narrowedTo={narrowedTo} />
+    <MemoryRouter initialEntries={[addressOf(narrowing)]}>
+      <Inbox inbox={inbox} narrowing={narrowing} />
     </MemoryRouter>,
   );
 }
 
-/** Every queue on the page, in the order a reader meets them. */
-function queuesIn(drawn: string): string[] {
-  return [...drawn.matchAll(/data-queue="[^"]*"/g)].map((found) => found[0]!);
+/**
+ * The words on the page, with the markup taken out and nothing put in its place.
+ *
+ * The figure and what it is counted against are two elements and one phrase — the count
+ * carries the weight of the row it leads and the rest of the sentence does not — so
+ * `4 Findings in this Corpus` cannot be found in the markup. Stripping without inserting
+ * a space is the point: a space between the two halves would be a phrase this page never
+ * draws, and the alternative is writing the markup into the assertion, which is the
+ * class-name assertion this repository refuses by another route.
+ */
+function words(markup: string): string {
+  return markup.replace(/<[^>]*>/g, '');
+}
+
+/**
+ * Who each row on the page routes to, in the order a reader meets them.
+ *
+ * The empty value is the row reaching nobody, for the same reason its address is: every
+ * owner field in the agreement refuses an empty name, so it is the one value that can
+ * never be somebody's.
+ */
+function routesToIn(drawn: string): string[] {
+  return [...drawn.matchAll(/data-routes-to="([^"]*)"/g)].map((found) => found[1]!);
+}
+
+/** Which Check found each row, in order. */
+function foundByIn(drawn: string): string[] {
+  return [...drawn.matchAll(/data-found-by="([^"]*)"/g)].map((found) => found[1]!);
+}
+
+/**
+ * Each Finding's own markup, on its own.
+ *
+ * So that a control inside a row can be told from one in the toolbar above the list.
+ * The first is the thing LAW-011 refuses; the second is four queries in an address.
+ */
+function rowsIn(drawn: string): string[] {
+  return drawn
+    .split('<li ')
+    .slice(1)
+    .map((rest) => rest.split('</li>')[0]!);
 }
 
 describe('a Corpus’s Findings, worked as an Inbox', () => {
   it('puts the Findings reaching nobody above everything else', () => {
     const drawn = draw(INBOX);
-    const [first, ...rest] = queuesIn(drawn);
 
-    // The law made into a position on a page. A violation belonging to nobody is
-    // how a knowledge base quietly dies, and mixed in among named queues these
+    // The law made into a position in one list. A violation belonging to nobody is
+    // how a knowledge base quietly dies, and mixed in among owned rows these
     // reproduce exactly the failure LAW-007 exists to prevent — so the order is
     // asserted rather than left to whoever next changes the layout.
-    //
-    // Nobody's queue is handled by the empty value here for the same reason its
-    // address is: every owner field in the agreement refuses an empty name, so it
-    // is the one value that can never be somebody's.
-    expect(first).toBe('data-queue=""');
-    expect(rest).toEqual(['data-queue="p1"', 'data-queue="p2"']);
-    expect(drawn).toContain('Routes to nobody');
+    expect(routesToIn(drawn)).toEqual(['', '', 'p1', 'p2']);
     expect(drawn).toContain('data-conspicuous');
+  });
+
+  it('says on every row who answers for it, and not over a section of rows', () => {
+    const drawn = draw(INBOX);
+
+    // The Owner was a card heading above a hundred rows, so the one fact LAW-007
+    // exists to keep visible was a property of a section a reader had scrolled past.
+    // It travels with each Finding now (ADR-0041).
+    expect([...drawn.matchAll(/data-answers-for="([^"]*)"/g)].map((found) => found[1]!)).toEqual([
+      '',
+      '',
+      'p1',
+      'p2',
+    ]);
   });
 
   it('says what nobody answering for these means, and not only that nobody does', () => {
@@ -129,7 +200,8 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
 
     // The mark says there is a defect; this says what the defect costs. A reader
     // who does not know why the top of the page is loud reads it as decoration.
-    expect(drawn).toContain('2 Findings');
+    expect(drawn).toContain('data-reaches-nobody');
+    expect(drawn).toContain('2 Findings in this Corpus route to nobody');
     expect(drawn).toContain('until somebody is named to answer for them');
     // And not *until somebody answers for the Module each belongs to*: one of
     // these belongs to no Module, so for that one there is no Module to name
@@ -137,38 +209,19 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
     expect(drawn).not.toContain('answers for the Module');
   });
 
-  it('gives everybody else a queue of their own, and each one a page of its own', () => {
-    const drawn = draw(INBOX);
+  it('says what routes to nobody wherever a reader has narrowed away from it', () => {
+    const mine = draw(INBOX, only({ owner: 'p1' }));
+    const byKind = draw(INBOX, only({ kind: 'another-check' }));
+    const nobody = draw(INBOX, only({ owner: '' }));
 
-    // Deep-linkable, so a person can bookmark their own queue and be sent it.
-    // Nobody's queue is addressed by the one value no name can ever be: every
-    // owner field in the agreement refuses an empty name, so an empty one here
-    // cannot collide with somebody called after whatever word this reserved.
-    expect(drawn).toContain('/corpus/c1/inbox?owner=p1');
-    expect(drawn).toContain('/corpus/c1/inbox?owner=p2');
-    expect(drawn).toContain('/corpus/c1/inbox?owner="');
-  });
-
-  it('shows one person’s queue on its own, with the way back to the rest', () => {
-    const drawn = draw(INBOX, 'p1');
-
-    expect(queuesIn(drawn)).toEqual(['data-queue="p1"']);
-    expect(drawn).toContain('one word is written down two different ways');
-    expect(drawn).not.toContain('this points at something that is not there');
-    expect(drawn).toContain('/corpus/c1/inbox"');
-  });
-
-  it('says what routes to nobody even on somebody’s own queue', () => {
-    const mine = draw(INBOX, 'p1');
-    const nobody = draw(INBOX, '');
-
-    // A bookmark is how the loudest thing on the page stops being seen. Somebody
-    // reading their own queue is still told what nobody is going to do anything
-    // about, with the way to it (LAW-007).
-    expect(mine).toContain('2 Findings in this Corpus route to nobody');
-    expect(mine).toContain('data-conspicuous');
-    // One of a thing is not "1 things", and a denominator a reader trips over is
-    // one they discount — which is the whole use this sentence has.
+    // A bookmark is how the loudest thing on a page stops being seen, and a filter is
+    // a bookmark somebody made for themselves (LAW-007).
+    for (const drawn of [mine, byKind]) {
+      expect(drawn).toContain('2 Findings in this Corpus route to nobody');
+      expect(drawn).toContain('data-conspicuous');
+    }
+    // One of a thing is not "1 things", and a denominator a reader trips over is one
+    // they discount — which is the whole use this sentence has.
     const alone = draw(
       like({
         routesTo: [
@@ -177,6 +230,7 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
             findings: [
               {
                 says: 'the only one of these',
+                foundBy: 'a-check',
                 moduleId: 'm2',
                 cites: { at: { file: 'two.md', line: 4 }, writtenUnder: 'm2', quoted: null },
                 alsoCites: [],
@@ -185,27 +239,112 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
           },
         ],
       }),
-      'p1',
+      only({ owner: 'p1' }),
     );
     expect(alone).toContain('1 Finding in this Corpus routes to nobody');
-    // Not on nobody's own queue, where it would be the page saying twice what the
-    // reader is already looking at.
-    expect(queuesIn(nobody)).toEqual(['data-queue=""']);
-    expect(nobody).not.toContain('in this Corpus route to nobody');
+    // Not where they are already looking at exactly those, which would be the page
+    // telling them twice what they can see.
+    expect(routesToIn(nobody)).toEqual(['', '']);
+    expect(nobody).not.toContain('data-reaches-nobody');
   });
 
-  it('states the whole queue against what was looked for, wherever the reader is', () => {
+  it('narrows to one person from the address, so a queue is a link somebody can send', () => {
+    const mine = draw(INBOX, only({ owner: 'p1' }));
+    const nobody = draw(INBOX, only({ owner: '' }));
+
+    // Nobody's queue is addressed by the one value no name can ever be, which is what
+    // it has always been — so every link already made to somebody's queue arrives.
+    expect(routesToIn(mine)).toEqual(['p1']);
+    expect(mine).toContain('one word is written down two different ways');
+    expect(mine).not.toContain('this points at something that is not there');
+    expect(routesToIn(nobody)).toEqual(['', '']);
+    expect(nobody).toContain('data-narrowed="owner"');
+  });
+
+  it('shows the queue reaching nobody as the one a reader has chosen, not as everybody’s', () => {
+    const nobody = draw(INBOX, only({ owner: '' }));
+    const everybody = draw(INBOX);
+
+    // Nobody's queue is narrowed to by the empty value, and *nothing narrowed* is a
+    // value the menu needs too. As two strings those are one string: the menu could
+    // neither show that nobody's queue was chosen nor let a reader choose it, and
+    // picking it cleared the filter instead — so the loudest thing in the product was
+    // the one thing that could not be asked for (LAW-007).
+    //
+    // What a reader picks is carried as the option's position, which no name a corpus
+    // writes can collide with. So the chosen option is the first one and not the one
+    // standing for all of them.
+    const chosenIn = (drawn: string) =>
+      [...drawn.matchAll(/<option value="([^"]*)" selected=""/g)].map((found) => found[1]!);
+
+    // Nobody's is the first option of the three menus, and the other two are still on
+    // the option standing for all of theirs.
+    expect(nobody).toContain('data-narrowed="owner"');
+    expect(chosenIn(nobody)).toEqual(['', '0', '']);
+    // And every menu is on that option where nothing is narrowed at all.
+    expect(everybody).not.toContain('data-narrowed');
+    expect(chosenIn(everybody)).toEqual(['', '', '']);
+  });
+
+  it('narrows to the Findings one Check found', () => {
+    const drawn = draw(INBOX, only({ kind: 'another-check' }));
+
+    // The identifier a reader groups by. On the real Corpus one kind accounts for most
+    // of 125 Findings, and until this existed a hundred rows opening on the same
+    // phrase could not be told from a hundred different defects (ADR-0041).
+    expect(foundByIn(drawn)).toEqual(['another-check', 'another-check']);
+    expect(drawn).toContain('data-narrowed="kind"');
+    expect(drawn).not.toContain('one word is written down two different ways');
+  });
+
+  it('narrows to the Findings about one Module', () => {
+    const drawn = draw(INBOX, only({ module: 'm1' }));
+
+    expect(routesToIn(drawn)).toEqual(['p1']);
+    expect(drawn).toContain('data-narrowed="module"');
+  });
+
+  it('narrows to the Findings that say a word, however it was typed', () => {
+    const drawn = draw(INBOX, only({ says: 'CALLED the same' }));
+
+    // The one filter that needs no list behind it, and the only way to narrow by
+    // something no Check and no Module names — the word a defect is about.
+    expect(routesToIn(drawn)).toEqual(['']);
+    expect(drawn).toContain('two things here are called the same');
+    expect(drawn).toContain('data-narrowed="says"');
+  });
+
+  it('offers only what the reading offers, and a Check that found nothing among them', () => {
+    const drawn = draw(INBOX);
+
+    // Four ways to narrow, every option in them out of the payload (LAW-004).
+    for (const of of ['says', 'kind', 'owner', 'module']) {
+      expect(drawn).toContain(`data-narrows="${of}"`);
+    }
+    // A Check that ran and found nothing is still offered. *Nothing here* is a
+    // different answer from *never looked for*, and worth being able to ask.
+    expect(drawn).toContain('a-check-that-found-nothing');
+    // Nothing is narrowed, so nothing says it is.
+    expect(drawn).not.toContain('data-narrowed');
+    expect(drawn).not.toContain('Showing');
+  });
+
+  it('states the whole Corpus’s figure against what was looked for, however it is narrowed', () => {
     const whole = draw(INBOX);
-    const mine = draw(INBOX, 'p1');
+    const mine = draw(INBOX, only({ owner: 'p1' }));
 
     // Never a bare figure. Four Findings can only ever mean four that these
     // Checks found, so what ran is named beside the number (LAW-006) — and it is
     // the Corpus's figure on every one of these pages, because a narrowed page
     // reporting its own slice as the total is how a queue looks finished.
     for (const drawn of [whole, mine]) {
-      expect(drawn).toContain('4 Findings in this Corpus');
-      expect(drawn).toContain('from the 2 Checks that ran: a-check, another-check');
+      expect(words(drawn)).toContain(
+        '4 Findings in this Corpus, from the 3 Checks that ran: a-check, another-check, a-check-that-found-nothing.',
+      );
     }
+    // And the slice said as a slice, never in place of the whole.
+    expect(mine).toContain('data-showing');
+    expect(mine).toContain('Showing 1 of 4.');
   });
 
   it('shows the text each Finding cites, in place', () => {
@@ -271,20 +410,23 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
 
     // The empty Inbox is the harder page: "nothing was found" is a claim about a
     // Corpus, and can only ever mean nothing these Checks would have found.
-    expect(drawn).toContain('Nothing was found in this Corpus by the 2 Checks that ran');
+    expect(drawn).toContain('Nothing was found in this Corpus by the 3 Checks that ran');
     expect(drawn).toContain('a-check, another-check');
-    expect(queuesIn(drawn)).toEqual([]);
+    expect(routesToIn(drawn)).toEqual([]);
+    // Nothing to narrow, so nothing offering to. A toolbar over an empty Corpus is
+    // four ways to ask a question that has already been answered.
+    expect(drawn).not.toContain('data-narrows');
   });
 
-  it('says so when a bookmarked queue holds nothing, without saying the Corpus is clean', () => {
-    const drawn = draw(INBOX, 'p3');
+  it('says so when a narrowing holds nothing, without saying the Corpus is clean', () => {
+    const drawn = draw(INBOX, only({ owner: 'p3' }));
 
     // Somebody's queue emptying is the good outcome, and it is not the same claim
     // as the Corpus being clean — there are four Findings on this page's own
     // reckoning, and they belong to other people.
-    expect(queuesIn(drawn)).toEqual([]);
-    expect(drawn).toContain('Nothing that these Checks found routes to “p3”');
-    expect(drawn).toContain('4 Findings in this Corpus');
+    expect(routesToIn(drawn)).toEqual([]);
+    expect(drawn).toContain('Nothing that these Checks found matches what you have narrowed');
+    expect(words(drawn)).toContain('4 Findings in this Corpus');
   });
 
   it('offers nothing to do to a Finding but read it', () => {
@@ -294,12 +436,38 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
     // being found. Nothing here dismisses, hides, or remembers having seen one,
     // because nothing in this product may hold what a rebuild could not reproduce
     // (LAW-011) — and a control for it is how such a thing arrives.
-    expect(drawn).not.toContain('<button');
-    expect(drawn).not.toContain('<input');
+    //
+    // Asserted of the row and not of the page, which is the whole difference: a
+    // `select` whose value is in the address remembers nothing about a Finding, and
+    // narrowing a queue of a hundred is what makes the surface readable at all
+    // (ADR-0041, amending ADR-0039 §2). Inside a row there is still nothing but a
+    // disclosure and places to go.
+    const rows = rowsIn(drawn);
+    expect(rows).toHaveLength(4);
+    for (const row of rows) {
+      for (const control of ['<button', '<input', '<select', '<textarea']) {
+        expect(row).not.toContain(control);
+      }
+    }
     expect(drawn).not.toContain('type="checkbox"');
     for (const word of ['ismiss', 'nooze', 'cknowledge', 'ark as read', 'esolve']) {
       expect(drawn).not.toContain(word);
     }
+  });
+
+  it('remembers how it is narrowed in the address and nowhere else', () => {
+    const mine = draw(INBOX, only({ owner: 'p1', kind: 'a-check' }));
+
+    // Which is what keeps a filter from being the control above: the page is drawn
+    // from the address, so there is nothing to hold and nothing to invalidate
+    // (LAW-011). Two of them at once, because one filter that clears the others
+    // would be a page arguing with its own address.
+    expect(routesToIn(mine)).toEqual(['p1']);
+    expect(mine).toContain('data-narrowed="owner"');
+    expect(mine).toContain('data-narrowed="kind"');
+    expect(mine).toContain('Showing 1 of 4.');
+    // The way back out is stated wherever a filter is on.
+    expect(mine).toContain('Everything in this Corpus');
   });
 
   it('draws no figure a reader could take for a measurement of a queue', () => {
@@ -337,6 +505,7 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
             findings: [
               {
                 says: 'something else entirely',
+                foundBy: 'one-more-check',
                 moduleId: 'm9',
                 cites: {
                   at: { file: 'nine.md', line: 2 },
@@ -353,8 +522,10 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
     );
 
     // The same component draws two Corpus that share not one word, so nothing in
-    // it can have been written for either (LAW-004). Every name, every person and
-    // every sentence a Check wrote arrives in the payload.
+    // it can have been written for either (LAW-004). Every name, every person, every
+    // Check and every sentence a Check wrote arrives in the payload — including the
+    // options a reader is offered to narrow by, which is the newest way for one
+    // Corpus's shape to get written in here.
     for (const word of ['p1', 'm2', 'a-check', 'the first way it is put']) {
       expect(drawn).toContain(word);
     }
@@ -362,6 +533,8 @@ describe('a Corpus’s Findings, worked as an Inbox', () => {
       expect(elsewhere).not.toContain(word);
     }
     expect(elsewhere).toContain('p9');
+    expect(elsewhere).toContain('m9');
+    expect(elsewhere).toContain('one-more-check');
     expect(elsewhere).toContain('something else entirely');
   });
 });

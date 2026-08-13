@@ -26,6 +26,7 @@ const INBOX = {
         findings: [
           {
             says: 'nobody answers for this',
+            foundBy: 'a-check',
             moduleId: 'm2',
             cites: {
               at: { file: 'two.md', line: 4 },
@@ -36,6 +37,7 @@ const INBOX = {
           },
           {
             says: 'this belongs to no Module',
+            foundBy: 'another-check',
             moduleId: null,
             cites: { at: { file: 'three.md', line: 1 }, writtenUnder: null, quoted: null },
             alsoCites: [],
@@ -47,6 +49,7 @@ const INBOX = {
         findings: [
           {
             says: 'two things are called the same and are not the same',
+            foundBy: 'a-check',
             moduleId: 'm1',
             cites: {
               at: { file: 'one.md', line: 3 },
@@ -218,10 +221,50 @@ describe('one Corpus’s Findings, as a queue apiece', () => {
     expect(Object.keys(somebody!.findings[0]!).sort()).toEqual([
       'alsoCites',
       'cites',
+      'foundBy',
       'moduleId',
       'says',
     ]);
     expect(Object.keys(somebody!).sort()).toEqual(['findings', 'owner']);
+  });
+
+  it('says which Check found each Finding, in the vocabulary the figure is counted against', () => {
+    const [nobody, somebody] = queues(INBOX);
+
+    // A queue of a hundred where one kind accounts for most of it cannot be read
+    // until the kinds can be told apart, and the Check's own code is what tells
+    // them apart. The code was already on the surface in the sentence naming what
+    // was looked for; only the row-by-row use of it was missing (ADR-0041).
+    expect(somebody!.findings[0]!.foundBy).toBe('a-check');
+    expect(nobody!.findings[1]!.foundBy).toBe('another-check');
+
+    // Never absent and never empty. A Finding whose kind is unstated is one no
+    // reader can group, count apart or filter out.
+    const [contradiction] = somebody!.findings;
+    for (const broken of [undefined, '']) {
+      expect(
+        corpusInboxSchema.safeParse(
+          reading({
+            routesTo: [{ owner: 'p1', findings: [{ ...contradiction, foundBy: broken }] }],
+          }),
+        ).success,
+      ).toBe(false);
+    }
+  });
+
+  it('refuses a Finding filed under a Check it is not counted against', () => {
+    // What was looked for is this figure's denominator. A row filed under something
+    // that did not run is counted against a Check that never ran — and on a surface
+    // offering that same list as a way to narrow, it is a row no filter can reach
+    // (LAW-006).
+    const [, somebody] = queues(INBOX);
+    const elsewhere = reading({
+      routesTo: [
+        { owner: 'p1', findings: [{ ...somebody!.findings[0], foundBy: 'a-third-check' }] },
+      ],
+    });
+
+    expect(corpusInboxSchema.safeParse(elsewhere).success).toBe(false);
   });
 
   it('says nothing has been written down from this source rather than sending an empty queue', () => {
