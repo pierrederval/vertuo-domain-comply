@@ -17,6 +17,7 @@ import {
   Surface,
 } from '../components/layout.js';
 import { opensAt, Where } from '../components/Where.js';
+import { Badge } from '../components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { count } from '../words.js';
 
@@ -170,18 +171,33 @@ function Declared({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{facet.label}</CardTitle>
-        {/*
-          The one state that is nothing at all still gets a mark. A Facet drawn as
-          blank cannot be told from one the page forgot, and an unwritten Facet is
-          the work this page exists to name.
-        */}
-        <p
-          data-facet-state={facet.state}
-          className={`text-sm lowercase ${facet.state === 'absent' ? 'text-mark' : 'text-muted-foreground'}`}
-        >
-          {facet.state}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <CardTitle>{facet.label}</CardTitle>
+          {/*
+            The one state that is nothing at all still gets a mark. A Facet drawn as
+            blank cannot be told from one the page forgot, and an unwritten Facet is
+            the work this page exists to name.
+
+            A badge, which is what LAW-006 leaves room for: it carries a state's name
+            and never a count, so there is nothing in this shape for a denominator to
+            fall out of. It was a grey word on its own line below the heading, which
+            is where a reader reads a subtitle rather than a state — and one word of
+            eight Facets’ worth of them cannot be scanned down a page at all.
+          */}
+          <Badge
+            variant="outline"
+            data-facet-state={facet.state}
+            className={
+              facet.state === 'absent'
+                ? 'border-mark/40 bg-mark-quiet text-mark'
+                : facet.state === 'approved'
+                  ? 'border-cell-approved/30 bg-sunken text-cell-approved'
+                  : 'border-border bg-sunken text-muted-foreground'
+            }
+          >
+            {facet.state}
+          </Badge>
+        </div>
         {/*
           What belongs under this Facet, in the business's own words, above what
           stands between it and approval. Drawn in every state including absent:
@@ -193,7 +209,9 @@ function Declared({
           sentence goes reads as a sentence somebody forgot to write.
         */}
         {facet.describes !== undefined && (
-          <p data-describes="" className="text-sm text-muted-foreground">
+          // Bounded to a measure a person can read down. Run the width of the card it
+          // was a 140-character line, which is twice what an eye tracks back from.
+          <p data-describes="" className="max-w-prose text-sm text-muted-foreground">
             {facet.describes}
           </p>
         )}
@@ -284,7 +302,19 @@ export function ModuleDetail({ module }: { module: CorpusModule }) {
 
   return (
     <Surface>
-      <p className="text-sm text-muted-foreground">
+      {/*
+        Who answers for this Module, on a surface of its own, because every Finding on
+        the page below reaches them or reaches nobody (LAW-007). Where nobody does, the
+        surface is marked as well as the sentence: a line of amber text floating above
+        the first card is the position a reader skips.
+      */}
+      <p
+        className={`rounded-lg border px-5 py-4 text-sm ${
+          reading.owner === null
+            ? 'border-mark/40 bg-mark-quiet/40'
+            : 'border-border bg-panel text-muted-foreground'
+        }`}
+      >
         {reading.owner === null ? (
           // LAW-007: a Module nobody answers for is a defect, and the Findings
           // below have nobody to reach.
@@ -294,7 +324,7 @@ export function ModuleDetail({ module }: { module: CorpusModule }) {
         ) : (
           <>
             {'Answered for by '}
-            <span className="text-foreground">{reading.owner}</span>
+            <span className="font-medium text-foreground">{reading.owner}</span>
           </>
         )}
       </p>

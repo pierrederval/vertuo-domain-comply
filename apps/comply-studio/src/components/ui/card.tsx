@@ -32,7 +32,9 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
+      /* A card's own name, one step up from the knowledge in it. Set at the body's
+         size it read as a bold first line rather than as a heading. */
+      className={cn("text-base leading-none font-semibold", className)}
       {...props}
     />
   )

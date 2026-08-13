@@ -22,19 +22,61 @@
  * these are the values it already carried.
  */
 :root {
-  --paper: #fbfbfa;
-  --ink: #1c1f23;
-  --ink-quiet: #5c646e;
+  /*
+   * Four grounds and never two. A surface that is all one tone gives a reader
+   * nothing to read the shape of the page from: the rail was the same white as
+   * the panels sitting on it, so the shelf and the thing on the shelf were one
+   * undivided field. Each of these is the same warm neutral one step apart, so
+   * the page reads as one product rather than as a rail bolted to a document.
+   */
+  --paper: #fafaf9;
+  --rail: #f4f4f2;
   --panel: #ffffff;
-  --line: #e2e4e8;
-  --focus: #2b5fd9;
+  --sunken: #f7f7f5;
+
+  /*
+   * Three weights of ink. The third exists because a column heading and the
+   * knowledge under it were the same grey, so every table read as one flat block
+   * — and a denominator is only half of a figure if a reader can find it.
+   */
+  --ink: #17181a;
+  --ink-quiet: #5b6169;
+  --ink-faint: #8b9098;
+
+  --line: #e7e6e2;
+  /*
+   * The heavier rule, for the two places a boundary carries meaning rather than
+   * decoration: the line the destinations sit on, and the line under a table
+   * heading. Everything else is `--line`.
+   */
+  --line-strong: #d6d5d0;
+
+  /*
+   * Where the reader is, and the ground it is marked on. `data-here` is the
+   * handle this pairs with, so the value and the attribute say one thing.
+   *
+   * It is the focus ring's own blue, promoted rather than invented: that blue was
+   * already the one colour in the product standing for *this is the thing you are
+   * on*, and a second accent beside it would be two answers to one question. It is
+   * deliberately not the mark — amber means work landing on somebody (LAW-007), and
+   * spending it on navigation is how a page full of marks stops meaning anything.
+   */
+  --here: #2f5fd0;
+  --here-quiet: #eef2fc;
+  --focus: var(--here);
 
   /*
    * What something a person has to act on is drawn with. LAW-007: a Module
    * nobody answers for is a defect and not a blank, so absence gets a mark of
    * its own rather than an empty cell.
+   *
+   * `--mark-quiet` is the ground it is drawn on where the mark is a phrase rather
+   * than a glyph. Amber text alone at 13px on white is quiet enough to scan past,
+   * and *nobody answers for this* is the one thing on the grid that must not be
+   * scanned past.
    */
   --mark: #8a5a00;
+  --mark-quiet: #fbf3e3;
 
   /*
    * The four states a Facet can be in, as four named values.
@@ -50,7 +92,16 @@
   --cell-present: var(--ink-quiet);
   --cell-absent: #b3b9c1;
 
-  --radius: 0.375rem;
+  --radius: 0.5rem;
+
+  /*
+   * One rhythm for the whole page. The rail's width, the strip above the content
+   * and the gutter either side of it were three numbers written at three call
+   * sites, which is how a header came to be 48px tall over a 24px gutter — a strip
+   * shorter than the space beneath it reads as something that failed to load.
+   */
+  --strip: 3.5rem;
+  --gutter: 2rem;
 }
 
 @theme inline {
@@ -66,13 +117,31 @@
   --color-primary-foreground: var(--panel);
   --color-secondary: var(--paper);
   --color-secondary-foreground: var(--ink);
-  --color-accent: var(--paper);
+  /*
+   * What a thing looks like under the pointer. It was the same tone as the ground
+   * it sits on, so a ghost button and a table row had no hover at all — and a row
+   * that does not answer the pointer reads as text rather than as somewhere to go.
+   */
+  --color-accent: var(--sunken);
   --color-accent-foreground: var(--ink);
   --color-border: var(--line);
   --color-input: var(--line);
   --color-ring: var(--focus);
 
+  /* This product's own, beside the names the vendored components ask for. */
+  --color-panel: var(--panel);
+  --color-rail: var(--rail);
+  --color-sunken: var(--sunken);
+  --color-ink-faint: var(--ink-faint);
+  --color-line-strong: var(--line-strong);
+  --color-here: var(--here);
+  --color-here-quiet: var(--here-quiet);
+
   --color-mark: var(--mark);
+  --color-mark-quiet: var(--mark-quiet);
+
+  --spacing-strip: var(--strip);
+  --spacing-gutter: var(--gutter);
 
   --color-cell-approved: var(--cell-approved);
   --color-cell-well-formed: var(--cell-well-formed);
@@ -80,16 +149,19 @@
   --color-cell-absent: var(--cell-absent);
 
   /*
-   * The shelf, which is the sidebar. Same paper as everything else: the Studio
-   * has one surface and the rail is part of it, not a separate dark product.
+   * The shelf, which is the sidebar. Still one product and not a separate dark
+   * one, but no longer the same tone as what sits on it: the rail is the ground
+   * and a Corpus is the thing standing on it, and a reader has to be able to see
+   * which is which. An item under the pointer comes up in `--panel`, so it lifts
+   * off the rail rather than tinting in place.
    */
-  --color-sidebar: var(--panel);
+  --color-sidebar: var(--rail);
   --color-sidebar-foreground: var(--ink);
   --color-sidebar-primary: var(--ink);
   --color-sidebar-primary-foreground: var(--panel);
-  --color-sidebar-accent: var(--paper);
+  --color-sidebar-accent: var(--panel);
   --color-sidebar-accent-foreground: var(--ink);
-  --color-sidebar-border: var(--line);
+  --color-sidebar-border: var(--line-strong);
   --color-sidebar-ring: var(--focus);
 
   --radius-sm: calc(var(--radius) - 2px);
@@ -100,5 +172,36 @@
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font: 0.9375rem / 1.5 system-ui, -apple-system, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5715;
+  /*
+   * Only where a shape would otherwise be read as a letter. The rest is left to
+   * the system face, which is the one typeface guaranteed to be there.
+   */
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Every figure and every column of counts, in one width per digit.
+ *
+ * Not decoration: a column of `0 of 8` where the glyphs shift width does not line
+ * up, and a denominator a reader has to work at is one they discount — which is the
+ * bare number LAW-006 refuses, arrived at through the typesetting.
+ */
+th,
+td,
+[data-figure] {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Headings are set tighter than the text under them, which is the whole of the
+ * scale: one step of size and one step of tracking, four times over. A page whose
+ * heading is its body text at bold is a page with no shape to skim.
+ */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.011em;
 }

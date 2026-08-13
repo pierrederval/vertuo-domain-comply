@@ -21,7 +21,11 @@ import { count } from '../words.js';
 function Work({ module, corpusId }: { module: NeedsWork; corpusId: string }) {
   return (
     <TableRow data-needs-work="">
-      <TableHead scope="row" className="grid gap-px align-middle font-normal">
+      {/* A row's name and not a column's heading — see the same cell on the grid. */}
+      <TableHead
+        scope="row"
+        className="grid gap-0.5 align-middle text-sm font-normal tracking-normal text-foreground normal-case"
+      >
         <Link
           className="justify-self-start font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
           to={`/corpus/${encodeURIComponent(corpusId)}/modules/${encodeURIComponent(module.id)}`}
@@ -31,15 +35,25 @@ function Work({ module, corpusId }: { module: NeedsWork; corpusId: string }) {
         {module.owner === null ? (
           // LAW-007: every Finding against this Module routes to nobody, which is a
           // defect and not an empty space.
-          <span className="text-sm">
+          <span className="text-xs">
             <Conspicuous>nobody answers for this</Conspicuous>
           </span>
         ) : (
-          <span className="text-sm text-muted-foreground">{module.owner}</span>
+          <span className="text-xs text-muted-foreground">{module.owner}</span>
         )}
       </TableHead>
-      <TableCell className="text-sm text-muted-foreground">
-        {`${module.approved} of ${module.declaredFacets}`}
+      {/*
+        The count carries the row's weight and its denominator stays beside it, at the
+        weight of the words it is. Both halves were one grey at one size, so a column of
+        28 rows reading `0 of 8` had nothing in it for an eye to catch — the flatness was
+        not the spacing, it was that nothing on the row was more important than anything
+        else. Never a bar and never a share of the two: the denominator is a count of
+        Facets a Lens declares, and a figure drawn as a proportion of it is the reading
+        LAW-006 refuses.
+      */}
+      <TableCell className="text-sm">
+        <span className="font-semibold text-foreground">{module.approved}</span>
+        <span className="text-muted-foreground">{` of ${module.declaredFacets}`}</span>
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
         <Moved movement={module.movement} />
@@ -189,7 +203,16 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
     );
   }
 
-  const { readiness, integrity, needsWork, declaredFacets, ladder, writtenDown, since } = reading;
+  const {
+    readiness,
+    integrity,
+    needsWork,
+    declaredFacets,
+    facetsNobodyHasBegun,
+    ladder,
+    writtenDown,
+    since,
+  } = reading;
   const nothingToCompare = needsWork.some(
     (module) => module.movement.comparedWith === 'no-earlier-reading',
   );
@@ -203,18 +226,30 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
     <Surface>
       <TwoReadings readiness={readiness} integrity={integrity} />
 
-      <Card>
-        <CardHeader>
+      <Card className="gap-0 overflow-hidden py-0">
+        <CardHeader className="gap-2 py-5">
           <CardTitle>Needs work</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        {/* Flush to the card's edges, so a row and the rule under it run the whole width
+            of the surface — the same shape a queue has, because both are lists of work.
+            The notes that qualify the figures keep their own padded region below. */}
+        <CardContent className="border-t border-border px-0">
           {needsWork.length === 0 ? (
-            <NothingToShow>
-              {`Every Module here has each of the ${count(declaredFacets, 'Facet')} its Lens declares approved. Knowledge nobody has written down anywhere is not counted, and cannot be.`}
-            </NothingToShow>
+            <div className="px-6 py-5">
+              <NothingToShow>
+                {`Every Module here has each of the ${count(declaredFacets, 'Facet')} its Lens declares approved. Knowledge nobody has written down anywhere is not counted, and cannot be.`}
+              </NothingToShow>
+            </div>
           ) : (
             <div className="w-full overflow-x-auto">
-              <table className="caption-bottom text-sm">
+              {/*
+                As wide as the card it sits in. Three columns at their own width left
+                two thirds of the card empty and the whole list huddled at the left,
+                which reads as a table that failed to finish drawing. The grid is the
+                other case and stays intrinsic: its columns grow with the Corpus, and
+                there a stretch would push the marks away from the name they belong to.
+              */}
+              <table className="w-full caption-bottom text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead scope="col">Module</TableHead>
@@ -230,7 +265,15 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
               </table>
             </div>
           )}
+        </CardContent>
 
+        {/*
+          What every figure above is counted out of, and what *approved* means here. On
+          its own ground beneath the list, because these are what the figures mean and
+          not more of them — mixed in at the foot of the same white surface they read as
+          a fourth and fifth row of the table (LAW-006).
+        */}
+        <div className="flex flex-col gap-2 border-t border-border bg-sunken px-6 py-4">
           <Aside>
             {`Every figure here is counted out of the ${count(declaredFacets, 'Facet')} this Corpus’s Lens declares, and a Module with all of them approved is not listed. What each one falls short of is on its own page, Facet by Facet.`}
           </Aside>
@@ -247,7 +290,25 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
               {`The last reading kept for this Corpus was taken against different criteria from these, so no figure above can be compared with it. What ${reading.lensId} asks of this Corpus changed; whether the knowledge did is not something this page can say yet.`}
             </Aside>
           )}
-        </CardContent>
+          {/*
+            A Facet the Lens declares that nobody has begun anywhere. Every figure above
+            is counted out of the declared Facets, so one this business does not have
+            deflates all of them out of one too many — and read along a row that is
+            invisible, while a work list is nothing but rows.
+
+            This is what the Corpus opening at the grid used to be for: a reader met the
+            one view that can show it before they met any figure. It is said here now, so
+            the figures a reader lands on carry their own warning (LAW-006).
+          */}
+          {facetsNobodyHasBegun.map((facet) => (
+            <Aside key={facet}>
+              <span data-nobody-has-begun="">
+                <Conspicuous>{`No Module has anything under “${facet}” yet.`}</Conspicuous>
+              </span>{' '}
+              {`It is declared by the Lens “${reading.lensId}”, so either nobody has begun it, or this Corpus does not have it and every figure above is counted out of one too many. The grid reads down that column.`}
+            </Aside>
+          ))}
+        </div>
       </Card>
 
       <Card>

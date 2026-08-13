@@ -21,6 +21,7 @@ import { ModuleDetail } from './corpus/ModuleDetail.js';
 import { ReadAgain, type Doing } from './corpus/ReadAgain.js';
 import { AppShell, type ShelfState } from './shell/AppShell.js';
 import { OPENS_AT } from './shell/destinations.js';
+import { theOneCorpusToOpen } from './shell/where.js';
 
 /** Reading a Corpus's source again, as every surface that has to ask again sees it. */
 type ReadingTheSource = ReturnType<typeof useReadingTheSource>;
@@ -137,23 +138,21 @@ function EveryCorpus({ shelf }: { shelf: ShelfState }) {
 }
 
 /**
- * The grid, and the one action that changes what is drawn in it.
+ * The grid.
  *
- * The action is here because this is where a Corpus opens, and because a Corpus with
- * nothing written down yet lands here too — which is the state the action exists to
- * get a reader out of, so it has to be drawn beside the sentence saying so.
+ * The action that reads the source again was drawn here, because this is where a
+ * Corpus opens. It is in the frame now, so it is in reach from a queue and from what
+ * moved as well — and a Corpus with nothing written down yet still meets it, which is
+ * the state it exists to get a reader out of (ADR-0035).
  */
 function OneCorpus({ reading }: { reading: ReadingTheSource }) {
   const { id } = useParams();
   const asked = id ?? '';
 
   return (
-    <Surface>
-      <ReadAgain doing={reading.doingTo(asked)} press={() => reading.read(asked)} />
-      <Answering ask={() => fetchCorpusDetail(asked)} about={asked} since={reading.brought}>
-        {(corpus) => <CorpusMatrix corpus={corpus} />}
-      </Answering>
-    </Surface>
+    <Answering ask={() => fetchCorpusDetail(asked)} about={asked} since={reading.brought}>
+      {(corpus) => <CorpusMatrix corpus={corpus} />}
+    </Answering>
   );
 }
 
@@ -238,6 +237,23 @@ function OneFact({ reading }: { reading: ReadingTheSource }) {
   );
 }
 
+/**
+ * Where a reader arriving at the product is put.
+ *
+ * Into the one Corpus where the shelf holds one, and into the shelf otherwise. It waits
+ * rather than guessing: sending somebody into a Corpus on the strength of a shelf that
+ * has not been read yet is sending them to a page that has nothing on it, and the wait
+ * is one answer long.
+ */
+function Arriving({ shelf }: { shelf: ShelfState }) {
+  const only = theOneCorpusToOpen(shelf.corpus);
+
+  if (shelf.corpus === null && shelf.trouble === null) return <Says>Reading the shelf.</Says>;
+  if (only === null) return <Navigate to="/corpus" replace />;
+
+  return <Navigate to={`/corpus/${encodeURIComponent(only)}/${OPENS_AT}`} replace />;
+}
+
 /** Nothing is kept at the address the reader arrived at. */
 function Nowhere() {
   return (
@@ -257,8 +273,18 @@ export function App() {
 
   return (
     <Routes>
-      <Route element={<AppShell shelf={shelf} />}>
-        <Route path="/" element={<Navigate to="/corpus" replace />} />
+      <Route element={<AppShell shelf={shelf} reading={reading} />}>
+        {/*
+          Where arriving lands. A shelf holding one Corpus has nothing to choose
+          between, so a reader is put into it rather than shown a list of one — and
+          into the surface it opens at, which is the work.
+
+          Only from the bare address. The shelf keeps its own, so *every Corpus on the
+          shelf* still goes there and does not bounce straight back to the Corpus a
+          reader just left it for. Until the shelf has been read, and wherever anything
+          on it could not be read at all, this stays the list (ADR-0040).
+        */}
+        <Route path="/" element={<Arriving shelf={shelf} />} />
         <Route path="/corpus" element={<EveryCorpus shelf={shelf} />} />
         {/*
           A Corpus opens where its reading is. The address without a destination

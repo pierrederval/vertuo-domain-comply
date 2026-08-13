@@ -145,6 +145,26 @@ export const homeReadingSchema = z.discriminatedUnion('outcome', [
     integrity: integrityFigureSchema,
     /** How many Facets every per-Module figure below is stated out of (LAW-006). */
     declaredFacets: z.number().int().nonnegative(),
+    /**
+     * Facets this Corpus's Lens declares that no Module has anything under at all, by
+     * the name a reader is shown.
+     *
+     * Here because this is the surface a Corpus opens at, and the figures on it are
+     * counted out of `declaredFacets` — so a Facet the Lens declares that this business
+     * does not have deflates every one of them, silently, out of one too many. That is
+     * a defect in the denominator and LAW-006 will not let a denominator go unsaid.
+     *
+     * Read down a column it is obvious and the grid says it; read along a row it is
+     * invisible, and a work list is nothing but rows. It travels with this reading
+     * rather than being left to the grid because the alternative was to keep readers
+     * off this page until they had seen that one, which is what the Corpus opening at
+     * the grid used to be for.
+     *
+     * Empty where the Corpus holds no Module at all: *no Module has anything under
+     * this Facet* is true of every Facet then, and the thing worth saying is that
+     * nothing has been written down yet.
+     */
+    facetsNobodyHasBegun: z.array(z.string().min(1)),
     needsWork: z.array(needsWorkSchema),
     /**
      * Every writing-down of this source the shelf still holds, oldest first.

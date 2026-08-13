@@ -174,6 +174,9 @@ Two scripts, and the fixtures shelf is untouched:
 | `pnpm shelf:domain` | Writes down what is at source in `vertuo-domain`, as a Seed, onto the `lenses` shelf |
 | `pnpm dev:domain` | Serves that shelf — the API and the Studio, against the DDD Corpus |
 
+*Renamed since: serving the DDD Corpus is what `pnpm dev` now does, and the fixtures are what
+`pnpm dev:fixtures` has to be asked for. The reasoning is in `CLAUDE.md`.*
+
 Kept on a shelf of its own rather than added to the fixtures shelf, because tests run against the
 fixtures and a test that needs a sibling checkout is a test that fails on a machine that does not have
 one.

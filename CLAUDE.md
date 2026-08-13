@@ -72,7 +72,8 @@ Three rules that are easy to break:
   grant, and a trigger backs it up. Do not attempt to work around this; it is LAW-003 made
   structural.
 - **Never assert about a class name.** Interface tests use `data-*` handles — `data-figure`,
-  `data-cell`, `data-movement`, `data-conspicuous`, `data-read-again`, `data-cannot-be-read` — because
+  `data-cell`, `data-movement`, `data-conspicuous`, `data-read-again`, `data-cannot-be-read`,
+  `data-surface` — because
   several of them are laws made testable, and a guard tied to styling is deleted by whoever next changes the
   styling. `data-figure` appearing exactly twice is LAW-006: two readings, never a third fused one.
   `data-cannot-be-read` carries `"knowledge"` or `"criteria"`, so a test tells the two kinds of unreadable
@@ -84,6 +85,73 @@ Three rules that are easy to break:
 The interface's components are vendored into `apps/comply-studio/src/components/ui` and are ours to
 maintain (ADR-0018). Both vocabulary guards scan them like any other source, so LAW-004 and LAW-010
 apply to a vendored component as much as to one written here.
+
+Ten things about the frame and its surfaces are worth knowing before changing them (ADR-0038,
+ADR-0039, ADR-0040):
+
+- **A Corpus opens at Home, and Home carries the warning that used to keep it from doing so.** Opening
+  at the grid was not a preference: read down a column, a Facet absent in *every* Module deflates every
+  figure Home draws out of one too many, and read along a row it cannot be seen. `facetsNobodyHasBegun`
+  puts that sentence on Home beside the figures it qualifies, worked out from the same reading the grid
+  uses — so the two cannot come to disagree about which column is empty (ADR-0040, reversing ADR-0033
+  §4). It is a list of names and never a count: *2 Facets unbegun* is a figure derived from the
+  denominator, which is what LAW-006 refuses, and it names nothing anybody can act on.
+- **Arriving lands in the one Corpus where the shelf holds one**, and nowhere else. `theOneCorpusToOpen`
+  stays put until the shelf has been read, and stays put whenever anything on the shelf could not be
+  read at all — that has no page of its own, so a reader sent past the list never learns there is a file
+  to put right (ADR-0035). It applies to the bare address only, so `/corpus` still means the shelf.
+- **A Corpus is the workspace, and everywhere a reader can go sits under it in the rail.** That order
+  is the point: everything in the product is scoped to one Corpus, and drawn as two lists of equal
+  weight — the shelf in the rail, the destinations above the content — the frame never said which
+  contained the other. ADR-0038 had it the second way and ADR-0039 reverses it. `data-switcher` is the
+  handle, and a test asserts it comes before the first `data-destination`.
+- **The switcher is a native disclosure and must stay one.** A menu in a portal is not in the document
+  until it opens, and `renderToStaticMarkup` renders no portal at all — so the shell's own test could
+  not see that a second Corpus exists. Reach for `DropdownMenu` here and the shelf becomes untestable.
+- **The heading names the surface and never the Corpus.** The Corpus is in the trail above it; a Corpus
+  named twice on one screen reads as two things, and the second is what somebody forgets to change. A
+  Module page is headed by the Module, because a Module is not a destination. `data-surface` carries
+  which of the three it is — `shelf`, `module`, or a destination's name.
+- **A `Destination` must say what it answers and carry its own figure.** `describes` is ADR-0019's *a
+  Facet says what it is* applied to the product's own surfaces: three bare words could only be learned
+  by clicking all of them. `icon` is declared beside the name so a fourth destination is one entry and
+  not one entry plus a lookup somebody finds out about when it draws with nothing beside it.
+- **The one action that writes lives in the frame, and there is still one of it.** `ReadAgain` reached
+  one destination of three, so a reader working a queue had to walk back to the grid to bring knowledge
+  in. It is now beside the age of the reading — the fact it changes — on every surface of a Corpus,
+  including the two ADR-0035 says it is the whole remedy for.
+- **A Finding is a row at one height, and the evidence is one disclosure away.** `details` is the whole
+  mechanism, and it is why the Inbox has no `<button>` and no `<input>` — which its own test asserts,
+  because a control for dismissing a Finding is how something a rebuild could not reproduce arrives
+  (LAW-011). The place stays visible closed; the quotation is behind the disclosure, on the same
+  surface, with no navigation. ADR-0039 §2 records why that is LAW-009 kept rather than bent.
+- **A heading decides a column's width, and the grid has no spare.** Set at the body's size in capitals,
+  the DDD Corpus's eight Facet columns pushed `Approved` and `Movement` off the right edge at 1440px —
+  the two a row is read for. At 11px and `px-2` it measures 1281 against 1281 of room. Any change to
+  `TableHead` is a change to whether the grid fits.
+- **The column-heading treatment is on `TableHead` and must not move to `thead`.** A descendant rule on
+  the parent outranks a class on the child, so a Facet no Module has anything under would lose the mark
+  in its own heading — which is the whole reason the grid is drawn as a grid. The cost is that a `th`
+  with `scope="row"` says at its call site that it is a row's name; two of them do.
+
+Three traps in this area that cost real time:
+
+- **`overflow-x` on one axis promotes the other to `auto`.** That is how a row of three destinations
+  came to carry a 13-pixel vertical scrollbar on every screen in the product, from the one pixel each
+  mark hung below its rule.
+- **A `sticky` heading needs a box that scrolls.** Unbounded, it resolves against a container that
+  never scrolls vertically and sits exactly where it already was — it looks done and does nothing.
+  The grid is capped in height for this reason. And a collapsed table gives its borders to the row
+  below, so a pinned heading's rule has to be an inset shadow or there is no rule at all.
+- **A figure and its denominator are two elements and one phrase.** `**0** of 8` cannot be asserted
+  with `toContain('0 of 8')` against markup. Two test files carry a `words()` helper that strips tags
+  *without* inserting a space; the alternative is writing the markup into the assertion, which is the
+  class-name assertion this repository refuses by another route.
+
+`--here` is the accent, and it is `--focus` promoted rather than a second colour: that blue already
+meant *this is the thing you are on*, and `data-here` was already the handle for it. It is deliberately
+not `--mark` — amber means work landing on somebody (LAW-007), and spending it on navigation is how a
+page full of marks stops meaning anything.
 
 shadcn's blocks bring KPI tiles, progress rings, trend chips and count badges. Every one of them is a
 figure with its denominator removed, which is LAW-006. A badge may carry a state's name; never a count.
@@ -109,17 +177,33 @@ Run all of these from the repository root.
 | `pnpm comply extract <lens.json>` | Write down what is at source, as a Seed |
 | `pnpm comply report <lens.json>` | Read a Corpus and print where it stands |
 | `pnpm comply prune <lens.json> [keep]` | Drop what can be worked out again, and say what that cost |
-| `pnpm shelf:fixtures` | Put both fixture Corpus on the development shelf |
-| `pnpm dev` | Both processes below at once; one Ctrl-C stops both |
+| `pnpm shelf:domain` | Write down what is at source in `vertuo-domain-fr`, onto the `lenses` shelf |
+| `pnpm dev` | Both processes below at once, against **the real Corpus**; one Ctrl-C stops both |
 | `pnpm api` | Serve that shelf on port 4301 — every route a GET but the one that reads a source again |
 | `pnpm studio` | The Studio, on port 4302, answering from the API |
-| `pnpm shelf:domain` | Write down what is at source in `vertuo-domain`, onto the `lenses` shelf |
-| `pnpm dev:domain` | The same two processes, serving that shelf instead of the fixtures |
+| `pnpm shelf:fixtures` | Put both fixture Corpus on the development shelf |
+| `pnpm dev:fixtures` | The same two processes, serving that shelf instead of the real Corpus |
+| `pnpm api:fixtures` | The API alone, against that same shelf |
 
 `pnpm dev` is the usual way in: the Studio is unreadable without the API behind it, and starting one
 of a pair by hand is how a person ends up reading a page that is answering from yesterday's process.
 The two run under Turborepo as persistent tasks, so nothing new orchestrates them. Either can still
 be run alone when that is what you want.
+
+**The bare commands serve the real Corpus, and the fixtures are the ones that have to be asked for.** It
+was the other way round until it was noticed that every screen looks like it works against a fixture:
+`Alpha` shows five of seven Facets approved, a real Owner and a short list of Findings, where the real
+Corpus shows 28 Modules that all read `0/8`, all owned by nobody, and all unchanged. A default that
+flatters the interface is a default that hides the work. `pnpm dev:fixtures` is still what a test-shaped
+question wants, and it is the only one of the pair that needs nothing outside this repository — `pnpm dev`
+reads a sibling checkout, and without one the Corpus is on the shelf saying nothing has been written down
+from this source yet, with the action that reads it again (ADR-0035).
+
+**The Studio reloads itself and the API does not.** Vite watches; `tsx` runs the server without
+watching, so an API process started before a change to a payload goes on answering the old shape. The
+Studio then refuses it and says *the Studio was sent something it could not read* — which is the
+contract doing exactly its job, and is also precisely what a stale process looks like. Anything touching
+`comply-contract` or `comply-api` needs the pair restarted before a screen means anything (ADR-0040).
 
 Neither port moves if it is taken. A development server that quietly took the next port leaves two of
 itself running, and the one being read is then the one that was not just changed, which reads as a

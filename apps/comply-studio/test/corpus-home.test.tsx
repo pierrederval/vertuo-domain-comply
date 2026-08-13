@@ -20,6 +20,7 @@ function corpus(part: Record<string, unknown>): CorpusHome {
       readiness: { modulesFullyApproved: 0, modules: 2 },
       integrity: { openFindings: 3, lookedFor: ['a-check', 'b-check'] },
       declaredFacets: 2,
+      facetsNobodyHasBegun: [],
       needsWork: [
         {
           id: 'm-one',
@@ -71,6 +72,9 @@ const OTHER: CorpusHome = corpusHomeSchema.parse({
     readiness: { modulesFullyApproved: 1, modules: 2 },
     integrity: { openFindings: 0, lookedFor: ['g-check'] },
     declaredFacets: 3,
+    // The other shape carries one, so the pair covers a Corpus with a Facet nobody has
+    // begun and a Corpus with none (ADR-0001).
+    facetsNobodyHasBegun: ['Third Thing'],
     needsWork: [
       {
         id: 'n-two',
@@ -84,6 +88,18 @@ const OTHER: CorpusHome = corpusHomeSchema.parse({
     since: { comparedWith: 'no-earlier-reading' },
   },
 });
+
+/**
+ * Just the words a reader meets, with the markup between them taken out.
+ *
+ * Tags are removed rather than replaced by a space, so a phrase split across two
+ * elements still reads as the one phrase it is on screen. A figure and the denominator
+ * beside it are set at two different weights and are one sentence — `1 of 2` — and this
+ * is what asserts a reader sees that rather than what asserts how it is marked up.
+ */
+function words(markup: string): string {
+  return markup.replace(/<[^>]*>/g, '');
+}
 
 function draw(home: CorpusHome): string {
   return renderToStaticMarkup(
@@ -122,8 +138,8 @@ describe('the Modules where there is work', () => {
     const drawn = draw(corpus({}));
 
     expect(drawn.match(/data-needs-work=""/g)).toHaveLength(2);
-    expect(drawn).toContain('1 of 2');
-    expect(drawn).toContain('0 of 2');
+    expect(words(drawn)).toContain('1 of 2');
+    expect(words(drawn)).toContain('0 of 2');
   });
 
   it('marks a Module nobody answers for rather than leaving it blank', () => {
@@ -145,6 +161,35 @@ describe('the Modules where there is work', () => {
   it('says what approved means in this Corpus’s own words', () => {
     expect(draw(corpus({}))).toContain('low → middle → high');
     expect(draw(OTHER)).toContain('1 → 2');
+  });
+});
+
+describe('a Facet nobody has begun anywhere', () => {
+  it('is named as a defect in what every figure here is counted out of', () => {
+    /*
+     * The reading that kept a Corpus from opening at this surface. Every figure here is
+     * counted out of the Facets the Lens declares, so one this business does not have
+     * deflates all of them out of one too many — and read along a row it cannot be seen,
+     * while this whole surface is rows (LAW-006).
+     */
+    const drawn = draw(OTHER);
+
+    expect(drawn).toContain('data-nobody-has-begun');
+    expect(words(drawn)).toContain('No Module has anything under “Third Thing” yet.');
+    expect(words(drawn)).toContain('counted out of one too many');
+    // Marked, because it is work somebody has to settle rather than a note.
+    expect(drawn).toContain('data-conspicuous');
+    // And pointed at the one view that can actually be read down a column.
+    expect(words(drawn)).toContain('The grid reads down that column.');
+  });
+
+  it('says nothing at all where every declared Facet has been begun somewhere', () => {
+    // Not "0 Facets unbegun", and not an empty space where a warning goes: a Corpus
+    // with nothing wrong in its denominator has nothing to say about it.
+    const drawn = draw(corpus({}));
+
+    expect(drawn).not.toContain('data-nobody-has-begun');
+    expect(words(drawn)).not.toContain('No Module has anything under');
   });
 });
 

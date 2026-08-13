@@ -31,6 +31,16 @@ export type Doing =
  * Nothing here says what moved. What moved is the grid's and the change list's to say,
  * from the reading itself; a sentence here repeating it would be a second answer to
  * one question, on the very screen where the first one is expected to move.
+ *
+ * It is drawn in the frame, beside the age of the reading it changes, so it is within
+ * reach from every surface of a Corpus rather than from the one the Corpus opens at. A
+ * reader working a queue had to walk back to the grid to bring new knowledge in, which
+ * is the walk this action exists to save. Still one of it, which is what the doc above
+ * asks for: one button, in one place, on every screen.
+ *
+ * The button leads and whatever it has to say follows underneath it, because the
+ * button is the same size in all four states and the sentence is not — a row that
+ * grows sideways as it reports would move the control a reader is about to press.
  */
 export function ReadAgain({ doing, press }: { doing: Doing; press: () => void }) {
   const reading = doing.at === 'reading';
@@ -38,7 +48,10 @@ export function ReadAgain({ doing, press }: { doing: Doing; press: () => void })
   return (
     // `data-read-again` carries which of the four it is in, so nothing asserting
     // about this state has to reach for a class name to find out.
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-read-again={doing.at}>
+    <div
+      className="flex flex-col items-start gap-2 sm:max-w-sm sm:items-end sm:text-right"
+      data-read-again={doing.at}
+    >
       <Button variant="outline" size="sm" onClick={press} disabled={reading} aria-busy={reading}>
         {reading ? 'Reading the source' : 'Read the source again'}
       </Button>

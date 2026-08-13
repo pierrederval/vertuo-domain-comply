@@ -1,3 +1,4 @@
+import { ArrowUpRight, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 import type { CitedPlace, CorpusInbox, InboxFinding, RoutedFindings } from '@vertuo/comply-contract';
 import { WhyThereIsNoReading } from '../components/NoReading.js';
@@ -77,7 +78,13 @@ function Cited({
         <>
           <pre
             data-quoted=""
-            className="overflow-x-auto rounded-md bg-muted p-3 text-sm whitespace-pre-wrap"
+            /*
+             * The evidence, told from the page around it by a ground and an edge. It
+             * was tinted in the same value as the paper the page is on, which on a
+             * white card is no tint at all — so the one thing on this surface that is
+             * the source’s own words looked like the product’s prose.
+             */
+            className="overflow-x-auto rounded-md border border-border bg-sunken p-3 text-[0.8125rem] leading-relaxed whitespace-pre-wrap"
           >
             {cited.quoted.says}
           </pre>
@@ -108,31 +115,116 @@ function Cited({
  * a thing arrives.
  */
 function Found({ finding, corpusId }: { finding: InboxFinding; corpusId: string }) {
+  const cited = [finding.cites, ...finding.alsoCites];
+  // Where the whole Fact is, for the one action a row offers. A cited place that no
+  // Module writes at has no page to open, so that row offers none.
+  const opens =
+    finding.cites.writtenUnder === null
+      ? null
+      : opensAt(corpusId, finding.cites.writtenUnder, finding.cites.at);
+
   return (
-    <li data-finding="" className="flex flex-col gap-2 border-t border-border pt-4 first:border-0 first:pt-0">
-      <p>{finding.says}</p>
-      <p className="text-sm text-muted-foreground">
-        {finding.moduleId === null ? (
-          // The only place in the product this Finding appears at all. No Module's
-          // page can show it, because showing it there would make it look answered
-          // for by somebody.
-          <Conspicuous>This belongs to no Module, so no Module’s page shows it.</Conspicuous>
-        ) : (
-          <>
-            {'In '}
-            <Link
-              to={moduleAt(corpusId, finding.moduleId)}
-              className="text-foreground underline underline-offset-4"
-            >
+    <li data-finding="" className="group/finding relative border-b border-border last:border-0">
+      {/*
+        A disclosure and not a control. `details` is the whole mechanism: nothing is
+        remembered about a Finding between two draws of this page, because there is
+        nowhere for it to be remembered — which is LAW-011 holding by construction
+        rather than by anybody's restraint. It is also why this is not a button: a
+        Finding is resolved by the knowledge changing, so the only thing to do to one
+        is read it and the only actions on it are places to go.
+      */}
+      <details className="group/row">
+        {/* The right gutter is the action's, kept clear whether or not the action is
+            drawn. Sized to the action and not guessed: at a guess it overlapped the
+            place, and a row whose evidence is covered by a control is worse than one
+            with no control at all. */}
+        <summary className="grid cursor-pointer list-none grid-cols-[auto_1fr] items-center gap-x-3 py-2.5 pr-24 pl-4 outline-none group-hover/finding:bg-sunken focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:grid-cols-[auto_1fr_auto_auto]">
+          <ChevronRight
+            aria-hidden="true"
+            className="size-3.5 shrink-0 text-ink-faint transition-transform group-open/row:rotate-90"
+          />
+          {/*
+            What was found leads, on one line, at one row height. A queue of a hundred
+            was a hundred blocks of five lines apiece — and a list whose rows are all
+            different heights cannot be scanned down at all, which is what made this
+            surface unreadable at 103 Findings. Opened, it is no longer cut: a Finding
+            too long for a row is exactly the one a reader needs the whole of.
+          */}
+          <span className="min-w-0 truncate font-medium group-open/row:whitespace-normal">
+            {finding.says}
+          </span>
+          {finding.moduleId === null ? (
+            // The only place in the product this Finding appears at all. No Module's
+            // page can show it, because showing it there would make it look answered
+            // for by somebody.
+            <span className="col-start-2 text-xs md:col-start-3">
+              <Conspicuous>reaches nobody</Conspicuous>
+            </span>
+          ) : (
+            <span className="col-start-2 truncate text-xs text-muted-foreground md:col-start-3">
               {finding.moduleId}
-            </Link>
-          </>
-        )}
-      </p>
-      <Cited cited={finding.cites} corpusId={corpusId} />
-      {finding.alsoCites.map((also) => (
-        <Cited key={`${also.at.file}:${also.at.line}`} cited={also} corpusId={corpusId} also />
-      ))}
+            </span>
+          )}
+          {/* The end of a place is the part that identifies it, so it is the end that
+              survives when there is not room for all of it. */}
+          <span
+            dir="rtl"
+            className="col-start-2 hidden max-w-[22ch] truncate text-left font-mono text-xs text-ink-faint md:col-start-4 md:block"
+          >
+            {`${finding.cites.at.file}:${finding.cites.at.line}`}
+          </span>
+        </summary>
+
+        <div className="flex flex-col gap-3 pt-1 pr-4 pb-4 pl-10">
+          {finding.moduleId !== null && (
+            <p className="text-sm text-muted-foreground">
+              {'In '}
+              <Link
+                to={moduleAt(corpusId, finding.moduleId)}
+                className="text-foreground underline underline-offset-4"
+              >
+                {finding.moduleId}
+              </Link>
+            </p>
+          )}
+          {finding.moduleId === null && (
+            <p className="text-sm text-muted-foreground">
+              <Conspicuous>This belongs to no Module, so no Module’s page shows it.</Conspicuous>
+            </p>
+          )}
+          {cited.map((place, at) => (
+            <Cited
+              key={`${place.at.file}:${place.at.line}`}
+              cited={place}
+              corpusId={corpusId}
+              also={at > 0}
+            />
+          ))}
+        </div>
+      </details>
+
+      {/*
+        The one action, over the right of the row and drawn only for the row under the
+        pointer — which is what stops a hundred of them reading as a hundred controls.
+        Outside the `summary` on purpose: a link inside it is a second thing to click in
+        one place, and whichever a reader hits is the one they did not mean.
+
+        Never hidden from the keyboard. `opacity-0` leaves it reachable by tab, and
+        focus brings it back, so it is quiet rather than absent.
+      */}
+      {opens !== null && (
+        <Link
+          to={opens}
+          // Named in full for anyone who cannot see the figure beside it, and short on
+          // screen because a row this dense has no room for a sentence.
+          aria-label="Open where it is written"
+          title="Open where it is written"
+          className="absolute top-1.5 right-3 flex items-center gap-1 rounded-md border border-border bg-panel px-2 py-1 text-xs font-medium text-muted-foreground opacity-0 transition-opacity group-hover/finding:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Open
+          <ArrowUpRight aria-hidden="true" className="size-3" />
+        </Link>
+      )}
     </li>
   );
 }
@@ -156,8 +248,25 @@ function Queue({
   const { owner, findings } = queue;
 
   return (
-    <Card data-queue={owner ?? ''}>
-      <CardHeader>
+    /*
+     * The queue reaching nobody is marked as a whole surface and not only in its
+     * heading. LAW-007 makes it the loudest thing on the page, and one amber phrase
+     * at the top of a card the same colour as every other card is not louder than
+     * anything — it is a heading a reader scrolls past on the way to their own name.
+     */
+    <Card
+      data-queue={owner ?? ''}
+      /*
+       * The mark is on the queue's edge and its heading, never across its rows. Tinted
+       * whole, the amber ground was within a shade of the tint a row takes under the
+       * pointer — so the loudest surface on the page was also the only one where a
+       * reader could not tell which row they were about to open.
+       */
+      className={`gap-0 overflow-hidden py-0 ${
+        owner === null ? 'border-mark/40 border-l-4 border-l-mark' : ''
+      }`}
+    >
+      <CardHeader className={`gap-2 py-5 ${owner === null ? 'bg-mark-quiet/60' : ''}`}>
         <CardTitle>
           {owner === null ? <Conspicuous>Routes to nobody</Conspicuous> : owner}
         </CardTitle>
@@ -187,8 +296,11 @@ function Queue({
           </p>
         )}
       </CardHeader>
-      <CardContent>
-        <ul className="flex flex-col gap-4">
+      {/* Flush to the card's edges, so a row and the rule under it run the whole width
+          of the surface. Inset, each row read as a paragraph in a document rather than
+          as a line in a queue. */}
+      <CardContent className="border-t border-border px-0">
+        <ul>
           {findings.map((finding) => (
             <Found
               key={`${finding.cites.at.file}:${finding.cites.at.line}:${finding.says}`}
@@ -276,7 +388,13 @@ export function Inbox({
 
   return (
     <Surface>
-      <p className="text-sm text-muted-foreground">
+      {/*
+        What is in this Corpus and what was looked for to find it, on a surface of its
+        own. It is the denominator every queue below is read against (LAW-006), and it
+        was a line of grey text floating above the first card — the position a reader
+        learns to skip, and the one sentence on this page that must not be skipped.
+      */}
+      <p className="rounded-lg border border-border bg-panel px-5 py-4 text-sm text-muted-foreground">
         {`${count(found, 'Finding')} in this Corpus, from ${ran}.`}
       </p>
 

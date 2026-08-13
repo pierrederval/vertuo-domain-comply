@@ -95,6 +95,18 @@ const OTHER: CorpusDetail = corpusDetailSchema.parse({
 });
 
 /** Each Module's row leads to the Module, so the grid is drawn where links work. */
+/**
+ * Just the words a reader meets, with the markup between them taken out.
+ *
+ * Tags are removed rather than replaced by a space, so a phrase split across two
+ * elements still reads as the one phrase it is on screen. A figure and the denominator
+ * beside it are set at two different weights and are one sentence — `1 of 2` — and this
+ * is what asserts a reader sees that rather than what asserts how it is marked up.
+ */
+function words(markup: string): string {
+  return markup.replace(/<[^>]*>/g, '');
+}
+
 function draw(detail: CorpusDetail): string {
   return renderToStaticMarkup(
     <MemoryRouter>
@@ -270,8 +282,8 @@ describe('the Corpus page, which is the Readiness Matrix', () => {
   });
 
   it("states each Module's figure against what it is out of", () => {
-    expect(draw(corpus({}))).toContain('1 of 2');
-    expect(draw(OTHER)).toContain('1 of 3');
+    expect(words(draw(corpus({})))).toContain('1 of 2');
+    expect(words(draw(OTHER))).toContain('1 of 3');
   });
 
   it('lets wide content scroll inside itself, so the page never scrolls sideways', () => {

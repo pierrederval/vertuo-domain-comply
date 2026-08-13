@@ -35,17 +35,40 @@ export function Figure({ reading, counts, value, outOf, detail }: FigureProps) {
      * a guard that disappears with a stylesheet is worse than no guard: nothing
      * reports its absence.
      */
-    <div className="grid gap-0.5" data-figure="">
-      <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+    <div
+      className="flex flex-col overflow-hidden rounded-lg border border-border bg-panel shadow-xs"
+      data-figure=""
+    >
+      {/*
+        Which reading this is, in a band of its own. The two readings answer different
+        questions and demand different work, so which one a reader is looking at is
+        the first thing the shape says — it was one line of small grey capitals with
+        nothing to separate it from the figure, and the two cards read as one field of
+        four grey lines.
+      */}
+      <p className="border-b border-border bg-sunken px-5 py-2 text-xs font-semibold tracking-wide text-ink-faint uppercase">
         {reading}
-      </span>
-      <span className="text-sm text-muted-foreground">{counts}</span>
-      <strong className="text-3xl leading-tight font-semibold">{value}</strong>
-      {/* Never smaller than the figure needs to stay legible: it is half of what
-          the figure means, not a footnote to it. */}
-      <span className="text-sm text-muted-foreground" title={detail}>
-        {outOf}
-      </span>
+      </p>
+      <div className="px-5 py-4">
+        <p className="text-sm text-muted-foreground">{counts}</p>
+        {/*
+          The count and what it is counted against, on one line and on one baseline.
+          They were stacked, which left the denominator as the fourth line of four and
+          the first thing to go when a reader skims or a screen narrows — and a figure
+          whose denominator can be lost is the bare number LAW-006 refuses. Read as one
+          phrase, "0 of 28 Modules", it cannot be halved.
+        */}
+        <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
+          <strong className="text-[2.5rem] leading-none font-semibold tracking-tight">
+            {value}
+          </strong>
+          {/* Never smaller than the figure needs to stay legible: it is half of what
+              the figure means, not a footnote to it. */}
+          <span className="text-sm font-medium text-muted-foreground" title={detail}>
+            {outOf}
+          </span>
+        </p>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/pro
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { corpusHomeSchema } from '@vertuo/comply-contract';
+import { corpusDetailSchema, corpusHomeSchema } from '@vertuo/comply-contract';
 import { fixturePath } from '@vertuo/comply-fixtures';
 import { extractSeed } from '@vertuo/comply-ingestion';
 import { loadLens } from '@vertuo/comply-lens';
@@ -114,6 +114,18 @@ async function readHome(id: string) {
   return corpusHomeSchema.parse(response.json());
 }
 
+/**
+ * The whole Corpus, so this test can work out which column stands empty the way the
+ * grid works it out — from the same reading, rather than from a second idea of it.
+ */
+async function readWholeCorpus(id: string) {
+  const response = await server.inject({ method: 'GET', url: `/corpus/${id}/reading` });
+  expect(response.statusCode).toBe(200);
+  const { reading } = corpusDetailSchema.parse(response.json());
+  if (reading.outcome !== 'read') throw new Error('the source was written down');
+  return reading;
+}
+
 /** Home, or a failure saying the source was written down when it was not. */
 async function readWork(id: string) {
   const { reading } = await readHome(id);
@@ -155,6 +167,43 @@ describe('what needs work in one Corpus', () => {
     }
   });
 
+  it('names a Facet no Module has anything under, by the name a reader is shown', async () => {
+    /*
+     * The reading that used to keep a Corpus from opening at this surface. Every figure
+     * here is counted out of the declared Facets, so one the business does not have
+     * deflates all of them out of one too many — and read along a row it cannot be seen,
+     * while this whole surface is rows (LAW-006, ADR-0040).
+     *
+     * Both fixtures, because the two are differently shaped and only one of them has a
+     * Facet standing empty across every Module.
+     */
+    for (const [file, id] of [
+      ['lens-a.json', 'corpus-a'],
+      ['lens-b.json', 'corpus-b'],
+    ]) {
+      await shelveLens(file!);
+      await writeDownKnowledge(file!, FIRST);
+
+      const reading = await readWork(id!);
+      const whole = await readWholeCorpus(id!);
+      // Worked out the same way the grid works it out, from the same reading, so the two
+      // surfaces cannot come to disagree about which column is empty.
+      const empty = whole.facets
+        .filter((facet) =>
+          whole.modules.every(
+            (module) => module.cells.find((cell) => cell.facet === facet.name)?.state === 'absent',
+          ),
+        )
+        .map((facet) => facet.label);
+
+      expect(reading.facetsNobodyHasBegun).toEqual(empty);
+      // Drawn and never interpreted: it is the label, which is the Lens's word for it.
+      for (const named of reading.facetsNobodyHasBegun) {
+        expect(whole.facets.map((facet) => facet.label)).toContain(named);
+      }
+    }
+  });
+
   it('carries the two readings and no figure derived from the pair', async () => {
     await shelveLens('lens-a.json');
     await writeDownKnowledge('lens-a.json', FIRST);
@@ -166,6 +215,9 @@ describe('what needs work in one Corpus', () => {
     // The whole list, so a fused figure, a rate, or a grade cannot arrive quietly.
     expect(Object.keys(reading).sort()).toEqual([
       'declaredFacets',
+      // A list of names and not a count. It says which Facets the denominator may be
+      // wrong by, which is the opposite of a figure derived from the pair.
+      'facetsNobodyHasBegun',
       'integrity',
       'ladder',
       'lensId',

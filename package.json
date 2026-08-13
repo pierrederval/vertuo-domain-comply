@@ -13,9 +13,10 @@
     "comply": "tsx apps/comply-cli/src/main.ts",
     "shelf:fixtures": "COMPLY_SHELF=libs/comply-fixtures/corpus pnpm comply extract libs/comply-fixtures/corpus/lens-a.json && COMPLY_SHELF=libs/comply-fixtures/corpus pnpm comply extract libs/comply-fixtures/corpus/lens-b.json",
     "shelf:domain": "COMPLY_SHELF=lenses pnpm comply extract lenses/vertuo-domain-fr.json",
-    "dev": "node scripts/check-ports.mjs && COMPLY_SHELF=\"$PWD/libs/comply-fixtures/corpus\" turbo dev",
-    "dev:domain": "node scripts/check-ports.mjs && COMPLY_SHELF=\"$PWD/lenses\" turbo dev",
-    "api": "COMPLY_SHELF=libs/comply-fixtures/corpus tsx apps/comply-api/src/main.ts",
+    "dev": "node scripts/check-ports.mjs && COMPLY_SHELF=\"$PWD/lenses\" turbo dev",
+    "dev:fixtures": "node scripts/check-ports.mjs && COMPLY_SHELF=\"$PWD/libs/comply-fixtures/corpus\" turbo dev",
+    "api": "COMPLY_SHELF=lenses tsx apps/comply-api/src/main.ts",
+    "api:fixtures": "COMPLY_SHELF=libs/comply-fixtures/corpus tsx apps/comply-api/src/main.ts",
     "studio": "pnpm --filter @vertuo/comply-studio dev"
   },
   "pnpm": {

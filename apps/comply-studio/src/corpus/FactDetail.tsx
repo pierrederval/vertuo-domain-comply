@@ -29,8 +29,22 @@ function Part({ part }: { part: WrittenPart }) {
         part in exactly that shape.
       */}
       <p className="text-xs font-semibold tracking-wide text-muted-foreground">{part.named}</p>
+      {/*
+        The source's own words, set apart from the product's by a rule down the left of
+        them. They were set in the same face, size and colour as every sentence this
+        product writes about them, so the one thing on the page that is quoted verbatim
+        read as the Studio's own prose — and a reader cannot check a claim against
+        evidence they cannot tell apart from the claim (LAW-009).
+
+        Set apart and not restyled: no face of our choosing, no marks interpreted as
+        formatting. What is owed here is the text the reading was taken from.
+      */}
       {part.says.map((passage, at) => (
-        <p key={at} data-passage="" className="text-sm whitespace-pre-wrap">
+        <p
+          key={at}
+          data-passage=""
+          className="border-l-2 border-border pl-3 text-sm whitespace-pre-wrap"
+        >
           {passage}
         </p>
       ))}
@@ -169,7 +183,7 @@ function Quoted({ quoted, at }: { quoted: SourceText | null; at: Place }) {
           </p>
         ) : (
           <>
-            <pre className="overflow-x-auto rounded-md bg-muted p-4 text-sm whitespace-pre-wrap">
+            <pre className="overflow-x-auto rounded-md border border-border bg-sunken p-4 text-[0.8125rem] leading-relaxed whitespace-pre-wrap">
               {quoted.says}
             </pre>
             {quoted.cut && (

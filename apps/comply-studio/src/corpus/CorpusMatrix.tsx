@@ -38,13 +38,30 @@ function drawnAs(state: FacetState): { mark: string; tone: string } {
   return MARKS.find((known) => known.state === state) ?? { mark: '', tone: '' };
 }
 
-function Cell({ state }: { state: FacetState }) {
+function Cell({ state, unstarted }: { state: FacetState; unstarted: boolean }) {
   const { mark, tone } = drawnAs(state);
 
   return (
     // `data-cell` carries the state for anything asserting about it, so no test
     // has to reach for a class name to find out what a cell means.
-    <TableCell className={`text-center text-xl leading-none ${tone}`} data-cell={state}>
+    // Narrower than a cell of words, because the whole content is one glyph. At the
+    // padding a column of text needs, eight Facets push the two figures at the end of
+    // the row off the edge of the grid — and those two are what the row is read for.
+    <TableCell
+      /*
+       * A Facet no Module has anything under is marked down the whole of its column and
+       * not only in its heading. Reading down a column is the one thing the grid can do
+       * that no list of Modules can, and an all-absent column was 28 cells of the
+       * faintest mark on the page with one tinted word at the top — the reading the grid
+       * exists for was the hardest one on it to see.
+       *
+       * A ground and never a colour on the mark: what state a cell is in is the mark's
+       * to say, and tinting it would make one column's cells mean something different
+       * from the same cells anywhere else.
+       */
+      className={`px-2 text-center text-xl leading-none ${tone} ${unstarted ? 'bg-mark-quiet/50' : ''}`}
+      data-cell={state}
+    >
       <abbr title={state} className="cursor-help no-underline">
         {mark}
       </abbr>
@@ -52,7 +69,16 @@ function Cell({ state }: { state: FacetState }) {
   );
 }
 
-function Row({ module, corpusId }: { module: ModuleRow; corpusId: string }) {
+function Row({
+  module,
+  corpusId,
+  unstarted,
+}: {
+  module: ModuleRow;
+  corpusId: string;
+  /** Which Facets no Module in this Corpus has anything under, by name. */
+  unstarted: Set<string>;
+}) {
   return (
     <TableRow>
       {/*
@@ -60,9 +86,19 @@ function Row({ module, corpusId }: { module: ModuleRow; corpusId: string }) {
         column every other one is read against, and a row of marks with nothing
         at the left of it says which state something is in without saying what.
       */}
+      {/*
+        A row's name, not a column's heading, so the column-heading treatment a
+        `TableHead` carries is undone here: this reads as the knowledge it labels.
+        It keeps `th` because that is what it is — the cell every mark on the row is
+        read against.
+
+        It comes up with the row under the pointer. Left on the panel's own white it
+        would stay put while the rest of the row tinted, which reads as a row that
+        stops at the Module column.
+      */}
       <TableHead
         scope="row"
-        className="sticky left-0 z-10 grid gap-px bg-card align-middle font-normal"
+        className="sticky left-0 z-10 grid gap-0.5 border-r border-border bg-panel align-middle text-sm font-normal tracking-normal text-foreground normal-case group-hover/row:bg-sunken"
       >
         {/*
           A cell says how far along a Module is and never what to do about it.
@@ -78,18 +114,22 @@ function Row({ module, corpusId }: { module: ModuleRow; corpusId: string }) {
         {module.owner === null ? (
           // LAW-007: every Finding against this Module routes to nobody, which is
           // a defect and not an empty space.
-          <span className="text-sm">
+          <span className="text-xs">
             <Conspicuous>nobody answers for this</Conspicuous>
           </span>
         ) : (
-          <span className="text-sm text-muted-foreground">{module.owner}</span>
+          <span className="text-xs text-muted-foreground">{module.owner}</span>
         )}
       </TableHead>
       {module.cells.map((cell) => (
-        <Cell key={cell.facet} state={cell.state} />
+        <Cell key={cell.facet} state={cell.state} unstarted={unstarted.has(cell.facet)} />
       ))}
-      <TableCell className="text-sm text-muted-foreground">
-        {`${module.approved} of ${module.declaredFacets}`}
+      {/* The two figures are a different kind of thing from the marks beside them —
+          one is how far along a Facet is, these are the row read as a whole — so a rule
+          separates them. Run together, a row was eleven cells of equal standing. */}
+      <TableCell className="border-l border-border text-sm">
+        <span className="font-semibold text-foreground">{module.approved}</span>
+        <span className="text-muted-foreground">{` of ${module.declaredFacets}`}</span>
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
         <Moved movement={module.movement} />
@@ -137,6 +177,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
       (module) => module.cells.find((cell) => cell.facet === facet.name)?.state === 'absent',
     ),
   );
+  const unstartedNames = new Set(unstarted.map((facet) => facet.name));
   const nothingToCompare = modules.some(
     (module) => module.movement.comparedWith === 'no-earlier-reading',
   );
@@ -151,10 +192,12 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
     <Surface>
       <TwoReadings readiness={readiness} integrity={integrity} />
 
-      <Card>
-        <CardContent className="flex flex-col gap-4">
+      <Card className="gap-0 overflow-hidden py-0">
+        <CardContent className="px-0">
           {modules.length === 0 ? (
-            <NothingToShow>No Module has been written down from this source yet.</NothingToShow>
+            <div className="px-6 py-5">
+              <NothingToShow>No Module has been written down from this source yet.</NothingToShow>
+            </div>
           ) : (
             <>
               {/*
@@ -168,7 +211,20 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
                 scrolling boxes are one more than the grid has, and which of them
                 a reader is dragging would be anybody's guess.
               */}
-              <div data-grid-scroll="" className="relative w-full overflow-x-auto">
+              <div
+                data-grid-scroll=""
+                /*
+                 * Bounded in height so the grid scrolls in both directions inside its
+                 * own edges, which is what lets the headings stay put. Unbounded, a
+                 * `sticky` heading resolves against a box that never scrolls and sits
+                 * exactly where it already was — the freeze looked done and did nothing.
+                 *
+                 * One box scrolling both axes and not two nested ones, which is the
+                 * thing the note below rules out: a reader dragging this is dragging the
+                 * grid, and there is nothing else here for them to be dragging.
+                 */
+                className="relative max-h-[min(70vh,44rem)] w-full overflow-auto overscroll-contain"
+              >
                 {/*
                   The table is as wide as the Corpus makes it and no wider. Stretched
                   to the page it would hand every spare pixel to the Module column,
@@ -176,9 +232,31 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
                   along a row is half of what the grid is for.
                 */}
                 <table className="caption-bottom text-sm whitespace-nowrap">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead scope="col">Module</TableHead>
+                  {/*
+                    The headings stay while the rows go by. At 28 Modules the row a
+                    reader has scrolled to is eight columns of identical marks with
+                    nothing above it saying which Facet any of them is — the same reason
+                    the Module column is pinned, in the other direction.
+                  */}
+                  {/*
+                    The rule under the headings is drawn as an inset shadow and not as a
+                    border, because a collapsed table gives its borders to the row below
+                    and a pinned heading then has none — the headings floated over the
+                    rows with nothing between them.
+                  */}
+                  <TableHeader className="sticky top-0 z-20 [&_th]:shadow-[inset_0_-1px_0_var(--line-strong)]">
+                    <TableRow className="hover:bg-panel">
+                      {/*
+                        The ground is on each heading and not on the row around it: a
+                        sticky `tr` does not paint, so the marks scrolling underneath
+                        showed through the words naming their columns.
+                      */}
+                      <TableHead
+                        scope="col"
+                        className="sticky left-0 z-30 border-r border-border bg-panel"
+                      >
+                        Module
+                      </TableHead>
                       {facets.map((facet) => (
                         <TableHead
                           key={facet.name}
@@ -191,7 +269,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
                             keeps its label either way: a column with nothing in
                             it is the one a reader most needs named.
                           */
-                          className={unstarted.includes(facet) ? 'text-mark' : undefined}
+                          className={`bg-panel ${unstarted.includes(facet) ? 'bg-mark-quiet text-mark' : ''}`}
                           data-facet={unstarted.includes(facet) ? 'unstarted' : undefined}
                         >
                           {/*
@@ -209,28 +287,46 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
                           )}
                         </TableHead>
                       ))}
-                      <TableHead scope="col">Approved</TableHead>
-                      <TableHead scope="col">Movement</TableHead>
+                      <TableHead scope="col" className="border-l border-border bg-panel">
+                        Approved
+                      </TableHead>
+                      <TableHead scope="col" className="bg-panel">
+                        Movement
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {modules.map((module) => (
-                      <Row key={module.id} module={module} corpusId={corpus.id} />
+                      <Row
+                        key={module.id}
+                        module={module}
+                        corpusId={corpus.id}
+                        unstarted={unstartedNames}
+                      />
                     ))}
                   </TableBody>
                 </table>
               </div>
-
-              <ul className="flex flex-wrap gap-6 text-sm text-muted-foreground">
-                {MARKS.map(({ state, mark, tone }) => (
-                  <li key={state} className="flex items-center gap-1.5">
-                    <span className={`text-base ${tone}`}>{mark}</span> {state}
-                  </li>
-                ))}
-              </ul>
             </>
           )}
+        </CardContent>
 
+        {/*
+          What the marks mean, and what every figure above is counted out of, on their
+          own ground beneath the grid. The key belongs against the grid it decodes and
+          the notes belong under both: run together on the same white as the rows, all
+          six read as more of the table (LAW-006).
+        */}
+        <div className="flex flex-col gap-3 border-t border-border bg-sunken px-6 py-4">
+          {modules.length > 0 && (
+            <ul className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm text-muted-foreground">
+              {MARKS.map(({ state, mark, tone }) => (
+                <li key={state} className="flex items-center gap-1.5">
+                  <span className={`text-base ${tone}`}>{mark}</span> {state}
+                </li>
+              ))}
+            </ul>
+          )}
           <Aside>
             {`Every figure here is counted out of the ${count(facets.length, 'Facet')} this Corpus’s Lens declares. Knowledge nobody has written down anywhere is not counted here, and cannot be.`}
           </Aside>
@@ -253,7 +349,7 @@ export function CorpusMatrix({ corpus }: { corpus: CorpusDetail }) {
               {`It is declared by the Lens “${reading.lensId}”, so either nobody has begun it, or this Corpus does not have it and every figure above is counted out of one too many.`}
             </Aside>
           ))}
-        </CardContent>
+        </div>
       </Card>
     </Surface>
   );
