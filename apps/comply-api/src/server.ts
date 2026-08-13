@@ -633,6 +633,11 @@ function inboxOf(shelved: ShelvedCorpus, takenAt: string): CorpusInbox {
 
     queues.get(owner)!.push({
       says: finding.message,
+      // The Check's own code, passed through and never rephrased. `lookedFor` below
+      // states the same vocabulary as the denominator these are counted against, and
+      // a second spelling of one Check's name on one page is how a filter comes to
+      // offer a kind no row can match.
+      foundBy: finding.code,
       moduleId: finding.moduleId,
       cites: citedAt(seed, written, root, finding.origin),
       alsoCites: (finding.relatedOrigins ?? []).map((also) =>

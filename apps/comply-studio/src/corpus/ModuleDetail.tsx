@@ -17,6 +17,7 @@ import {
   Surface,
 } from '../components/layout.js';
 import { opensAt, Where } from '../components/Where.js';
+import { destinationAt } from '../shell/destinations.js';
 import { Badge } from '../components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { count } from '../words.js';
@@ -299,6 +300,9 @@ export function ModuleDetail({ module }: { module: CorpusModule }) {
   }
 
   const { facets, ladder, findings, lookedFor } = reading;
+  const held = `/corpus/${encodeURIComponent(module.corpus.id)}`;
+  const grid = destinationAt('readiness');
+  const queue = destinationAt('inbox');
 
   return (
     <Surface>
@@ -329,22 +333,36 @@ export function ModuleDetail({ module }: { module: CorpusModule }) {
         )}
       </p>
 
+      {/*
+        The two readings of one Module. Each goes where the same reading is asked of
+        the whole Corpus, which is the question this page cannot answer: how this
+        Module's Facets stand is below, and how they stand *against every other
+        Module's* is only readable down a column of the grid. The queue is reached
+        narrowed to this Module, so a reader working one Module meets its Findings with
+        every place cited and nothing else in the way.
+      */}
       <Readings>
         {[
           <Figure
             key="readiness"
             reading="Readiness"
+            icon={grid.icon}
             counts="Facets approved"
             value={reading.approved}
             outOf={`of ${count(reading.declaredFacets, 'Facet')}`}
+            to={`${held}/${grid.at}`}
+            answers={grid.describes}
           />,
           <Figure
             key="integrity"
             reading="Integrity"
+            icon={queue.icon}
             counts="Open Findings"
             value={findings.length}
             outOf={`from ${count(lookedFor.length, 'Check')}`}
             detail={lookedFor.join(', ')}
+            to={`${held}/${queue.at}?module=${encodeURIComponent(module.id)}`}
+            answers={`Every Finding this Module is about, beside what the rest of ${module.corpus.name} holds.`}
           />,
         ]}
       </Readings>

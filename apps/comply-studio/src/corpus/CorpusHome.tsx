@@ -5,6 +5,7 @@ import { Moved } from '../components/Moved.js';
 import { TwoReadings } from '../components/TwoReadings.js';
 import { WhyThereIsNoReading } from '../components/NoReading.js';
 import { Aside, Conspicuous, NothingToShow, Surface } from '../components/layout.js';
+import { Person } from '../components/Person.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.js';
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table.js';
 import { count } from '../words.js';
@@ -24,24 +25,25 @@ function Work({ module, corpusId }: { module: NeedsWork; corpusId: string }) {
       {/* A row's name and not a column's heading — see the same cell on the grid. */}
       <TableHead
         scope="row"
-        className="grid gap-0.5 align-middle text-sm font-normal tracking-normal text-foreground normal-case"
+        className="align-middle text-sm font-normal tracking-normal text-foreground normal-case"
       >
         <Link
-          className="justify-self-start font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+          className="font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
           to={`/corpus/${encodeURIComponent(corpusId)}/modules/${encodeURIComponent(module.id)}`}
         >
           {module.id}
         </Link>
-        {module.owner === null ? (
-          // LAW-007: every Finding against this Module routes to nobody, which is a
-          // defect and not an empty space.
-          <span className="text-xs">
-            <Conspicuous>nobody answers for this</Conspicuous>
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">{module.owner}</span>
-        )}
       </TableHead>
+      {/*
+        Who answers for it, in a column of its own and drawn exactly as the queue draws
+        it. It was a second line under the Module's name reading *nobody answers for
+        this*, which made every row two lines tall for a fact that is one word — and
+        said in a different shape from the one the same fact takes on the Inbox, so a
+        reader had to learn LAW-007's mark twice.
+      */}
+      <TableCell className="text-sm">
+        <Person owner={module.owner} />
+      </TableCell>
       {/*
         The count carries the row's weight and its denominator stays beside it, at the
         weight of the words it is. Both halves were one grey at one size, so a column of
@@ -224,7 +226,7 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
 
   return (
     <Surface>
-      <TwoReadings readiness={readiness} integrity={integrity} />
+      <TwoReadings corpusId={corpus.id} readiness={readiness} integrity={integrity} />
 
       <Card className="gap-0 overflow-hidden py-0">
         <CardHeader className="gap-2 py-5">
@@ -253,6 +255,7 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
                 <TableHeader>
                   <TableRow>
                     <TableHead scope="col">Module</TableHead>
+                    <TableHead scope="col">Answers for it</TableHead>
                     <TableHead scope="col">Approved</TableHead>
                     <TableHead scope="col">Movement</TableHead>
                   </TableRow>

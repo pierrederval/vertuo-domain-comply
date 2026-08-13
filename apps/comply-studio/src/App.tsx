@@ -185,25 +185,33 @@ function OneModule({ reading }: { reading: ReadingTheSource }) {
 }
 
 /**
- * One Corpus's Findings, worked as a queue apiece.
+ * One Corpus's Findings, as one list a reader narrows.
  *
- * Whose queue is read off the address, so a person can bookmark theirs and be sent
- * it: a name, the empty value for the one reaching nobody, or nothing at all for the
- * whole Inbox. The three are told apart because they are three different pages, and
- * an empty name is the one value no Owner can ever have.
+ * How it is narrowed is read off the address and nowhere else, so a narrowed queue is
+ * a link somebody can send and bookmark, and nothing about it is remembered where a
+ * rebuild could not reproduce it (LAW-011). Whose queue keeps the meaning it has
+ * always had — a name, the empty value for the one reaching nobody, or nothing at all
+ * for everybody's — so every link already made to somebody's queue still arrives at
+ * it.
  *
- * The whole Inbox is asked for whichever it is, and narrowing does not ask again —
- * every figure on the page is the Corpus's, and a page that re-asked per person
- * could report its own slice as the total.
+ * The whole Inbox is asked for however it is narrowed, and narrowing does not ask
+ * again — every figure on the page is the Corpus's, and a page that re-asked per
+ * filter could report its own slice as the total.
  */
 function TheInbox({ reading }: { reading: ReadingTheSource }) {
   const { id } = useParams();
   const [asked] = useSearchParams();
   const corpus = id ?? '';
+  const narrowing = {
+    owner: asked.get('owner'),
+    kind: asked.get('kind'),
+    module: asked.get('module'),
+    says: asked.get('says') ?? '',
+  };
 
   return (
     <Answering ask={() => fetchInbox(corpus)} about={corpus} since={reading.brought}>
-      {(inbox) => <Inbox inbox={inbox} narrowedTo={asked.get('owner')} />}
+      {(inbox) => <Inbox inbox={inbox} narrowing={narrowing} />}
     </Answering>
   );
 }

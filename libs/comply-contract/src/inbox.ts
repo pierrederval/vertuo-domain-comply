@@ -44,10 +44,18 @@ export const citedPlaceSchema = z.object({
  * One open Finding, as the person who has to answer for it meets it.
  *
  * It reaches a reader as the sentence written for them, the Module it routes to,
- * and the places it cites with their text — never as the Check's name for the
- * defect. That name is how the product talks to itself; several of them are words
- * no business surface may show, and arriving as data is exactly how such a word
- * gets past a guard (LAW-010).
+ * the places it cites with their text, and the name of the Check that found it.
+ *
+ * That last one was withheld here, on the grounds that the Check's name is how the
+ * product talks to itself and that a word no business surface may show would arrive
+ * as data and get past a guard (LAW-010). Both halves of that were already untrue.
+ * Every code is drawn on the surface that shows these Findings — in the sentence
+ * naming what was looked for, which is this figure's denominator — and the surface
+ * guard's list is applied to codes for exactly that reason (ADR-0028, ADR-0035). So
+ * the vocabulary was on the page and only the row-by-row use of it was missing, which
+ * is the one place it tells a reader something: a queue of a hundred where one kind of
+ * defect accounts for most of it cannot be read at all until the kinds can be told
+ * apart (ADR-0041).
  *
  * There is nowhere here to keep that somebody dismissed it, hid it, or has seen it.
  * A Finding is resolved by the knowledge changing and the Finding no longer being
@@ -56,6 +64,17 @@ export const citedPlaceSchema = z.object({
  */
 export const inboxFindingSchema = z.object({
   says: z.string().min(1),
+  /**
+   * The Check that found it, by the name the Check gives itself.
+   *
+   * Always sent and never empty. A Finding whose kind is unstated is one a reader
+   * cannot group, count apart or filter out, and on a queue of a hundred that is the
+   * difference between a list and a wall. It is the Check's own code and not a
+   * sentence about it: `lookedFor` states the same vocabulary as this figure's
+   * denominator, and two spellings of one Check's name across one page is how the
+   * denominator stops matching what it is counting.
+   */
+  foundBy: z.string().min(1),
   /**
    * The Module it routes to, or nothing where it belongs to no Module at all.
    *
@@ -122,10 +141,11 @@ export const inboxReadingSchema = z.discriminatedUnion('outcome', [
 /**
  * One Corpus's Findings, and enough of the Corpus to say where a reader is.
  *
- * Checked for agreement here rather than trusted, on the two points a server could
+ * Checked for agreement here rather than trusted, on the three points a server could
  * break and a surface would then draw as though it were the reading: the queue
- * reaching nobody put anywhere but first, and one person's Findings split across
- * two queues.
+ * reaching nobody put anywhere but first, one person's Findings split across two
+ * queues, and a Finding filed under a Check that is not among the ones this figure is
+ * counted against.
  */
 export const corpusInboxSchema = z
   .object({
@@ -134,7 +154,26 @@ export const corpusInboxSchema = z
   })
   .superRefine((held, ctx) => {
     if (held.reading.outcome !== 'read') return;
-    const { routesTo } = held.reading;
+    const { routesTo, lookedFor } = held.reading;
+
+    /*
+     * What was looked for is this figure's denominator, so a Finding filed under a
+     * Check that is not in it is a row counted against something that did not run —
+     * and on a surface that offers the same list as a way to narrow, it is a row no
+     * filter can reach and a kind no reader can rule out. One vocabulary or the two
+     * halves of the figure stop describing each other (LAW-006).
+     */
+    const ran = new Set(lookedFor);
+    for (const [position, queue] of routesTo.entries()) {
+      for (const [at, finding] of queue.findings.entries()) {
+        if (ran.has(finding.foundBy)) continue;
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['reading', 'routesTo', position, 'findings', at, 'foundBy'],
+          message: `A Finding is filed under "${finding.foundBy}", which is not among the Checks it is counted against`,
+        });
+      }
+    }
 
     const nobody = routesTo.findIndex((queue) => queue.owner === null);
     if (nobody > 0) {

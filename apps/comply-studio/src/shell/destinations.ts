@@ -58,9 +58,36 @@ export const DESTINATIONS: Destination[] = [
     at: 'inbox',
     label: 'Inbox',
     icon: Inbox,
-    describes: 'Every Finding in this Corpus, as a queue for whoever answers for it.',
+    /*
+     * It said *as a queue for whoever answers for it*, which described a page drawn as
+     * one card per person. It is one list a reader narrows now, and every row says who
+     * answers for it — so the sentence describes the shape a reader will meet rather
+     * than the one it replaced (ADR-0041).
+     */
+    describes: 'Every Finding in this Corpus, and who answers for each of them.',
   },
 ];
+
+/**
+ * One destination, by the address it lives at.
+ *
+ * Here rather than beside whatever needs it, because three surfaces draw a way in to
+ * a destination they are not on — the two readings, wherever that pair appears — and
+ * each of them needs the same three things about it: its figure, its address and what
+ * it says it answers. A copy of this lookup per surface is three chances for a tile to
+ * point at Readiness and describe the queue.
+ *
+ * Looked up by address because that is the one part of a destination that is also an
+ * address: a label can be renamed and every caller here goes on pointing at the right
+ * page. It throws rather than answering with nothing, because a destination missing
+ * from this list is a rail missing an entry too — and a tile that has quietly stopped
+ * being a way in is the one failure on these surfaces that nothing else reports.
+ */
+export function destinationAt(at: string): Destination {
+  const found = DESTINATIONS.find((entry) => entry.at === at);
+  if (found === undefined) throw new Error(`No destination is declared at "${at}"`);
+  return found;
+}
 
 /**
  * Where a Corpus opens when a reader arrives with nothing more specific in mind.
