@@ -15,12 +15,38 @@ export interface Destination {
   /** The last part of the address, beneath the Corpus. */
   at: string;
   label: string;
+  /**
+   * The question this surface answers, in one line.
+   *
+   * Required rather than optional, so a fourth destination cannot arrive as a bare
+   * word in a row of bare words. Three of them were exactly that, and a reader who
+   * has never met this product cannot tell *Readiness* from *Inbox* by name alone —
+   * which left the row of destinations to be learned by clicking all of it.
+   *
+   * A Facet says what it is from the Lens (ADR-0019) for the same reason, and this is
+   * that decision applied to the product’s own surfaces rather than to a corpus’s
+   * Facets. These are the product’s words and never a business’s, which is why they
+   * can be written here at all (LAW-004).
+   */
+  describes: string;
 }
 
 export const DESTINATIONS: Destination[] = [
-  { at: 'home', label: 'Home' },
-  { at: 'readiness', label: 'Readiness' },
-  { at: 'inbox', label: 'Inbox' },
+  {
+    at: 'home',
+    label: 'Home',
+    describes: 'What needs a person in this Corpus, and what moved in it.',
+  },
+  {
+    at: 'readiness',
+    label: 'Readiness',
+    describes: 'Every Module against every Facet its Lens declares.',
+  },
+  {
+    at: 'inbox',
+    label: 'Inbox',
+    describes: 'Every Finding in this Corpus, as a queue for whoever answers for it.',
+  },
 ];
 
 /**

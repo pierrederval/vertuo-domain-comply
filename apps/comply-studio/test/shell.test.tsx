@@ -31,12 +31,26 @@ const SHELF: CorpusSummary[] = corpusListSchema.parse({
 
 const READ: ShelfState = { corpus: { corpus: SHELF, criteriaNotFollowed: [] }, trouble: null };
 
+/**
+ * Reading a source again, as the shell is handed it.
+ *
+ * A stub rather than the real thing, because what the shell is responsible for is
+ * offering the action wherever a reader is inside a Corpus. What a press *does* is
+ * asserted where it lives, against `ReadAgain` itself.
+ */
+const NOT_READING = { doingTo: () => ({ at: 'ready' }) as const, read: () => {} };
+
 function draw(shelf: ShelfState, at = '/corpus'): string {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[at]}>
-      <AppShell shelf={shelf} />
+      <AppShell shelf={shelf} reading={NOT_READING} />
     </MemoryRouter>,
   );
+}
+
+/** Just the words a reader meets, with every attribute this is drawn with taken off. */
+function words(markup: string): string {
+  return markup.replace(/<[^>]*>/g, ' ');
 }
 
 /** Asked exactly as the shell asks it, from the destinations there actually are. */
@@ -190,6 +204,60 @@ describe('the shell', () => {
     expect(refused).not.toContain('Nothing is on the shelf yet');
     expect(refused).toContain('Nothing on the shelf can be read yet');
     expect(refused).toContain('says which file to put right');
+  });
+
+  it('names the surface being read, and says what that surface answers', () => {
+    // The Corpus is named in the trail; the heading names the *surface*, because a
+    // reader who has arrived somewhere is owed the name of where that is and what it
+    // will tell them. Naming the Corpus twice on one screen reads as two things.
+    const opens = DESTINATIONS.find((destination) => destination.at === OPENS_AT)!;
+    const drawn = draw(READ, `/corpus/corpus-a/${OPENS_AT}`);
+
+    expect(drawn).toContain(`data-surface="${OPENS_AT}"`);
+    expect(words(drawn)).toContain(opens.label);
+    expect(words(drawn)).toContain(opens.describes);
+  });
+
+  it('is titled by the Module where the reader is inside one', () => {
+    // A Module is not a destination of its own. Titled by the destination it was
+    // reached through, its page would be headed by the surface a reader came
+    // *through* rather than the thing they came to read.
+    const drawn = draw(READ, '/corpus/corpus-a/modules/alpha');
+
+    expect(drawn).toContain('data-surface="module"');
+    expect(words(drawn)).toContain('alpha');
+  });
+
+  it('is titled by the shelf where no Corpus is being read', () => {
+    expect(draw(READ)).toContain('data-surface="shelf"');
+  });
+
+  it('says what every destination answers, so a fourth cannot arrive unnamed', () => {
+    for (const destination of DESTINATIONS) {
+      expect(destination.describes.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('offers the one action that changes what the shelf holds, once, wherever the reader is in a Corpus', () => {
+    // It reached one destination of three before this: a reader looking at a queue or
+    // at what moved had to go back to the grid to bring new knowledge in. One of it,
+    // because two buttons doing one thing are two things to keep in step.
+    for (const destination of DESTINATIONS) {
+      const drawn = draw(READ, `/corpus/corpus-a/${destination.at}`);
+
+      expect(drawn.match(/data-read-again=/g)).toHaveLength(1);
+    }
+    expect(draw(READ, '/corpus/corpus-a/modules/alpha').match(/data-read-again=/g)).toHaveLength(1);
+  });
+
+  it('offers it on a Corpus with nothing written down yet, which is what it is for', () => {
+    // The whole remedy for that state, so the state it is missing from is the one
+    // where it matters most (ADR-0035).
+    expect(draw(READ, '/corpus/corpus-b/readiness')).toContain('data-read-again=');
+  });
+
+  it('offers it nowhere on the shelf, where there is no one source to read', () => {
+    expect(draw(READ)).not.toContain('data-read-again');
   });
 
   it('offers nothing to sign in to, because there is nobody to be', () => {

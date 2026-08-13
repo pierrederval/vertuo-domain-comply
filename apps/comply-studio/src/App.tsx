@@ -137,23 +137,21 @@ function EveryCorpus({ shelf }: { shelf: ShelfState }) {
 }
 
 /**
- * The grid, and the one action that changes what is drawn in it.
+ * The grid.
  *
- * The action is here because this is where a Corpus opens, and because a Corpus with
- * nothing written down yet lands here too — which is the state the action exists to
- * get a reader out of, so it has to be drawn beside the sentence saying so.
+ * The action that reads the source again was drawn here, because this is where a
+ * Corpus opens. It is in the frame now, so it is in reach from a queue and from what
+ * moved as well — and a Corpus with nothing written down yet still meets it, which is
+ * the state it exists to get a reader out of (ADR-0035).
  */
 function OneCorpus({ reading }: { reading: ReadingTheSource }) {
   const { id } = useParams();
   const asked = id ?? '';
 
   return (
-    <Surface>
-      <ReadAgain doing={reading.doingTo(asked)} press={() => reading.read(asked)} />
-      <Answering ask={() => fetchCorpusDetail(asked)} about={asked} since={reading.brought}>
-        {(corpus) => <CorpusMatrix corpus={corpus} />}
-      </Answering>
-    </Surface>
+    <Answering ask={() => fetchCorpusDetail(asked)} about={asked} since={reading.brought}>
+      {(corpus) => <CorpusMatrix corpus={corpus} />}
+    </Answering>
   );
 }
 
@@ -257,7 +255,7 @@ export function App() {
 
   return (
     <Routes>
-      <Route element={<AppShell shelf={shelf} />}>
+      <Route element={<AppShell shelf={shelf} reading={reading} />}>
         <Route path="/" element={<Navigate to="/corpus" replace />} />
         <Route path="/corpus" element={<EveryCorpus shelf={shelf} />} />
         {/*

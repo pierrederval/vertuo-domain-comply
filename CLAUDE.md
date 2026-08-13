@@ -72,7 +72,8 @@ Three rules that are easy to break:
   grant, and a trigger backs it up. Do not attempt to work around this; it is LAW-003 made
   structural.
 - **Never assert about a class name.** Interface tests use `data-*` handles — `data-figure`,
-  `data-cell`, `data-movement`, `data-conspicuous`, `data-read-again`, `data-cannot-be-read` — because
+  `data-cell`, `data-movement`, `data-conspicuous`, `data-read-again`, `data-cannot-be-read`,
+  `data-surface` — because
   several of them are laws made testable, and a guard tied to styling is deleted by whoever next changes the
   styling. `data-figure` appearing exactly twice is LAW-006: two readings, never a third fused one.
   `data-cannot-be-read` carries `"knowledge"` or `"criteria"`, so a test tells the two kinds of unreadable
@@ -84,6 +85,39 @@ Three rules that are easy to break:
 The interface's components are vendored into `apps/comply-studio/src/components/ui` and are ours to
 maintain (ADR-0018). Both vocabulary guards scan them like any other source, so LAW-004 and LAW-010
 apply to a vendored component as much as to one written here.
+
+Six things about the frame are worth knowing before changing it (ADR-0038):
+
+- **The heading names the surface and never the Corpus.** The Corpus is in the trail above it; a Corpus
+  named twice on one screen reads as two things, and the second is what somebody forgets to change. A
+  Module page is headed by the Module, because a Module is not a destination. `data-surface` carries
+  which of the three it is — `shelf`, `module`, or a destination's name.
+- **A `Destination` must say what it answers, and `describes` is required.** ADR-0019's *a Facet says
+  what it is* applied to the product's own surfaces: three bare words could only be learned by clicking
+  all of them. A Module has no declaration to describe it from, so its sentence is written in the shell
+  — and it is written rather than left out, because the block would otherwise be one line shorter there
+  and the destinations shifting up as a reader steps into a Module reads as a page that reloaded into
+  something else.
+- **The one action that writes lives in the frame, and there is still one of it.** `ReadAgain` reached
+  one destination of three, so a reader working a queue had to walk back to the grid to bring knowledge
+  in. It is now beside the age of the reading — the fact it changes — on every surface of a Corpus,
+  including the two ADR-0035 says it is the whole remedy for.
+- **A heading decides a column's width, and the grid has no spare.** Set at the body's size in capitals,
+  the DDD Corpus's eight Facet columns pushed `Approved` and `Movement` off the right edge at 1440px —
+  the two a row is read for. At 11px and `px-2` it measures 1281 against 1281 of room. Any change to
+  `TableHead` is a change to whether the grid fits.
+- **The column-heading treatment is on `TableHead` and must not move to `thead`.** A descendant rule on
+  the parent outranks a class on the child, so a Facet no Module has anything under would lose the mark
+  in its own heading — which is the whole reason the grid is drawn as a grid. The cost is that a `th`
+  with `scope="row"` says at its call site that it is a row's name; two of them do.
+- **`overflow-x` on one axis promotes the other to `auto`.** That is how the destinations came to carry
+  a 13-pixel vertical scrollbar on every screen in the product, from the one pixel each mark hangs
+  below the rule. A row of three short words needs no scrolling box.
+
+`--here` is the accent, and it is `--focus` promoted rather than a second colour: that blue already
+meant *this is the thing you are on*, and `data-here` was already the handle for it. It is deliberately
+not `--mark` — amber means work landing on somebody (LAW-007), and spending it on navigation is how a
+page full of marks stops meaning anything.
 
 shadcn's blocks bring KPI tiles, progress rings, trend chips and count badges. Every one of them is a
 figure with its denominator removed, which is LAW-006. A badge may carry a state's name; never a count.

@@ -44,7 +44,10 @@ function Cell({ state }: { state: FacetState }) {
   return (
     // `data-cell` carries the state for anything asserting about it, so no test
     // has to reach for a class name to find out what a cell means.
-    <TableCell className={`text-center text-xl leading-none ${tone}`} data-cell={state}>
+    // Narrower than a cell of words, because the whole content is one glyph. At the
+    // padding a column of text needs, eight Facets push the two figures at the end of
+    // the row off the edge of the grid — and those two are what the row is read for.
+    <TableCell className={`px-2 text-center text-xl leading-none ${tone}`} data-cell={state}>
       <abbr title={state} className="cursor-help no-underline">
         {mark}
       </abbr>
@@ -60,9 +63,19 @@ function Row({ module, corpusId }: { module: ModuleRow; corpusId: string }) {
         column every other one is read against, and a row of marks with nothing
         at the left of it says which state something is in without saying what.
       */}
+      {/*
+        A row's name, not a column's heading, so the column-heading treatment a
+        `TableHead` carries is undone here: this reads as the knowledge it labels.
+        It keeps `th` because that is what it is — the cell every mark on the row is
+        read against.
+
+        It comes up with the row under the pointer. Left on the panel's own white it
+        would stay put while the rest of the row tinted, which reads as a row that
+        stops at the Module column.
+      */}
       <TableHead
         scope="row"
-        className="sticky left-0 z-10 grid gap-px bg-card align-middle font-normal"
+        className="sticky left-0 z-10 grid gap-0.5 border-r border-border bg-panel align-middle text-sm font-normal tracking-normal text-foreground normal-case group-hover/row:bg-sunken"
       >
         {/*
           A cell says how far along a Module is and never what to do about it.
@@ -78,11 +91,11 @@ function Row({ module, corpusId }: { module: ModuleRow; corpusId: string }) {
         {module.owner === null ? (
           // LAW-007: every Finding against this Module routes to nobody, which is
           // a defect and not an empty space.
-          <span className="text-sm">
+          <span className="text-xs">
             <Conspicuous>nobody answers for this</Conspicuous>
           </span>
         ) : (
-          <span className="text-sm text-muted-foreground">{module.owner}</span>
+          <span className="text-xs text-muted-foreground">{module.owner}</span>
         )}
       </TableHead>
       {module.cells.map((cell) => (

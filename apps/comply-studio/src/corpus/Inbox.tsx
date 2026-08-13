@@ -77,7 +77,13 @@ function Cited({
         <>
           <pre
             data-quoted=""
-            className="overflow-x-auto rounded-md bg-muted p-3 text-sm whitespace-pre-wrap"
+            /*
+             * The evidence, told from the page around it by a ground and an edge. It
+             * was tinted in the same value as the paper the page is on, which on a
+             * white card is no tint at all — so the one thing on this surface that is
+             * the source’s own words looked like the product’s prose.
+             */
+            className="overflow-x-auto rounded-md border border-border bg-sunken p-3 text-[0.8125rem] leading-relaxed whitespace-pre-wrap"
           >
             {cited.quoted.says}
           </pre>
@@ -109,8 +115,13 @@ function Cited({
  */
 function Found({ finding, corpusId }: { finding: InboxFinding; corpusId: string }) {
   return (
-    <li data-finding="" className="flex flex-col gap-2 border-t border-border pt-4 first:border-0 first:pt-0">
-      <p>{finding.says}</p>
+    <li
+      data-finding=""
+      className="flex flex-col gap-2 border-t border-border pt-5 first:border-0 first:pt-0"
+    >
+      {/* What was found leads. It was set in the same weight as the two lines of
+          bookkeeping under it, so a queue of forty read as one undivided column. */}
+      <p className="font-medium">{finding.says}</p>
       <p className="text-sm text-muted-foreground">
         {finding.moduleId === null ? (
           // The only place in the product this Finding appears at all. No Module's
@@ -156,7 +167,16 @@ function Queue({
   const { owner, findings } = queue;
 
   return (
-    <Card data-queue={owner ?? ''}>
+    /*
+     * The queue reaching nobody is marked as a whole surface and not only in its
+     * heading. LAW-007 makes it the loudest thing on the page, and one amber phrase
+     * at the top of a card the same colour as every other card is not louder than
+     * anything — it is a heading a reader scrolls past on the way to their own name.
+     */
+    <Card
+      data-queue={owner ?? ''}
+      className={owner === null ? 'border-mark/40 bg-mark-quiet/40' : undefined}
+    >
       <CardHeader>
         <CardTitle>
           {owner === null ? <Conspicuous>Routes to nobody</Conspicuous> : owner}
@@ -276,7 +296,13 @@ export function Inbox({
 
   return (
     <Surface>
-      <p className="text-sm text-muted-foreground">
+      {/*
+        What is in this Corpus and what was looked for to find it, on a surface of its
+        own. It is the denominator every queue below is read against (LAW-006), and it
+        was a line of grey text floating above the first card — the position a reader
+        learns to skip, and the one sentence on this page that must not be skipped.
+      */}
+      <p className="rounded-lg border border-border bg-panel px-5 py-4 text-sm text-muted-foreground">
         {`${count(found, 'Finding')} in this Corpus, from ${ran}.`}
       </p>
 

@@ -21,7 +21,11 @@ import { count } from '../words.js';
 function Work({ module, corpusId }: { module: NeedsWork; corpusId: string }) {
   return (
     <TableRow data-needs-work="">
-      <TableHead scope="row" className="grid gap-px align-middle font-normal">
+      {/* A row's name and not a column's heading — see the same cell on the grid. */}
+      <TableHead
+        scope="row"
+        className="grid gap-0.5 align-middle text-sm font-normal tracking-normal text-foreground normal-case"
+      >
         <Link
           className="justify-self-start font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
           to={`/corpus/${encodeURIComponent(corpusId)}/modules/${encodeURIComponent(module.id)}`}
@@ -31,11 +35,11 @@ function Work({ module, corpusId }: { module: NeedsWork; corpusId: string }) {
         {module.owner === null ? (
           // LAW-007: every Finding against this Module routes to nobody, which is a
           // defect and not an empty space.
-          <span className="text-sm">
+          <span className="text-xs">
             <Conspicuous>nobody answers for this</Conspicuous>
           </span>
         ) : (
-          <span className="text-sm text-muted-foreground">{module.owner}</span>
+          <span className="text-xs text-muted-foreground">{module.owner}</span>
         )}
       </TableHead>
       <TableCell className="text-sm text-muted-foreground">
@@ -214,7 +218,14 @@ export function CorpusHome({ corpus }: { corpus: OneCorpusHome }) {
             </NothingToShow>
           ) : (
             <div className="w-full overflow-x-auto">
-              <table className="caption-bottom text-sm">
+              {/*
+                As wide as the card it sits in. Three columns at their own width left
+                two thirds of the card empty and the whole list huddled at the left,
+                which reads as a table that failed to finish drawing. The grid is the
+                other case and stays intrinsic: its columns grow with the Corpus, and
+                there a stretch would push the marks away from the name they belong to.
+              */}
+              <table className="w-full caption-bottom text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead scope="col">Module</TableHead>
