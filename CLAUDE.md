@@ -109,17 +109,27 @@ Run all of these from the repository root.
 | `pnpm comply extract <lens.json>` | Write down what is at source, as a Seed |
 | `pnpm comply report <lens.json>` | Read a Corpus and print where it stands |
 | `pnpm comply prune <lens.json> [keep]` | Drop what can be worked out again, and say what that cost |
-| `pnpm shelf:fixtures` | Put both fixture Corpus on the development shelf |
-| `pnpm dev` | Both processes below at once; one Ctrl-C stops both |
+| `pnpm shelf:domain` | Write down what is at source in `vertuo-domain-fr`, onto the `lenses` shelf |
+| `pnpm dev` | Both processes below at once, against **the real Corpus**; one Ctrl-C stops both |
 | `pnpm api` | Serve that shelf on port 4301 — every route a GET but the one that reads a source again |
 | `pnpm studio` | The Studio, on port 4302, answering from the API |
-| `pnpm shelf:domain` | Write down what is at source in `vertuo-domain`, onto the `lenses` shelf |
-| `pnpm dev:domain` | The same two processes, serving that shelf instead of the fixtures |
+| `pnpm shelf:fixtures` | Put both fixture Corpus on the development shelf |
+| `pnpm dev:fixtures` | The same two processes, serving that shelf instead of the real Corpus |
+| `pnpm api:fixtures` | The API alone, against that same shelf |
 
 `pnpm dev` is the usual way in: the Studio is unreadable without the API behind it, and starting one
 of a pair by hand is how a person ends up reading a page that is answering from yesterday's process.
 The two run under Turborepo as persistent tasks, so nothing new orchestrates them. Either can still
 be run alone when that is what you want.
+
+**The bare commands serve the real Corpus, and the fixtures are the ones that have to be asked for.** It
+was the other way round until it was noticed that every screen looks like it works against a fixture:
+`Alpha` shows five of seven Facets approved, a real Owner and a short list of Findings, where the real
+Corpus shows 28 Modules that all read `0/8`, all owned by nobody, and all unchanged. A default that
+flatters the interface is a default that hides the work. `pnpm dev:fixtures` is still what a test-shaped
+question wants, and it is the only one of the pair that needs nothing outside this repository — `pnpm dev`
+reads a sibling checkout, and without one the Corpus is on the shelf saying nothing has been written down
+from this source yet, with the action that reads it again (ADR-0035).
 
 Neither port moves if it is taken. A development server that quietly took the next port leaves two of
 itself running, and the one being read is then the one that was not just changed, which reads as a
